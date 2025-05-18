@@ -10,17 +10,30 @@ class AppAsset extends AssetBundle
 {
     public $basePath = '@webroot';
     public $baseUrl = '@web';
+    
     public $css = [
-        'css/site.css',
         'css/modern-design.css',
     ];
+    
     public $js = [
-        'js/main.js',
-        'js/modern-ui.js',
+        'js/modern-main.js',
     ];
+    
     public $depends = [
         'yii\web\YiiAsset',
-        'yii\bootstrap5\BootstrapAsset',
-        'yii\bootstrap5\BootstrapPluginAsset',
+        // Note: No Bootstrap dependencies - we use custom CSS
     ];
+    
+    /**
+     * @inheritdoc
+     */
+    public function init()
+    {
+        parent::init();
+        
+        // Add conditional CSS for older browsers
+        $this->cssOptions = [
+            'condition' => 'lte IE 9',
+        ];
+    }
 }
