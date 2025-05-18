@@ -27,7 +27,7 @@ AppAsset::register($this);
 <!-- Sidebar -->
 <aside class="admin-sidebar" id="sidebar">
     <div class="sidebar-header">
-        <h3><?= Html::a('<i class="fas fa-camera"></i> PhotoBank Admin', ['/site/index'], ['class' => 'sidebar-brand']) ?></h3>
+        <h3><?= Html::a('Zasobnik B', ['/site/index'], ['class' => 'sidebar-brand']) ?></h3>
         <button type="button" class="sidebar-toggle">
             <i class="fas fa-bars"></i>
         </button>
@@ -129,9 +129,9 @@ AppAsset::register($this);
             <div class="user-dropdown admin-dropdown">
                 <button class="btn" data-bs-toggle="dropdown">
                     <div class="user-avatar">
-                        <?= strtoupper(substr(Yii::$app->user->identity->username, 0, 2)) ?>
+                        
                     </div>
-                    <span><?= Yii::$app->user->identity->username ?></span>
+                    
                     <i class="fas fa-chevron-down"></i>
                 </button>
                 <div class="dropdown-menu dropdown-menu-end">

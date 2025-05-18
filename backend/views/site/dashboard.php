@@ -2,7 +2,6 @@
 
 use yii\helpers\Html;
 use yii\helpers\Url;
-use dosamigos\chartjs\ChartJs;
 
 /* @var $this yii\web\View */
 /* @var $totalPhotos int */
@@ -205,37 +204,7 @@ $this->params['breadcrumbs'][] = $this->title;
                     <h3 class="panel-title">Photo Upload Statistics</h3>
                 </div>
                 <div class="panel-body">
-                    <?= ChartJs::widget([
-                        'type' => 'line',
-                        'options' => [
-                            'height' => 300,
-                        ],
-                        'data' => [
-                            'labels' => $months,
-                            'datasets' => [
-                                [
-                                    'label' => 'Photos Uploaded',
-                                    'backgroundColor' => "rgba(151,187,205,0.2)",
-                                    'borderColor' => "rgba(151,187,205,1)",
-                                    'pointBackgroundColor' => "rgba(151,187,205,1)",
-                                    'pointBorderColor' => "#fff",
-                                    'data' => $photoStats,
-                                ],
-                            ],
-                        ],
-                        'clientOptions' => [
-                            'scales' => [
-                                'yAxes' => [
-                                    [
-                                        'ticks' => [
-                                            'beginAtZero' => true,
-                                            'stepSize' => 1,
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ],
-                    ]) ?>
+                    
                 </div>
             </div>
         </div>
