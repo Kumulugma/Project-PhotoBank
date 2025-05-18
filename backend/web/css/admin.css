@@ -362,3 +362,84 @@
 .btn-group .btn:not(:last-child) {
     margin-right: 0.25rem;
 }
+
+/* Panel color variants - Bootstrap 3 compatibility */
+.panel-primary {
+    border-color: #0d6efd;
+}
+
+.panel-primary .panel-heading {
+    background-color: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+.panel-success {
+    border-color: #198754;
+}
+
+.panel-success .panel-heading {
+    background-color: #198754;
+    color: white;
+    border-color: #198754;
+}
+
+.panel-info {
+    border-color: #0dcaf0;
+}
+
+.panel-info .panel-heading {
+    background-color: #0dcaf0;
+    color: #000;
+    border-color: #0dcaf0;
+}
+
+.panel-warning {
+    border-color: #ffc107;
+}
+
+.panel-warning .panel-heading {
+    background-color: #ffc107;
+    color: #000;
+    border-color: #ffc107;
+}
+
+.panel-danger {
+    border-color: #dc3545;
+}
+
+.panel-danger .panel-heading {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.panel-yellow {
+    border-color: #ffc107;
+}
+
+.panel-yellow .panel-heading {
+    background-color: #ffc107;
+    color: #000;
+    border-color: #ffc107;
+}
+
+.panel-green {
+    border-color: #198754;
+}
+
+.panel-green .panel-heading {
+    background-color: #198754;
+    color: white;
+    border-color: #198754;
+}
+
+.panel-red {
+    border-color: #dc3545;
+}
+
+.panel-red .panel-heading {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
