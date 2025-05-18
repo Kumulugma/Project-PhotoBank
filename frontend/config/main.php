@@ -56,15 +56,6 @@ return [
                 'search' => 'search/index',
             ],
         ],
-        'view' => [
-            'theme' => [
-                'basePath' => '@app/themes/photobank',
-                'baseUrl' => '@web/themes/photobank',
-                'pathMap' => [
-                    '@app/views' => '@app/themes/photobank',
-                ],
-            ],
-        ],
     ],
     'as access' => [
         'class' => 'yii\filters\AccessControl',

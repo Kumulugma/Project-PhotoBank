@@ -4,7 +4,7 @@ namespace frontend\assets;
 use yii\web\AssetBundle;
 
 /**
- * Main frontend application asset bundle.
+ * Frontend application asset bundle with custom modern design.
  */
 class AppAsset extends AssetBundle
 {
@@ -12,9 +12,11 @@ class AppAsset extends AssetBundle
     public $baseUrl = '@web';
     public $css = [
         'css/site.css',
+        'css/modern-design.css',
     ];
     public $js = [
         'js/main.js',
+        'js/modern-ui.js',
     ];
     public $depends = [
         'yii\web\YiiAsset',
