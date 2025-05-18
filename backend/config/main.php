@@ -133,6 +133,7 @@ return [
         'assetManager' => [
             'class' => 'yii\web\AssetManager',
             'bundles' => [
+                // Disable conflicting Bootstrap versions
                 'yii\bootstrap\BootstrapAsset' => false,
                 'yii\bootstrap\BootstrapPluginAsset' => false,
                 'yii\bootstrap4\BootstrapAsset' => false,
