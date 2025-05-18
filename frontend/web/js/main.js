@@ -400,6 +400,294 @@ class PersonalPhotoBank {
             }
         });
     }
+    
+    /**
+     * Scroll animations functionality
+     */
+    initScrollAnimations() {
+        // Intersection Observer for reveal animations
+        if ('IntersectionObserver' in window) {
+            const revealObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('revealed');
+                        revealObserver.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: '50px'
+            });
+
+            // Observe elements with reveal animation
+            document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+                revealObserver.observe(el);
+            });
+
+            // Staggered animation for photo items
+            document.querySelectorAll('.photo-item').forEach((item, index) => {
+                item.style.animationDelay = `${index * 0.1}s`;
+                item.classList.add('reveal-on-scroll');
+                revealObserver.observe(item);
+            });
+        } else {
+            // Fallback for browsers without Intersection Observer
+            document.querySelectorAll('.reveal-on-scroll').forEach(el => {
+                el.classList.add('revealed');
+            });
+        }
+
+        // Counter animations for statistics
+        this.initCounterAnimations();
+    }
+
+    /**
+     * Counter animations for numbers/statistics
+     */
+    initCounterAnimations() {
+        const counters = document.querySelectorAll('.stat-number, .counter');
+        
+        if ('IntersectionObserver' in window) {
+            const counterObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        this.animateCounter(entry.target);
+                        counterObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.5 });
+
+            counters.forEach(counter => {
+                counterObserver.observe(counter);
+            });
+        }
+    }
+
+    /**
+     * Animate a counter element
+     */
+    animateCounter(element) {
+        const text = element.textContent;
+        const number = parseFloat(text.replace(/[^\d.]/g, ''));
+        
+        if (isNaN(number)) return;
+
+        const duration = 1500;
+        const step = number / (duration / 16);
+        let current = 0;
+
+        const animate = () => {
+            current += step;
+            if (current >= number) {
+                element.textContent = text;
+                return;
+            }
+
+            const displayValue = Math.floor(current);
+            const suffix = text.match(/[^\d.]+$/)?.[0] || '';
+            const prefix = text.match(/^[^\d]+/)?.[0] || '';
+            element.textContent = prefix + displayValue + suffix;
+
+            requestAnimationFrame(animate);
+        };
+
+        requestAnimationFrame(animate);
+    }
+    
+    /**
+     * Utility functions and general enhancements
+     */
+    initUtilities() {
+        // Back to top button
+        this.initBackToTop();
+        
+        // Loading overlay management
+        this.initLoadingOverlay();
+        
+        // Performance monitoring
+        this.initPerformanceMonitoring();
+        
+        // Device capability detection
+        this.detectCapabilities();
+        
+        // Global click handler for external links
+        this.initExternalLinks();
+    }
+
+    initBackToTop() {
+        const backToTop = document.getElementById('backToTop');
+        if (!backToTop) return;
+
+        let scrollTimer = null;
+        let ticking = false;
+
+        const updateBackToTop = () => {
+            if (window.pageYOffset > 300) {
+                backToTop.style.display = 'block';
+                backToTop.classList.add('visible');
+            } else {
+                backToTop.classList.remove('visible');
+                setTimeout(() => {
+                    if (!backToTop.classList.contains('visible')) {
+                        backToTop.style.display = 'none';
+                    }
+                }, 300);
+            }
+            ticking = false;
+        };
+
+        window.addEventListener('scroll', () => {
+            if (!ticking) {
+                requestAnimationFrame(updateBackToTop);
+                ticking = true;
+            }
+        }, { passive: true });
+
+        backToTop.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
+
+    initLoadingOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (!overlay) return;
+
+        // Show loading overlay for AJAX requests
+        document.addEventListener('submit', (e) => {
+            const form = e.target;
+            if (form.matches('form:not([data-no-loading])')) {
+                this.showLoadingOverlay();
+
+                // Hide after timeout as failsafe
+                setTimeout(() => {
+                    this.hideLoadingOverlay();
+                }, 10000);
+            }
+        });
+
+        // Hide on page load
+        window.addEventListener('load', () => {
+            this.hideLoadingOverlay();
+        });
+    }
+
+    showLoadingOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.classList.add('active');
+            overlay.setAttribute('aria-hidden', 'false');
+        }
+    }
+
+    hideLoadingOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.classList.remove('active');
+            overlay.setAttribute('aria-hidden', 'true');
+        }
+    }
+
+    initPerformanceMonitoring() {
+        // Monitor page performance
+        if ('PerformanceObserver' in window) {
+            try {
+                // Monitor large layout shifts
+                const observer = new PerformanceObserver((list) => {
+                    list.getEntries().forEach((entry) => {
+                        if (entry.value > 0.1) {
+                            console.warn('Large layout shift detected:', entry.value);
+                        }
+                    });
+                });
+
+                observer.observe({entryTypes: ['layout-shift']});
+            } catch (error) {
+                // Silently fail if not supported
+            }
+        }
+
+        // Log page load time
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const perfData = performance.getEntriesByType('navigation')[0];
+                if (perfData) {
+                    console.log(`Page loaded in ${Math.round(perfData.loadEventEnd - perfData.fetchStart)}ms`);
+                }
+            }, 0);
+        });
+    }
+
+    detectCapabilities() {
+        const body = document.body;
+
+        // Touch device detection
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+            body.classList.add('touch-device');
+        }
+
+        // Reduced motion preference
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            body.classList.add('reduced-motion');
+        }
+
+        // High contrast preference
+        if (window.matchMedia('(prefers-contrast: high)').matches) {
+            body.classList.add('high-contrast');
+        }
+
+        // Dark mode preference (for future implementation)
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            body.classList.add('prefers-dark');
+        }
+
+        // Feature detection
+        const features = {
+            webp: this.supportsWebP(),
+            intersectionObserver: 'IntersectionObserver' in window,
+            serviceWorker: 'serviceWorker' in navigator,
+            webShare: 'share' in navigator
+        };
+
+        Object.entries(features).forEach(([feature, supported]) => {
+            body.classList.toggle(`supports-${feature}`, supported);
+        });
+    }
+
+    supportsWebP() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        return canvas.toDataURL('image/webp').indexOf('webp') !== -1;
+    }
+
+    initExternalLinks() {
+        // Add target="_blank" and security attributes to external links
+        document.querySelectorAll('a[href]').forEach(link => {
+            try {
+                const url = new URL(link.href, window.location.origin);
+                
+                if (url.hostname !== window.location.hostname) {
+                    link.setAttribute('target', '_blank');
+                    link.setAttribute('rel', 'noopener noreferrer');
+                    
+                    // Add icon indicator for external links
+                    if (!link.querySelector('.external-link-icon')) {
+                        const icon = document.createElement('i');
+                        icon.className = 'fas fa-external-link-alt external-link-icon';
+                        icon.setAttribute('aria-hidden', 'true');
+                        icon.style.marginLeft = '0.25rem';
+                        icon.style.fontSize = '0.8em';
+                        link.appendChild(icon);
+                    }
+                }
+            } catch (e) {
+                // Skip invalid URLs
+            }
+        });
+    }
     /**
      * Modal functionality
      */
