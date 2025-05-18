@@ -1,82 +1,89 @@
 <?php
 
 use yii\helpers\Html;
-use yii\widgets\ActiveForm;
+use yii\bootstrap5\ActiveForm;
 use yii\helpers\Url;
 
 /* @var $this yii\web\View */
 /* @var $settings array */
 
-$this->title = 'AWS S3 Settings';
+$this->title = 'Ustawienia AWS S3';
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="s3-index">
-
-    <h1><?= Html::encode($this->title) ?></h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3"><?= Html::encode($this->title) ?></h1>
+    </div>
 
     <div class="row">
-        <div class="col-md-6">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">S3 Configuration</h3>
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fab fa-aws me-2"></i>Konfiguracja S3
+                    </h5>
                 </div>
-                <div class="panel-body">
+                <div class="card-body">
                     <?php $form = ActiveForm::begin([
                         'id' => 's3-settings-form',
                         'action' => ['update'],
-                        'options' => ['class' => 'form-horizontal'],
+                        'options' => ['class' => 'needs-validation'],
                     ]); ?>
 
-                    <div class="form-group">
-                        <label class="control-label col-sm-4">Bucket Name:</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" name="bucket" value="<?= Html::encode($settings['bucket']) ?>" required>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nazwa bucket</label>
+                        <input type="text" class="form-control" name="bucket" 
+                               value="<?= Html::encode($settings['bucket']) ?>" required>
+                        <div class="form-text">Nazwa bucket S3 do przechowywania zdjęć</div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="control-label col-sm-4">Region:</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" name="region" value="<?= Html::encode($settings['region']) ?>" required>
-                            <div class="help-block">e.g. us-east-1, eu-west-1</div>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Region</label>
+                        <input type="text" class="form-control" name="region" 
+                               value="<?= Html::encode($settings['region']) ?>" required
+                               placeholder="np. us-east-1, eu-west-1">
+                        <div class="form-text">Region AWS gdzie znajduje się bucket</div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="control-label col-sm-4">Access Key:</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" name="access_key" value="<?= Html::encode($settings['access_key']) ?>" placeholder="<?= empty($settings['access_key']) ? 'Enter your access key' : 'Keep existing access key' ?>">
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Klucz dostępu (Access Key)</label>
+                        <input type="text" class="form-control" name="access_key" 
+                               value="<?= Html::encode($settings['access_key']) ?>" 
+                               placeholder="<?= empty($settings['access_key']) ? 'Wprowadź klucz dostępu' : 'Zachowaj obecny klucz' ?>">
+                        <div class="form-text">Klucz dostępu AWS IAM</div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="control-label col-sm-4">Secret Key:</label>
-                        <div class="col-sm-8">
-                            <input type="password" class="form-control" name="secret_key" value="<?= !empty($settings['secret_key']) ? '********' : '' ?>" placeholder="<?= empty($settings['secret_key']) ? 'Enter your secret key' : 'Keep existing secret key' ?>">
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Klucz sekretny (Secret Key)</label>
+                        <input type="password" class="form-control" name="secret_key" 
+                               value="<?= !empty($settings['secret_key']) ? '********' : '' ?>" 
+                               placeholder="<?= empty($settings['secret_key']) ? 'Wprowadź klucz sekretny' : 'Zachowaj obecny klucz' ?>">
+                        <div class="form-text">Klucz sekretny AWS IAM</div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="control-label col-sm-4">Photos Directory:</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" name="directory" value="<?= Html::encode($settings['directory']) ?>">
-                            <div class="help-block">Directory path within the bucket</div>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Katalog zdjęć</label>
+                        <input type="text" class="form-control" name="directory" 
+                               value="<?= Html::encode($settings['directory']) ?>" 
+                               placeholder="photos">
+                        <div class="form-text">Ścieżka w bucket dla zdjęć</div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="control-label col-sm-4">Deleted Photos Directory:</label>
-                        <div class="col-sm-8">
-                            <input type="text" class="form-control" name="deleted_directory" value="<?= Html::encode($settings['deleted_directory']) ?>">
-                            <div class="help-block">Directory for storing deleted photos</div>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Katalog usuniętych zdjęć</label>
+                        <input type="text" class="form-control" name="deleted_directory" 
+                               value="<?= Html::encode($settings['deleted_directory']) ?>" 
+                               placeholder="deleted">
+                        <div class="form-text">Ścieżka w bucket dla usuniętych zdjęć</div>
                     </div>
 
-                    <div class="form-group">
-                        <div class="col-sm-offset-4 col-sm-8">
-                            <button type="submit" class="btn btn-primary">Save Settings</button>
-                            <button type="button" class="btn btn-info" id="test-connection-btn">Test Connection</button>
-                        </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Zapisz ustawienia
+                        </button>
+                        <button type="button" class="btn btn-info" id="test-connection-btn">
+                            <i class="fas fa-plug me-2"></i>Test połączenia
+                        </button>
                     </div>
 
                     <?php ActiveForm::end(); ?>
@@ -84,94 +91,115 @@ $this->params['breadcrumbs'][] = $this->title;
             </div>
         </div>
 
-        <div class="col-md-6">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">S3 Synchronization</h3>
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-sync me-2"></i>Synchronizacja S3
+                    </h5>
                 </div>
-                <div class="panel-body">
-                    <p>Use this form to synchronize photos with S3 storage. This will:</p>
-                    <ul>
-                        <li>Upload approved photos without an S3 path to S3 storage</li>
-                        <li>Update database records with S3 paths</li>
-                        <li>Optionally delete local copies after successful upload</li>
+                <div class="card-body">
+                    <p>Użyj tej funkcji do synchronizacji zdjęć z magazynem S3. Proces obejmuje:</p>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-upload text-primary me-2"></i>Przesłanie zatwierdzonych zdjęć do S3</li>
+                        <li><i class="fas fa-database text-info me-2"></i>Aktualizacja ścieżek S3 w bazie danych</li>
+                        <li><i class="fas fa-trash text-warning me-2"></i>Opcjonalne usunięcie lokalnych kopii</li>
                     </ul>
 
-                    <?php $form = ActiveForm::begin([
+                    <?php $syncForm = ActiveForm::begin([
                         'id' => 's3-sync-form',
                         'action' => ['sync'],
-                        'options' => ['class' => 'form-horizontal'],
                     ]); ?>
 
-                    <div class="form-group">
-                        <div class="col-sm-offset-2 col-sm-10">
-                            <div class="checkbox">
-                                <label>
-                                    <input type="checkbox" name="delete_local" value="1"> Delete local copies after upload
-                                </label>
-                            </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="delete_local" 
+                                   value="1" id="delete-local-check">
+                            <label class="form-check-label" for="delete-local-check">
+                                Usuń lokalne kopie po przesłaniu
+                            </label>
                         </div>
+                        <div class="form-text">Uwaga: Ta opcja jest nieodwracalna!</div>
                     </div>
 
-                    <div class="form-group">
-                        <div class="col-sm-offset-2 col-sm-10">
-                            <button type="submit" class="btn btn-success">Start Synchronization</button>
-                        </div>
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i>Przed synchronizacją</h6>
+                        <ul class="mb-0">
+                            <li>Upewnij się, że ustawienia S3 są poprawne</li>
+                            <li>Przetestuj połączenie z S3</li>
+                            <li>Zrób kopię zapasową bazy danych</li>
+                        </ul>
                     </div>
+
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-cloud-upload-alt me-2"></i>Rozpocznij synchronizację
+                    </button>
 
                     <?php ActiveForm::end(); ?>
                 </div>
             </div>
 
-            <div class="panel panel-info">
-                <div class="panel-heading">
-                    <h3 class="panel-title">S3 Information</h3>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>O Amazon S3
+                    </h5>
                 </div>
-                <div class="panel-body">
-                    <p>Amazon S3 (Simple Storage Service) is an object storage service that offers industry-leading scalability, data availability, security, and performance.</p>
-                    <p>Benefits of using S3 for photo storage:</p>
-                    <ul>
-                        <li>Durability and reliability</li>
-                        <li>Scalable storage capacity</li>
-                        <li>Cost-effective for large collections</li>
-                        <li>Reduced load on your server</li>
-                        <li>Backups and version control</li>
+                <div class="card-body">
+                    <p>Amazon S3 (Simple Storage Service) to skalowalna usługa przechowywania obiektów w chmurze.</p>
+                    
+                    <h6 class="fw-bold">Korzyści z S3:</h6>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-shield-alt text-success me-2"></i>Trwałość i niezawodność</li>
+                        <li><i class="fas fa-expand text-primary me-2"></i>Skalowalność</li>
+                        <li><i class="fas fa-dollar-sign text-warning me-2"></i>Opłacalność dla dużych kolekcji</li>
+                        <li><i class="fas fa-server text-info me-2"></i>Zmniejszenie obciążenia serwera</li>
+                        <li><i class="fas fa-history text-secondary me-2"></i>Kopie zapasowe i wersjonowanie</li>
                     </ul>
-                    <p>To use S3 integration, you need to create an AWS account and configure an S3 bucket with appropriate permissions.</p>
+                    
+                    <div class="alert alert-info mb-0">
+                        <strong>Wymagania:</strong> Aby korzystać z integracji S3, potrzebujesz konta AWS oraz bucket S3 z odpowiednimi uprawnieniami.
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<?php
-$testConnectionUrl = Url::to(['test']);
-$this->registerJs("
-    // Test connection button handler
-    $('#test-connection-btn').on('click', function() {
-        $(this).prop('disabled', true).html('<i class=\"glyphicon glyphicon-refresh glyphicon-spin\"></i> Testing...');
-        
-        $.ajax({
-            url: '{$testConnectionUrl}',
-            type: 'POST',
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    alert('Connection test successful!');
-                } else {
-                    alert('Connection test failed: ' + response.message);
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Test connection button
+    const testBtn = document.getElementById('test-connection-btn');
+    if (testBtn) {
+        testBtn.addEventListener('click', function() {
+            const button = this;
+            const originalText = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Testowanie...';
+            
+            fetch('<?= Url::to(['test']) ?>', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
                 }
-            },
-            error: function() {
-                alert('Error testing connection. Please check your settings.');
-            },
-            complete: function() {
-                $('#test-connection-btn').prop('disabled', false).text('Test Connection');
-            }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Test połączenia zakończony sukcesem!', 'success');
+                } else {
+                    showToast('Test połączenia nieudany: ' + (data.message || 'Nieznany błąd'), 'error');
+                }
+            })
+            .catch(error => {
+                showToast('Błąd podczas testowania połączenia', 'error');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerHTML = originalText;
+            });
         });
-    });
-    
-    // Add spinning icon CSS
-    $('<style>.glyphicon-spin { animation: spin 1s infinite linear; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>').appendTo('head');
-");
-?>
+    }
+});
+</script>

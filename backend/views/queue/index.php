@@ -9,218 +9,298 @@ use yii\widgets\Pjax;
 /* @var $dataProvider yii\data\ActiveDataProvider */
 /* @var $stats array */
 
-$this->title = 'Job Queue';
+$this->title = 'Kolejka zadań';
 $this->params['breadcrumbs'][] = $this->title;
 
 // Status options
 $statusOptions = [
-    \common\models\QueuedJob::STATUS_PENDING => 'Pending',
-    \common\models\QueuedJob::STATUS_PROCESSING => 'Processing',
-    \common\models\QueuedJob::STATUS_COMPLETED => 'Completed',
-    \common\models\QueuedJob::STATUS_FAILED => 'Failed',
+    \common\models\QueuedJob::STATUS_PENDING => 'Oczekuje',
+    \common\models\QueuedJob::STATUS_PROCESSING => 'Przetwarzanie',
+    \common\models\QueuedJob::STATUS_COMPLETED => 'Zakończone',
+    \common\models\QueuedJob::STATUS_FAILED => 'Błąd',
 ];
 
 // Job type options
 $jobTypeOptions = [
-    's3_sync' => 'S3 Synchronization',
-    'regenerate_thumbnails' => 'Regenerate Thumbnails',
-    'analyze_photo' => 'Analyze Photo',
-    'analyze_batch' => 'Analyze Photo Batch',
-    'import_photos' => 'Import Photos',
+    's3_sync' => 'Synchronizacja S3',
+    'regenerate_thumbnails' => 'Regeneracja miniatur',
+    'analyze_photo' => 'Analiza zdjęcia',
+    'analyze_batch' => 'Analiza wsadowa',
+    'import_photos' => 'Import zdjęć',
 ];
 ?>
 <div class="queued-job-index">
-
-    <h1><?= Html::encode($this->title) ?></h1>
-
-    <div class="row">
-        <div class="col-md-8">
-            <p>
-                <?= Html::a('Create Job', ['create'], ['class' => 'btn btn-success']) ?>
-                <?= Html::a('Run Queue Processor', ['run', 'limit' => 5], [
-                    'class' => 'btn btn-primary',
-                    'data' => [
-                        'confirm' => 'This will process up to 5 pending jobs. Continue?',
-                        'method' => 'post',
-                    ],
-                ]) ?>
-                <?= Html::a('Clear Completed Jobs', ['clear-completed'], [
-                    'class' => 'btn btn-default',
-                    'data' => [
-                        'confirm' => 'Are you sure you want to clear all completed jobs?',
-                        'method' => 'post',
-                    ],
-                ]) ?>
-                <?= Html::a('Clear Failed Jobs', ['clear-failed'], [
-                    'class' => 'btn btn-default',
-                    'data' => [
-                        'confirm' => 'Are you sure you want to clear all failed jobs?',
-                        'method' => 'post',
-                    ],
-                ]) ?>
-            </p>
-
-            <?php Pjax::begin(); ?>
-
-            <?= GridView::widget([
-                'dataProvider' => $dataProvider,
-                'filterModel' => $searchModel,
-                'columns' => [
-                    ['class' => 'yii\grid\SerialColumn'],
-
-                    'id',
-                    [
-                        'attribute' => 'type',
-                        'value' => function ($model) use ($jobTypeOptions) {
-                            return $jobTypeOptions[$model->type] ?? $model->type;
-                        },
-                        'filter' => $jobTypeOptions,
-                    ],
-                    [
-                        'attribute' => 'status',
-                        'value' => function ($model) use ($statusOptions) {
-                            return $statusOptions[$model->status] ?? 'Unknown';
-                        },
-                        'filter' => $statusOptions,
-                        'contentOptions' => function ($model) {
-                            switch ($model->status) {
-                                case \common\models\QueuedJob::STATUS_PENDING:
-                                    return ['class' => 'text-muted'];
-                                case \common\models\QueuedJob::STATUS_PROCESSING:
-                                    return ['class' => 'text-primary'];
-                                case \common\models\QueuedJob::STATUS_COMPLETED:
-                                    return ['class' => 'text-success'];
-                                case \common\models\QueuedJob::STATUS_FAILED:
-                                    return ['class' => 'text-danger'];
-                                default:
-                                    return [];
-                            }
-                        },
-                    ],
-                    [
-                        'attribute' => 'attempts',
-                        'headerOptions' => ['style' => 'width: 80px;'],
-                    ],
-                    [
-                        'attribute' => 'created_at',
-                        'value' => function ($model) {
-                            return date('Y-m-d H:i:s', $model->created_at);
-                        },
-                        'filter' => false,
-                    ],
-                    [
-                        'attribute' => 'updated_at',
-                        'value' => function ($model) {
-                            return date('Y-m-d H:i:s', $model->updated_at);
-                        },
-                        'filter' => false,
-                    ],
-
-                    [
-                        'class' => 'yii\grid\ActionColumn',
-                        'template' => '{view} {retry} {process} {delete}',
-                        'buttons' => [
-                            'retry' => function ($url, $model, $key) {
-                                if ($model->status === \common\models\QueuedJob::STATUS_FAILED) {
-                                    return Html::a('<span class="glyphicon glyphicon-repeat"></span>', $url, [
-                                        'title' => Yii::t('app', 'Retry'),
-                                        'data-method' => 'post',
-                                        'data-pjax' => 0,
-                                    ]);
-                                }
-                                return '';
-                            },
-                            'process' => function ($url, $model, $key) {
-                                if ($model->status === \common\models\QueuedJob::STATUS_PENDING) {
-                                    return Html::a('<span class="glyphicon glyphicon-play"></span>', $url, [
-                                        'title' => Yii::t('app', 'Process Now'),
-                                        'data-method' => 'post',
-                                        'data-pjax' => 0,
-                                    ]);
-                                }
-                                return '';
-                            },
-                        ],
-                    ],
-                ],
-            ]); ?>
-
-            <?php Pjax::end(); ?>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3"><?= Html::encode($this->title) ?></h1>
+        <div class="btn-group">
+            <?= Html::a('<i class="fas fa-plus me-2"></i>Nowe zadanie', ['create'], [
+                'class' => 'btn btn-success'
+            ]) ?>
+            <?= Html::a('<i class="fas fa-play me-2"></i>Uruchom procesor', ['run', 'limit' => 5], [
+                'class' => 'btn btn-primary',
+                'data-confirm' => 'Czy chcesz przetworzyć do 5 oczekujących zadań?',
+                'data-method' => 'post',
+            ]) ?>
+            <?= Html::a('<i class="fas fa-broom me-2"></i>Wyczyść zakończone', ['clear-completed'], [
+                'class' => 'btn btn-outline-secondary',
+                'data-confirm' => 'Czy na pewno usunąć wszystkie zakończone zadania?',
+                'data-method' => 'post',
+            ]) ?>
+            <?= Html::a('<i class="fas fa-trash me-2"></i>Wyczyść błędne', ['clear-failed'], [
+                'class' => 'btn btn-outline-danger',
+                'data-confirm' => 'Czy na pewno usunąć wszystkie błędne zadania?',
+                'data-method' => 'post',
+            ]) ?>
         </div>
-        
-        <div class="col-md-4">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">Queue Statistics</h3>
-                </div>
-                <div class="panel-body">
-                    <div class="row">
-                        <div class="col-xs-6">
-                            <div class="panel panel-info">
-                                <div class="panel-heading text-center">
-                                    <h4><?= $stats['pending'] ?></h4>
-                                </div>
-                                <div class="panel-body text-center">
-                                    <strong>Pending</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xs-6">
-                            <div class="panel panel-primary">
-                                <div class="panel-heading text-center">
-                                    <h4><?= $stats['processing'] ?></h4>
-                                </div>
-                                <div class="panel-body text-center">
-                                    <strong>Processing</strong>
-                                </div>
-                            </div>
-                        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-start border-warning border-4">
+                <div class="card-body text-center">
+                    <div class="text-warning">
+                        <i class="fas fa-clock fa-2x"></i>
                     </div>
-                    <div class="row">
-                        <div class="col-xs-6">
-                            <div class="panel panel-success">
-                                <div class="panel-heading text-center">
-                                    <h4><?= $stats['completed'] ?></h4>
-                                </div>
-                                <div class="panel-body text-center">
-                                    <strong>Completed</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-xs-6">
-                            <div class="panel panel-danger">
-                                <div class="panel-heading text-center">
-                                    <h4><?= $stats['failed'] ?></h4>
-                                </div>
-                                <div class="panel-body text-center">
-                                    <strong>Failed</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <h3 class="mt-2 mb-0"><?= $stats['pending'] ?></h3>
+                    <small class="text-muted">Oczekujące</small>
                 </div>
             </div>
-            
-            <div class="panel panel-info">
-                <div class="panel-heading">
-                    <h3 class="panel-title">About the Job Queue</h3>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-start border-primary border-4">
+                <div class="card-body text-center">
+                    <div class="text-primary">
+                        <i class="fas fa-cog fa-spin fa-2x"></i>
+                    </div>
+                    <h3 class="mt-2 mb-0"><?= $stats['processing'] ?></h3>
+                    <small class="text-muted">Przetwarzane</small>
                 </div>
-                <div class="panel-body">
-                    <p>The job queue handles background processing tasks such as:</p>
-                    <ul>
-                        <li>Synchronizing photos with S3 storage</li>
-                        <li>Regenerating thumbnails</li>
-                        <li>Analyzing photos with AI services</li>
-                        <li>Importing photos from directories</li>
-                    </ul>
-                    <p><strong>Status Definitions:</strong></p>
-                    <ul>
-                        <li><strong>Pending:</strong> Job is waiting to be processed</li>
-                        <li><strong>Processing:</strong> Job is currently being executed</li>
-                        <li><strong>Completed:</strong> Job has finished successfully</li>
-                        <li><strong>Failed:</strong> Job encountered an error during processing</li>
-                    </ul>
-                    <p>Failed jobs can be retried by clicking the retry button.</p>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-start border-success border-4">
+                <div class="card-body text-center">
+                    <div class="text-success">
+                        <i class="fas fa-check fa-2x"></i>
+                    </div>
+                    <h3 class="mt-2 mb-0"><?= $stats['completed'] ?></h3>
+                    <small class="text-muted">Zakończone</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-start border-danger border-4">
+                <div class="card-body text-center">
+                    <div class="text-danger">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                    <h3 class="mt-2 mb-0"><?= $stats['failed'] ?></h3>
+                    <small class="text-muted">Błędne</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <?php Pjax::begin(['id' => 'queue-grid-pjax']); ?>
+
+    <?= GridView::widget([
+        'dataProvider' => $dataProvider,
+        'filterModel' => $searchModel,
+        'options' => ['class' => 'table-responsive'],
+        'tableOptions' => ['class' => 'table table-striped table-hover'],
+        'columns' => [
+            [
+                'class' => 'yii\grid\SerialColumn',
+                'headerOptions' => ['style' => 'width: 60px;'],
+            ],
+            [
+                'attribute' => 'id',
+                'headerOptions' => ['style' => 'width: 80px;'],
+                'contentOptions' => ['class' => 'fw-bold'],
+            ],
+            [
+                'attribute' => 'type',
+                'format' => 'raw',
+                'value' => function ($model) use ($jobTypeOptions) {
+                    $type = $jobTypeOptions[$model->type] ?? $model->type;
+                    $iconClass = match($model->type) {
+                        's3_sync' => 'fab fa-aws',
+                        'regenerate_thumbnails' => 'fas fa-image',
+                        'analyze_photo' => 'fas fa-robot',
+                        'analyze_batch' => 'fas fa-robots',
+                        'import_photos' => 'fas fa-download',
+                        default => 'fas fa-cog'
+                    };
+                    return '<i class="' . $iconClass . ' me-2"></i>' . Html::encode($type);
+                },
+                'filter' => Html::activeDropDownList($searchModel, 'type', $jobTypeOptions, [
+                    'class' => 'form-select',
+                    'prompt' => 'Wszystkie typy'
+                ]),
+            ],
+            [
+                'attribute' => 'status',
+                'format' => 'raw',
+                'value' => function ($model) use ($statusOptions) {
+                    $status = $statusOptions[$model->status] ?? 'Nieznany';
+                    $badgeClass = match($model->status) {
+                        \common\models\QueuedJob::STATUS_PENDING => 'bg-warning text-dark',
+                        \common\models\QueuedJob::STATUS_PROCESSING => 'bg-primary',
+                        \common\models\QueuedJob::STATUS_COMPLETED => 'bg-success',
+                        \common\models\QueuedJob::STATUS_FAILED => 'bg-danger',
+                        default => 'bg-secondary'
+                    };
+                    
+                    $icon = match($model->status) {
+                        \common\models\QueuedJob::STATUS_PENDING => 'fa-clock',
+                        \common\models\QueuedJob::STATUS_PROCESSING => 'fa-cog fa-spin',
+                        \common\models\QueuedJob::STATUS_COMPLETED => 'fa-check',
+                        \common\models\QueuedJob::STATUS_FAILED => 'fa-times',
+                        default => 'fa-question'
+                    };
+                    
+                    return '<span class="badge ' . $badgeClass . '"><i class="fas ' . $icon . ' me-1"></i>' . $status . '</span>';
+                },
+                'filter' => Html::activeDropDownList($searchModel, 'status', $statusOptions, [
+                    'class' => 'form-select',
+                    'prompt' => 'Wszystkie statusy'
+                ]),
+                'headerOptions' => ['style' => 'width: 140px;'],
+            ],
+            [
+                'attribute' => 'attempts',
+                'headerOptions' => ['style' => 'width: 80px;'],
+                'contentOptions' => function($model) {
+                    if ($model->attempts > 3) {
+                        return ['class' => 'text-danger fw-bold text-center'];
+                    } elseif ($model->attempts > 1) {
+                        return ['class' => 'text-warning fw-bold text-center'];
+                    }
+                    return ['class' => 'text-center'];
+                },
+            ],
+            [
+                'label' => 'Czas wykonania',
+                'format' => 'raw',
+                'value' => function ($model) {
+                    if ($model->started_at && $model->completed_at) {
+                        $duration = $model->completed_at - $model->started_at;
+                        if ($duration < 60) {
+                            return '<span class="text-success">' . $duration . 's</span>';
+                        } elseif ($duration < 3600) {
+                            return '<span class="text-warning">' . round($duration/60, 1) . 'm</span>';
+                        } else {
+                            return '<span class="text-danger">' . round($duration/3600, 1) . 'h</span>';
+                        }
+                    } elseif ($model->started_at && $model->status === \common\models\QueuedJob::STATUS_PROCESSING) {
+                        $duration = time() - $model->started_at;
+                        return '<span class="text-info">Trwa: ' . round($duration/60, 1) . 'm</span>';
+                    }
+                    return '<span class="text-muted">-</span>';
+                },
+                'filter' => false,
+                'headerOptions' => ['style' => 'width: 100px;'],
+                'contentOptions' => ['class' => 'text-center'],
+            ],
+            [
+                'attribute' => 'created_at',
+                'format' => 'raw',
+                'value' => function ($model) {
+                    return '<span title="' . date('Y-m-d H:i:s', $model->created_at) . '">' . 
+                           Yii::$app->formatter->asRelativeTime($model->created_at) . '</span>';
+                },
+                'filter' => Html::activeTextInput($searchModel, 'created_at', [
+                    'class' => 'form-control',
+                    'placeholder' => 'YYYY-MM-DD'
+                ]),
+                'headerOptions' => ['style' => 'width: 140px;'],
+            ],
+            [
+                'class' => 'yii\grid\ActionColumn',
+                'template' => '{view} {retry} {process} {delete}',
+                'buttons' => [
+                    'view' => function ($url, $model, $key) {
+                        return Html::a('<i class="fas fa-eye"></i>', $url, [
+                            'class' => 'btn btn-sm btn-outline-primary',
+                            'title' => 'Zobacz',
+                            'data-pjax' => 0,
+                        ]);
+                    },
+                    'retry' => function ($url, $model, $key) {
+                        if ($model->status === \common\models\QueuedJob::STATUS_FAILED) {
+                            return Html::a('<i class="fas fa-redo"></i>', $url, [
+                                'class' => 'btn btn-sm btn-outline-warning',
+                                'title' => 'Ponów',
+                                'data-method' => 'post',
+                                'data-pjax' => 0,
+                            ]);
+                        }
+                        return '';
+                    },
+                    'process' => function ($url, $model, $key) {
+                        if ($model->status === \common\models\QueuedJob::STATUS_PENDING) {
+                            return Html::a('<i class="fas fa-play"></i>', $url, [
+                                'class' => 'btn btn-sm btn-outline-success',
+                                'title' => 'Przetwórz teraz',
+                                'data-method' => 'post',
+                                'data-pjax' => 0,
+                                'data-confirm' => 'Czy na pewno uruchomić to zadanie teraz?'
+                            ]);
+                        }
+                        return '';
+                    },
+                    'delete' => function ($url, $model, $key) {
+                        return Html::a('<i class="fas fa-trash"></i>', $url, [
+                            'class' => 'btn btn-sm btn-outline-danger',
+                            'title' => 'Usuń',
+                            'data-confirm' => 'Czy na pewno usunąć to zadanie?',
+                            'data-method' => 'post',
+                            'data-pjax' => 0,
+                        ]);
+                    },
+                ],
+                'headerOptions' => ['style' => 'width: 150px;'],
+                'contentOptions' => ['class' => 'text-end'],
+            ],
+        ],
+    ]); ?>
+
+    <?php Pjax::end(); ?>
+    
+    <div class="mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>O kolejce zadań
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <p>Kolejka zadań obsługuje operacje wykonywane w tle, takie jak:</p>
+                        <ul class="row list-unstyled">
+                            <li class="col-md-6">
+                                <i class="fab fa-aws text-info me-2"></i>Synchronizacja z S3
+                            </li>
+                            <li class="col-md-6">
+                                <i class="fas fa-image text-primary me-2"></i>Regeneracja miniatur
+                            </li>
+                            <li class="col-md-6">
+                                <i class="fas fa-robot text-success me-2"></i>Analiza AI zdjęć
+                            </li>
+                            <li class="col-md-6">
+                                <i class="fas fa-download text-warning me-2"></i>Import zdjęć
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="alert alert-info mb-0">
+                            <h6><i class="fas fa-cogs me-2"></i>Procesor kolejki</h6>
+                            <p class="mb-2">Aby automatycznie przetwarzać zadania, skonfiguruj cron:</p>
+                            <code class="small">*/5 * * * * php /path/to/yii queue/run</code>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

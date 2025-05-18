@@ -8,91 +8,276 @@ use yii\widgets\Pjax;
 /* @var $searchModel common\models\search\UserSearch */
 /* @var $dataProvider yii\data\ActiveDataProvider */
 
-$this->title = 'Users';
+$this->title = 'Użytkownicy';
 $this->params['breadcrumbs'][] = $this->title;
 
 // Status options
 $statusOptions = [
-    \common\models\User::STATUS_DELETED => 'Deleted',
-    \common\models\User::STATUS_INACTIVE => 'Inactive',
-    \common\models\User::STATUS_ACTIVE => 'Active',
+    \common\models\User::STATUS_DELETED => 'Usunięty',
+    \common\models\User::STATUS_INACTIVE => 'Nieaktywny',
+    \common\models\User::STATUS_ACTIVE => 'Aktywny',
 ];
 
 // Role options
 $roleOptions = [
     'admin' => 'Administrator',
-    'user' => 'User',
+    'user' => 'Użytkownik',
 ];
 ?>
 <div class="user-index">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3"><?= Html::encode($this->title) ?></h1>
+        <div>
+            <?= Html::a('<i class="fas fa-plus me-2"></i>Dodaj użytkownika', ['create'], [
+                'class' => 'btn btn-success'
+            ]) ?>
+        </div>
+    </div>
 
-    <h1><?= Html::encode($this->title) ?></h1>
-
-    <p>
-        <?= Html::a('Create User', ['create'], ['class' => 'btn btn-success']) ?>
-    </p>
-
-    <?php Pjax::begin(); ?>
+    <?php Pjax::begin(['id' => 'users-grid-pjax']); ?>
 
     <?= GridView::widget([
         'dataProvider' => $dataProvider,
         'filterModel' => $searchModel,
+        'options' => ['class' => 'table-responsive'],
+        'tableOptions' => ['class' => 'table table-striped table-hover'],
         'columns' => [
-            ['class' => 'yii\grid\SerialColumn'],
-
-            'id',
-            'username',
-            'email:email',
             [
-                'attribute' => 'status',
-                'value' => function ($model) use ($statusOptions) {
-                    return $statusOptions[$model->status] ?? 'Unknown';
-                },
-                'filter' => $statusOptions,
-                'contentOptions' => function ($model) {
-                    if ($model->status === \common\models\User::STATUS_DELETED) {
-                        return ['class' => 'text-danger'];
-                    } elseif ($model->status === \common\models\User::STATUS_INACTIVE) {
-                        return ['class' => 'text-warning'];
-                    } elseif ($model->status === \common\models\User::STATUS_ACTIVE) {
-                        return ['class' => 'text-success'];
-                    }
-                    return [];
+                'class' => 'yii\grid\SerialColumn',
+                'headerOptions' => ['style' => 'width: 60px;'],
+            ],
+            [
+                'attribute' => 'id',
+                'headerOptions' => ['style' => 'width: 80px;'],
+                'contentOptions' => ['class' => 'fw-bold'],
+            ],
+            [
+                'attribute' => 'username',
+                'format' => 'raw',
+                'value' => function ($model) {
+                    return Html::a(Html::encode($model->username), ['view', 'id' => $model->id], [
+                        'class' => 'fw-bold text-decoration-none'
+                    ]);
                 },
             ],
             [
-                'attribute' => 'role',
+                'attribute' => 'email',
+                'format' => 'email',
+            ],
+            [
+                'attribute' => 'status',
+                'format' => 'raw',
+                'value' => function ($model) use ($statusOptions) {
+                    $status = $statusOptions[$model->status] ?? 'Nieznany';
+                    $badgeClass = match($model->status) {
+                        \common\models\User::STATUS_ACTIVE => 'bg-success',
+                        \common\models\User::STATUS_INACTIVE => 'bg-warning text-dark',
+                        \common\models\User::STATUS_DELETED => 'bg-danger',
+                        default => 'bg-secondary'
+                    };
+                    return '<span class="badge ' . $badgeClass . '">' . $status . '</span>';
+                },
+                'filter' => Html::activeDropDownList($searchModel, 'status', $statusOptions, [
+                    'class' => 'form-select',
+                    'prompt' => 'Wszystkie'
+                ]),
+                'headerOptions' => ['style' => 'width: 120px;'],
+            ],
+            [
+                'label' => 'Role',
+                'format' => 'raw',
                 'value' => function ($model) use ($roleOptions) {
                     $auth = Yii::$app->authManager;
-                    $roles = $auth->getRolesByUser($model->id);
-                    $roleNames = array_keys($roles);
-                    $roleLabels = [];
+                    $roles = $auth ? $auth->getRolesByUser($model->id) : [];
                     
-                    foreach ($roleNames as $roleName) {
-                        $roleLabels[] = $roleOptions[$roleName] ?? $roleName;
+                    if (empty($roles)) {
+                        return '<span class="badge bg-light text-dark">Brak ról</span>';
                     }
                     
-                    return implode(', ', $roleLabels);
+                    $html = '';
+                    foreach ($roles as $roleName => $role) {
+                        $badgeClass = $roleName === 'admin' ? 'bg-danger' : 'bg-info';
+                        $label = $roleOptions[$roleName] ?? $roleName;
+                        $html .= '<span class="badge ' . $badgeClass . ' me-1">' . $label . '</span>';
+                    }
+                    
+                    return $html;
                 },
-                'filter' => $roleOptions,
+                'filter' => Html::activeDropDownList($searchModel, 'role', $roleOptions, [
+                    'class' => 'form-select',
+                    'prompt' => 'Wszystkie role'
+                ]),
+                'headerOptions' => ['style' => 'width: 150px;'],
+            ],
+            [
+                'label' => 'Zdjęcia',
+                'format' => 'raw',
+                'value' => function ($model) {
+                    $photoCount = \common\models\Photo::find()
+                        ->where(['created_by' => $model->id])
+                        ->count();
+                    
+                    if ($photoCount == 0) {
+                        return '<span class="badge bg-light text-dark">0</span>';
+                    }
+                    
+                    return Html::a(
+                        '<span class="badge bg-primary">' . $photoCount . '</span>',
+                        ['/photos/index', 'PhotoSearch[created_by]' => $model->id],
+                        ['title' => 'Pokaż zdjęcia tego użytkownika']
+                    );
+                },
+                'filter' => false,
+                'headerOptions' => ['style' => 'width: 100px;'],
+                'contentOptions' => ['class' => 'text-center'],
+            ],
+            [
+                'label' => 'Ostatnia aktywność',
+                'format' => 'raw',
+                'value' => function ($model) {
+                    if ($model->last_login_at) {
+                        $lastLogin = Yii::$app->formatter->asRelativeTime($model->last_login_at);
+                        $fullDate = date('Y-m-d H:i:s', $model->last_login_at);
+                        return '<span title="' . $fullDate . '" class="text-success">' . $lastLogin . '</span>';
+                    }
+                    return '<span class="text-muted">Nigdy</span>';
+                },
+                'filter' => false,
+                'headerOptions' => ['style' => 'width: 140px;'],
             ],
             [
                 'attribute' => 'created_at',
+                'format' => 'raw',
                 'value' => function ($model) {
-                    return date('Y-m-d H:i', $model->created_at);
+                    return '<span title="' . date('Y-m-d H:i:s', $model->created_at) . '">' . 
+                           Yii::$app->formatter->asRelativeTime($model->created_at) . '</span>';
                 },
-                'filter' => \yii\jui\DatePicker::widget([
-                    'model' => $searchModel,
-                    'attribute' => 'created_at',
-                    'language' => 'en',
-                    'dateFormat' => 'yyyy-MM-dd',
-                    'options' => ['class' => 'form-control', 'placeholder' => 'Registration Date'],
+                'filter' => Html::activeTextInput($searchModel, 'created_at', [
+                    'class' => 'form-control',
+                    'placeholder' => 'YYYY-MM-DD'
                 ]),
+                'headerOptions' => ['style' => 'width: 140px;'],
             ],
-
-            ['class' => 'yii\grid\ActionColumn'],
+            [
+                'class' => 'yii\grid\ActionColumn',
+                'template' => '{view} {update} {delete}',
+                'buttons' => [
+                    'view' => function ($url, $model, $key) {
+                        return Html::a('<i class="fas fa-eye"></i>', $url, [
+                            'class' => 'btn btn-sm btn-outline-primary',
+                            'title' => 'Zobacz',
+                            'data-pjax' => 0,
+                        ]);
+                    },
+                    'update' => function ($url, $model, $key) {
+                        return Html::a('<i class="fas fa-edit"></i>', $url, [
+                            'class' => 'btn btn-sm btn-outline-secondary',
+                            'title' => 'Edytuj',
+                            'data-pjax' => 0,
+                        ]);
+                    },
+                    'delete' => function ($url, $model, $key) {
+                        // Check if this is the only admin
+                        $auth = Yii::$app->authManager;
+                        $isAdmin = $auth && $auth->getAssignment('admin', $model->id);
+                        $adminCount = $auth ? count($auth->getUserIdsByRole('admin')) : 0;
+                        
+                        if ($isAdmin && $adminCount <= 1) {
+                            return '<span class="btn btn-sm btn-outline-secondary disabled" title="Nie można usunąć jedynego administratora">
+                                <i class="fas fa-ban"></i>
+                            </span>';
+                        }
+                        
+                        $photoCount = \common\models\Photo::find()->where(['created_by' => $model->id])->count();
+                        $confirmMsg = $photoCount > 0 
+                            ? "Ten użytkownik ma {$photoCount} zdjęć. Czy na pewno chcesz go usunąć?"
+                            : 'Czy na pewno chcesz usunąć tego użytkownika?';
+                        
+                        return Html::a('<i class="fas fa-trash"></i>', $url, [
+                            'class' => 'btn btn-sm btn-outline-danger',
+                            'title' => 'Usuń',
+                            'data-confirm' => $confirmMsg,
+                            'data-method' => 'post',
+                            'data-pjax' => 0,
+                        ]);
+                    },
+                ],
+                'headerOptions' => ['style' => 'width: 120px;'],
+                'contentOptions' => ['class' => 'text-end'],
+            ],
         ],
     ]); ?>
 
     <?php Pjax::end(); ?>
+    
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Statystyki użytkowników
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <?php
+                    // Get user statistics
+                    $totalUsers = $dataProvider->totalCount;
+                    $activeUsers = \common\models\User::find()->where(['status' => \common\models\User::STATUS_ACTIVE])->count();
+                    $adminUsers = Yii::$app->authManager ? count(Yii::$app->authManager->getUserIdsByRole('admin')) : 0;
+                    $recentUsers = \common\models\User::find()->where(['>', 'created_at', time() - 30*24*3600])->count();
+                    ?>
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <div class="border-end">
+                                <h3 class="text-primary mb-0"><?= $totalUsers ?></h3>
+                                <small class="text-muted">Łącznie</small>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="border-end">
+                                <h3 class="text-success mb-0"><?= $activeUsers ?></h3>
+                                <small class="text-muted">Aktywnych</small>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="border-end">
+                                <h3 class="text-danger mb-0"><?= $adminUsers ?></h3>
+                                <small class="text-muted">Administratorów</small>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <h3 class="text-info mb-0"><?= $recentUsers ?></h3>
+                            <small class="text-muted">Nowych (30 dni)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-shield-alt me-2"></i>Zarządzanie rolami
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="small">System ról umożliwia kontrolę dostępu do funkcji:</p>
+                    <ul class="list-unstyled small">
+                        <li>
+                            <span class="badge bg-danger me-2">Administrator</span>
+                            Pełny dostęp do systemu
+                        </li>
+                        <li>
+                            <span class="badge bg-info me-2">Użytkownik</span>
+                            Dostęp do podstawowych funkcji
+                        </li>
+                    </ul>
+                    
+                    <div class="alert alert-sm alert-warning mb-0">
+                        <strong>Uwaga:</strong> W systemie musi być co najmniej jeden administrator.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

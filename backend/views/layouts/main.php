@@ -18,69 +18,66 @@ AppAsset::register($this);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <?php $this->head() ?>
 </head>
-<body class="admin-layout">
+<body>
 <?php $this->beginBody() ?>
 
-<div class="admin-wrapper">
+<div class="d-flex">
     <!-- Sidebar -->
-    <aside class="admin-sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <?= Html::a('Zasobnik B', ['/site/index'], ['class' => 'sidebar-brand']) ?>
-            <button type="button" class="sidebar-toggle d-lg-none" id="sidebarToggle">
+    <aside class="sidebar bg-dark" id="sidebar">
+        <div class="sidebar-header p-3 border-bottom">
+            <?= Html::a('Zasobnik B', ['/site/index'], ['class' => 'text-white text-decoration-none h5']) ?>
+            <button type="button" class="btn btn-sm btn-outline-light d-lg-none ms-auto" id="sidebarClose">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         
-        <nav class="sidebar-nav">
+        <nav class="sidebar-nav p-3">
             <ul class="nav flex-column">
                 <li class="nav-item">
-                    <?= Html::a('<i class="fas fa-tachometer-alt"></i> Dashboard', ['/site/index'], ['class' => 'nav-link']) ?>
+                    <?= Html::a('<i class="fas fa-tachometer-alt me-2"></i>Dashboard', ['/site/index'], ['class' => 'nav-link text-white']) ?>
                 </li>
                 
-                <li class="nav-item">
-                    <a class="nav-link collapsed" data-bs-toggle="collapse" href="#photosSubmenu" role="button">
-                        <i class="fas fa-images"></i> Zdjęcia
-                        <i class="fas fa-chevron-down ms-auto"></i>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="collapse" data-bs-target="#photosMenu">
+                        <i class="fas fa-images me-2"></i>Zdjęcia
                     </a>
-                    <div class="collapse" id="photosSubmenu">
-                        <div class="submenu">
-                            <?= Html::a('<i class="fas fa-list"></i> Wszystkie zdjęcia', ['/photos/index'], ['class' => 'nav-link']) ?>
-                            <?= Html::a('<i class="fas fa-clock"></i> Poczekalnia', ['/photos/queue'], ['class' => 'nav-link']) ?>
-                            <?= Html::a('<i class="fas fa-upload"></i> Prześlij zdjęcia', ['/photos/upload'], ['class' => 'nav-link']) ?>
+                    <div class="collapse" id="photosMenu">
+                        <div class="ms-3">
+                            <?= Html::a('<i class="fas fa-list me-2"></i>Wszystkie', ['/photos/index'], ['class' => 'nav-link text-white-50']) ?>
+                            <?= Html::a('<i class="fas fa-clock me-2"></i>Poczekalnia', ['/photos/queue'], ['class' => 'nav-link text-white-50']) ?>
+                            <?= Html::a('<i class="fas fa-upload me-2"></i>Prześlij', ['/photos/upload'], ['class' => 'nav-link text-white-50']) ?>
+                        </div>
+                    </div>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="collapse" data-bs-target="#orgMenu">
+                        <i class="fas fa-tags me-2"></i>Organizacja
+                    </a>
+                    <div class="collapse" id="orgMenu">
+                        <div class="ms-3">
+                            <?= Html::a('<i class="fas fa-folder me-2"></i>Kategorie', ['/categories/index'], ['class' => 'nav-link text-white-50']) ?>
+                            <?= Html::a('<i class="fas fa-hashtag me-2"></i>Tagi', ['/tags/index'], ['class' => 'nav-link text-white-50']) ?>
                         </div>
                     </div>
                 </li>
                 
                 <li class="nav-item">
-                    <a class="nav-link collapsed" data-bs-toggle="collapse" href="#orgSubmenu" role="button">
-                        <i class="fas fa-tags"></i> Organizacja
-                        <i class="fas fa-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="orgSubmenu">
-                        <div class="submenu">
-                            <?= Html::a('<i class="fas fa-folder"></i> Kategorie', ['/categories/index'], ['class' => 'nav-link']) ?>
-                            <?= Html::a('<i class="fas fa-hashtag"></i> Tagi', ['/tags/index'], ['class' => 'nav-link']) ?>
-                        </div>
-                    </div>
+                    <?= Html::a('<i class="fas fa-users me-2"></i>Użytkownicy', ['/users/index'], ['class' => 'nav-link text-white']) ?>
                 </li>
                 
-                <li class="nav-item">
-                    <?= Html::a('<i class="fas fa-users"></i> Użytkownicy', ['/users/index'], ['class' => 'nav-link']) ?>
-                </li>
-                
-                <li class="nav-item">
-                    <a class="nav-link collapsed" data-bs-toggle="collapse" href="#systemSubmenu" role="button">
-                        <i class="fas fa-cogs"></i> System
-                        <i class="fas fa-chevron-down ms-auto"></i>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="collapse" data-bs-target="#systemMenu">
+                        <i class="fas fa-cogs me-2"></i>System
                     </a>
-                    <div class="collapse" id="systemSubmenu">
-                        <div class="submenu">
-                            <?= Html::a('<i class="fas fa-image"></i> Miniatury', ['/thumbnails/index'], ['class' => 'nav-link']) ?>
-                            <?= Html::a('<i class="fas fa-tint"></i> Znak wodny', ['/watermark/index'], ['class' => 'nav-link']) ?>
-                            <?= Html::a('<i class="fab fa-aws"></i> S3 Storage', ['/s3/index'], ['class' => 'nav-link']) ?>
-                            <?= Html::a('<i class="fas fa-robot"></i> AI Integration', ['/ai/index'], ['class' => 'nav-link']) ?>
-                            <?= Html::a('<i class="fas fa-list-alt"></i> Kolejka zadań', ['/queue/index'], ['class' => 'nav-link']) ?>
-                            <?= Html::a('<i class="fas fa-sliders-h"></i> Ustawienia', ['/settings/index'], ['class' => 'nav-link']) ?>
+                    <div class="collapse" id="systemMenu">
+                        <div class="ms-3">
+                            <?= Html::a('<i class="fas fa-image me-2"></i>Miniatury', ['/thumbnails/index'], ['class' => 'nav-link text-white-50']) ?>
+                            <?= Html::a('<i class="fas fa-tint me-2"></i>Znak wodny', ['/watermark/index'], ['class' => 'nav-link text-white-50']) ?>
+                            <?= Html::a('<i class="fab fa-aws me-2"></i>S3 Storage', ['/s3/index'], ['class' => 'nav-link text-white-50']) ?>
+                            <?= Html::a('<i class="fas fa-robot me-2"></i>AI Integration', ['/ai/index'], ['class' => 'nav-link text-white-50']) ?>
+                            <?= Html::a('<i class="fas fa-list-alt me-2"></i>Kolejka zadań', ['/queue/index'], ['class' => 'nav-link text-white-50']) ?>
+                            <?= Html::a('<i class="fas fa-sliders-h me-2"></i>Ustawienia', ['/settings/index'], ['class' => 'nav-link text-white-50']) ?>
                         </div>
                     </div>
                 </li>
@@ -89,19 +86,18 @@ AppAsset::register($this);
     </aside>
 
     <!-- Main content -->
-    <main class="admin-main">
+    <main class="main-content flex-grow-1">
         <!-- Header -->
-        <header class="admin-header">
+        <header class="header bg-white shadow-sm p-3">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
-                    <button type="button" class="btn btn-link d-lg-none me-3" id="mobileToggle">
+                    <button type="button" class="btn btn-sm btn-outline-secondary d-lg-none me-3" id="sidebarToggle">
                         <i class="fas fa-bars"></i>
                     </button>
                     <h1 class="h4 mb-0"><?= Html::encode($this->title) ?></h1>
                 </div>
                 
                 <div class="d-flex align-items-center">
-                    <!-- Notifications -->
                     <?php
                     $queuedPhotos = \common\models\Photo::find()
                         ->where(['status' => \common\models\Photo::STATUS_QUEUE])
@@ -112,7 +108,7 @@ AppAsset::register($this);
                     ?>
                     
                     <?php if ($queuedPhotos > 0): ?>
-                    <a href="<?= Url::to(['/photos/queue']) ?>" class="btn btn-outline-primary me-2 position-relative">
+                    <a href="<?= Url::to(['/photos/queue']) ?>" class="btn btn-sm btn-outline-warning me-2 position-relative">
                         <i class="fas fa-clock"></i>
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
                             <?= $queuedPhotos ?>
@@ -121,7 +117,7 @@ AppAsset::register($this);
                     <?php endif; ?>
                     
                     <?php if ($pendingJobs > 0): ?>
-                    <a href="<?= Url::to(['/queue/index']) ?>" class="btn btn-outline-info me-2 position-relative">
+                    <a href="<?= Url::to(['/queue/index']) ?>" class="btn btn-sm btn-outline-info me-2 position-relative">
                         <i class="fas fa-tasks"></i>
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                             <?= $pendingJobs ?>
@@ -129,15 +125,13 @@ AppAsset::register($this);
                     </a>
                     <?php endif; ?>
                     
-                    <!-- Frontend link -->
                     <a href="<?= 'http://' . str_replace('admin.', '', $_SERVER['HTTP_HOST']) ?>" 
-                       class="btn btn-outline-secondary me-3" target="_blank" title="Przejdź do frontendu">
+                       class="btn btn-sm btn-outline-secondary me-3" target="_blank" title="Przejdź do frontendu">
                         <i class="fas fa-external-link-alt"></i>
                     </a>
                     
-                    <!-- User dropdown -->
                     <div class="dropdown">
-                        <button class="btn btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <button class="btn btn-sm btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">
                             <i class="fas fa-user"></i> <?= Html::encode(Yii::$app->user->identity->username) ?>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
@@ -155,8 +149,7 @@ AppAsset::register($this);
                             <li>
                                 <?= Html::beginForm(['/site/logout'], 'post') ?>
                                 <?= Html::submitButton('<i class="fas fa-sign-out-alt me-2"></i>Wyloguj', [
-                                    'class' => 'dropdown-item text-danger',
-                                    'style' => 'background: none; border: none; width: 100%;'
+                                    'class' => 'dropdown-item text-danger border-0 bg-transparent',
                                 ]) ?>
                                 <?= Html::endForm() ?>
                             </li>
@@ -168,8 +161,8 @@ AppAsset::register($this);
         
         <!-- Breadcrumbs -->
         <?php if (isset($this->params['breadcrumbs'])): ?>
-        <nav aria-label="breadcrumb" class="admin-breadcrumb">
-            <ol class="breadcrumb">
+        <nav class="breadcrumb-nav p-3 bg-light">
+            <ol class="breadcrumb mb-0">
                 <li class="breadcrumb-item"><?= Html::a('<i class="fas fa-home"></i>', ['/site/index']) ?></li>
                 <?php foreach ($this->params['breadcrumbs'] as $index => $crumb): ?>
                     <?php if ($index === array_key_last($this->params['breadcrumbs'])): ?>
@@ -189,58 +182,59 @@ AppAsset::register($this);
         <?php endif; ?>
         
         <!-- Content -->
-        <div class="admin-content">
+        <div class="content p-4">
             <?= Alert::widget() ?>
             <?= $content ?>
         </div>
     </main>
 </div>
 
-<!-- Overlay for mobile -->
+<!-- Sidebar overlay for mobile -->
 <div class="sidebar-overlay d-lg-none" id="sidebarOverlay"></div>
 
 <?php $this->endBody() ?>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Mobile toggle
-    const mobileToggle = document.getElementById('mobileToggle');
-    const sidebarToggle = document.getElementById('sidebarToggle');
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const toggleBtn = document.getElementById('sidebarToggle');
+    const closeBtn = document.getElementById('sidebarClose');
     
-    mobileToggle?.addEventListener('click', function() {
+    // Toggle sidebar
+    toggleBtn?.addEventListener('click', function() {
         sidebar.classList.add('show');
         overlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
     });
     
-    sidebarToggle?.addEventListener('click', function() {
+    // Close sidebar
+    closeBtn?.addEventListener('click', function() {
         sidebar.classList.remove('show');
         overlay.classList.remove('show');
+        document.body.style.overflow = '';
     });
     
+    // Close sidebar when clicking overlay
     overlay?.addEventListener('click', function() {
         sidebar.classList.remove('show');
         overlay.classList.remove('show');
+        document.body.style.overflow = '';
     });
     
     // Set active navigation
     const currentPath = window.location.pathname;
-    const navLinks = document.querySelectorAll('.nav-link[href]');
+    const navLinks = document.querySelectorAll('.nav-link');
     
     navLinks.forEach(link => {
         const href = link.getAttribute('href');
         if (href && currentPath.includes(href.replace(/.*\//, ''))) {
             link.classList.add('active');
             
-            // Expand parent collapse
-            const collapse = link.closest('.collapse');
-            if (collapse) {
-                collapse.classList.add('show');
-                const button = document.querySelector(`[data-bs-toggle="collapse"][href="#${collapse.id}"]`);
-                if (button) {
-                    button.classList.remove('collapsed');
-                }
+            // Expand parent menu
+            const parentCollapse = link.closest('.collapse');
+            if (parentCollapse) {
+                parentCollapse.classList.add('show');
             }
         }
     });
