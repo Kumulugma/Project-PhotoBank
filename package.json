@@ -1,0 +1,26 @@
+{
+  "name": "project-photobank",
+  "version": "1.0.0",
+  "description": "<p align=\"center\">     <a href=\"https://github.com/yiisoft\" target=\"_blank\">         <img src=\"https://avatars0.githubusercontent.com/u/993323\" height=\"100px\">     </a>     <h1 align=\"center\">Yii 2 Advanced Project Template</h1>     <br> </p>",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kumulugma/Project-PhotoBank.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Kumulugma/Project-PhotoBank/issues"
+  },
+  "homepage": "https://github.com/Kumulugma/Project-PhotoBank#readme",
+  "dependencies": {
+    "bootstrap": "^5.3.6",
+    "dropzone": "^6.0.0-beta.2",
+    "jquery": "^3.7.1",
+    "select2": "^4.1.0-rc.0"
+  }
+}

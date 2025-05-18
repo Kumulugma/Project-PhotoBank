@@ -1,0 +1,38 @@
+# Włączenie silnika przepisywania adresów URL
+RewriteEngine on
+
+# Jeśli katalog lub plik istnieje, użyj go bezpośrednio
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# W przeciwnym wypadku przekieruj na index.php
+RewriteRule . index.php
+
+# Zwiększenie limitów dla wgrywania dużych plików
+php_value upload_max_filesize 100M
+php_value post_max_size 100M
+php_value max_execution_time 300
+php_value max_input_time 300
+php_value memory_limit 256M
+
+# Dodatkowe zabezpieczenie dostępu (opcjonalnie)
+# Jeśli chcesz dodać podstawowe zabezpieczenie hasłem, odkomentuj poniższe linie:
+# AuthType Basic
+# AuthName "Panel Administracyjny"
+# AuthUserFile /ścieżka/do/.htpasswd
+# Require valid-user
+
+# Obsługa nagłówków HTTP
+<IfModule mod_headers.c>
+    # Wyłączanie cache dla plików PHP
+    <FilesMatch "\.(php)$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+    </FilesMatch>
+</IfModule>
+
+# Ochrona przed dostępem do plików krytycznych
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
