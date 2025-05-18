@@ -81,7 +81,7 @@ class ImageProcessor extends Component
         $position = $positionMap[$watermarkPosition] ?? 'bottom-right';
         
         if ($watermarkType === 'text') {
-            $watermarkText = Settings::getSetting('watermark.text', 'PersonalPhotoBank');
+            $watermarkText = Settings::getSetting('watermark.text', 'Zasobnik B');
             
             if (!empty($watermarkText)) {
                 $fontSize = min($image->width(), $image->height()) / 20;

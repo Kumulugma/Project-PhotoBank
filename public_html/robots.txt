@@ -1,7 +1,0 @@
-User-agent: *
-Disallow: /admin/
-Disallow: /uploads/temp/
-Disallow: /uploads/chunks/
-Disallow: /assets/
-
-Sitemap: https://twojdomena.pl/sitemap.xml

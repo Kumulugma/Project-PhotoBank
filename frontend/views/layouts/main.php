@@ -4,88 +4,109 @@
 
 use yii\helpers\Html;
 use yii\helpers\Url;
+use frontend\assets\AppAsset;
+use frontend\assets\IconAsset;
+use frontend\assets\FontAsset;
 
+AppAsset::register($this);
+IconAsset::register($this);
+//FontAsset::register($this);
 ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>
-<html lang="<?= Yii::$app->language ?>">
+<html lang="<?= Yii::$app->language ?>" class="no-js">
 <head>
     <meta charset="<?= Yii::$app->charset ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#6366f1">
+    <meta name="description" content="Zasobnik B - Archiwum">
+    <meta name="robots" content="noindex, nofollow">
     <?php $this->registerCsrfMetaTags() ?>
-    <title><?= Html::encode($this->title) ?> - PersonalPhotoBank</title>
+    <title><?= Html::encode($this->title ?: 'Zasobnik B') ?> - Zasobnik B</title>
     
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Inline CSS for immediate loading -->
-    <style>
-        <?= file_get_contents(__DIR__ . '/../../../web/css/modern-design.css') ?>
-    </style>
     
     <?php $this->head() ?>
+    
+    <!-- Remove no-js class if JavaScript is enabled -->
+    <script>document.documentElement.classList.remove('no-js');</script>
 </head>
-<body>
+<body class="<?= Yii::$app->user->isGuest ? 'guest' : 'authenticated' ?>">
 <?php $this->beginBody() ?>
 
+<!-- Skip to main content link for accessibility -->
+<a href="#main-content" class="skip-link">Przejdź do głównej treści</a>
+
 <!-- Header -->
-<header class="header">
+<header class="header" role="banner">
     <div class="container">
-        <nav class="navbar">
-            <?= Html::a('PersonalPhotoBank', ['/site/index'], ['class' => 'logo']) ?>
+        <nav class="navbar" role="navigation" aria-label="główne menu">
+            <!-- Logo -->
+            <?= Html::a('Zasobnik B', ['/site/index'], [
+                'class' => 'logo',
+                'aria-label' => 'Zasobnik B - strona główna'
+            ]) ?>
             
-            <ul class="nav-menu" id="navMenu">
-                <li>
-                    <?= Html::a('<i class="fas fa-home"></i> Strona główna', ['/site/index'], [
+            <!-- Desktop Navigation -->
+            <ul class="nav-menu" id="navMenu" role="menubar">
+                <li role="none">
+                    <?= Html::a('<i class="fas fa-home" aria-hidden="true"></i> <span>Strona główna</span>', ['/site/index'], [
                         'class' => 'nav-link',
+                        'role' => 'menuitem',
                         'encode' => false
                     ]) ?>
                 </li>
                 <?php if (!Yii::$app->user->isGuest): ?>
-                    <li>
-                        <?= Html::a('<i class="fas fa-images"></i> Galeria', ['/gallery/index'], [
+                    <li role="none">
+                        <?= Html::a('<i class="fas fa-images" aria-hidden="true"></i> <span>Galeria</span>', ['/gallery/index'], [
                             'class' => 'nav-link',
+                            'role' => 'menuitem',
                             'encode' => false
                         ]) ?>
                     </li>
-                    <li>
-                        <?= Html::a('<i class="fas fa-search"></i> Wyszukiwanie', ['/search/index'], [
+                    <li role="none">
+                        <?= Html::a('<i class="fas fa-search" aria-hidden="true"></i> <span>Wyszukiwanie</span>', ['/search/index'], [
                             'class' => 'nav-link',
+                            'role' => 'menuitem',
                             'encode' => false
                         ]) ?>
                     </li>
                 <?php endif; ?>
                 
+                <!-- User menu -->
                 <?php if (Yii::$app->user->isGuest): ?>
-                    <li>
-                        <?= Html::a('<i class="fas fa-sign-in-alt"></i> Logowanie', ['/site/login'], [
+                    <li role="none">
+                        <?= Html::a('<i class="fas fa-sign-in-alt" aria-hidden="true"></i> <span>Logowanie</span>', ['/site/login'], [
                             'class' => 'nav-link',
+                            'role' => 'menuitem',
                             'encode' => false
                         ]) ?>
                     </li>
                 <?php else: ?>
-                    <li class="nav-dropdown">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-user"></i> <?= Html::encode(Yii::$app->user->identity->username) ?>
-                        </a>
-                        <div class="dropdown-menu">
+                    <li class="nav-dropdown" role="none">
+                        <button type="button" class="nav-link dropdown-toggle" 
+                                id="userDropdown" 
+                                aria-haspopup="true" 
+                                aria-expanded="false"
+                                data-bs-toggle="dropdown">
+                            <i class="fas fa-user" aria-hidden="true"></i> 
+                            <span><?= Html::encode(Yii::$app->user->identity->username) ?></span>
+                            <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                        </button>
+                        <div class="dropdown-menu" role="menu" aria-labelledby="userDropdown">
                             <?php if (Yii::$app->user->can('managePhotos')): ?>
-                                <?= Html::a('<i class="fas fa-cog"></i> Panel administratora', 
-                                    '//admin.' . $_SERVER['HTTP_HOST'], [
+                                <?= Html::a('<i class="fas fa-cog" aria-hidden="true"></i> Panel administratora', 
+                                    '//system.zasobnik.be', [
                                     'class' => 'dropdown-item',
                                     'target' => '_blank',
+                                    'role' => 'menuitem',
+                                    'rel' => 'noopener noreferrer',
                                     'encode' => false
                                 ]) ?>
                             <?php endif; ?>
-                            <?= Html::a('<i class="fas fa-sign-out-alt"></i> Wyloguj', ['/site/logout'], [
+                            <?= Html::a('<i class="fas fa-sign-out-alt" aria-hidden="true"></i> Wyloguj', ['/site/logout'], [
                                 'class' => 'dropdown-item',
                                 'data-method' => 'post',
+                                'role' => 'menuitem',
                                 'encode' => false
                             ]) ?>
                         </div>
@@ -93,44 +114,51 @@ use yii\helpers\Url;
                 <?php endif; ?>
             </ul>
             
-            <button class="mobile-menu-toggle" id="mobileToggle">
-                <i class="fas fa-bars"></i>
+            <!-- Mobile menu toggle -->
+            <button type="button" 
+                    class="mobile-menu-toggle" 
+                    id="mobileToggle"
+                    aria-label="Przełącz menu mobilne"
+                    aria-expanded="false"
+                    aria-controls="navMenu">
+                <span class="hamburger">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </span>
             </button>
         </nav>
     </div>
 </header>
 
 <!-- Main Content -->
-<main class="main">
+<main class="main" id="main-content" role="main">
     <!-- Breadcrumbs -->
     <?php if (!empty($this->params['breadcrumbs'])): ?>
-        <section class="breadcrumbs">
+        <nav class="breadcrumbs" aria-label="lokalizacja na stronie">
             <div class="container">
-                <ul class="breadcrumb-list">
+                <ol class="breadcrumb-list">
+                    <li class="breadcrumb-item">
+                        <a href="<?= Url::to(['/site/index']) ?>">
+                            <i class="fas fa-home" aria-hidden="true"></i>
+                            <span class="sr-only">Strona główna</span>
+                        </a>
+                    </li>
                     <?php foreach ($this->params['breadcrumbs'] as $breadcrumb): ?>
                         <?php if (is_array($breadcrumb)): ?>
                             <li class="breadcrumb-item">
                                 <?= Html::a($breadcrumb['label'], $breadcrumb['url']) ?>
                             </li>
                         <?php else: ?>
-                            <li class="breadcrumb-item"><?= Html::encode($breadcrumb) ?></li>
+                            <li class="breadcrumb-item active" aria-current="page">
+                                <?= Html::encode($breadcrumb) ?>
+                            </li>
                         <?php endif; ?>
                     <?php endforeach; ?>
-                </ul>
+                </ol>
             </div>
-        </section>
+        </nav>
     <?php endif; ?>
-    
-    <!-- Flash Messages -->
-    <?php foreach (Yii::$app->session->getAllFlashes() as $type => $messages): ?>
-        <?php foreach ((array) $messages as $message): ?>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    showNotification('<?= Html::encode($message) ?>', '<?= $type === 'error' ? 'error' : ($type === 'success' ? 'success' : 'info') ?>');
-                });
-            </script>
-        <?php endforeach; ?>
-    <?php endforeach; ?>
     
     <!-- Page Content -->
     <div class="page-content">
@@ -139,67 +167,115 @@ use yii\helpers\Url;
 </main>
 
 <!-- Footer -->
-<footer class="footer">
+<footer class="footer" role="contentinfo">
     <div class="container">
         <div class="footer-content">
             <div class="footer-section">
-                <h4>PersonalPhotoBank</h4>
-                <p>Twój osobisty bank zdjęć. Przechowuj i dziel się swoimi najlepszymi momentami.</p>
+                
             </div>
-            <div class="footer-section">
-                <h4>Szybkie linki</h4>
-                <p><?= Html::a('Galeria', ['/gallery/index']) ?></p>
-                <p><?= Html::a('Wyszukiwanie', ['/search/index']) ?></p>
-                <p><?= Html::a('Kategorie', ['/gallery/category']) ?></p>
-            </div>
-            <div class="footer-section">
-                <h4>Kontakt</h4>
-                <p><i class="fas fa-envelope"></i> kontakt@personalphotobank.pl</p>
-                <p><i class="fas fa-phone"></i> +48 123 456 789</p>
-            </div>
+            
+            <?php if (!Yii::$app->user->isGuest): ?>
+                <div class="footer-section">
+                   
+                </div>
+            <?php endif; ?>
         </div>
+        
         <div class="footer-bottom">
-            <p>
-                &copy; <?= date('Y') ?> PersonalPhotoBank. Wszystkie prawa zastrzeżone. | 
-                <span class="text-light">
+            <div class="footer-bottom-content">
+                <p>
+                    &copy; <?= date('Y') ?> Zasobnik B. Wszystkie prawa zastrzeżone.
+                </p>
+                <p class="powered-by">
                     Wspierane przez: 
-                    <a href="//k3e.pl" style="color: #10b981;">
-                        <span style="background: #10b981; color: white; padding: 2px 4px; border-radius: 4px; font-weight: bold;">K</span>3e.pl
+                    <a href="//k3e.pl" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       class="k3e-link">
+                        <span class="k3e-logo">K</span>3e.pl
                     </a>
-                </span>
-            </p>
+                </p>
+            </div>
         </div>
     </div>
 </footer>
 
 <!-- Photo Modal -->
-<div class="modal" id="photoModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="modalTitle">Zdjęcie</h3>
-            <button class="modal-close" onclick="closeModal()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <img id="modalImage" src="" alt="" style="width: 100%; height: auto; border-radius: 8px;">
-            <div style="margin-top: 1rem;">
-                <p id="modalDescription"></p>
-                <div class="flex-between" style="margin-top: 1rem;">
-                    <div class="tags" id="modalTags"></div>
-                    <div class="flex-gap">
-                        <button class="btn btn-secondary">
-                            <i class="fas fa-share"></i> Udostępnij
-                        </button>
-                        <button class="btn btn-primary">
-                            <i class="fas fa-download"></i> Pobierz
-                        </button>
+<div class="modal fade" id="photoModal" tabindex="-1" role="dialog" aria-labelledby="photoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="photoModalLabel">Podgląd zdjęcia</h4>
+                <button type="button" 
+                        class="modal-close" 
+                        data-dismiss="modal" 
+                        aria-label="Zamknij modal">
+                    <i class="fas fa-times" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image-container">
+                    <img id="modalImage" 
+                         src="" 
+                         alt="" 
+                         class="modal-image" 
+                         loading="lazy">
+                </div>
+                <div class="modal-details">
+                    <h5 id="modalTitle">Tytuł zdjęcia</h5>
+                    <p id="modalDescription" class="modal-description"></p>
+                    <div class="modal-meta">
+                        <div class="modal-tags" id="modalTags"></div>
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" id="modalShare">
+                                <i class="fas fa-share" aria-hidden="true"></i> Udostępnij
+                            </button>
+                            <a href="#" class="btn btn-primary" id="modalView">
+                                <i class="fas fa-eye" aria-hidden="true"></i> Zobacz szczegóły
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Back to top button -->
+<button type="button" 
+        class="back-to-top" 
+        id="backToTop"
+        aria-label="Wróć na górę strony"
+        tabindex="-1">
+    <i class="fas fa-chevron-up" aria-hidden="true"></i>
+</button>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
+    <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+        <span class="sr-only">Ładowanie...</span>
+    </div>
+</div>
+
+<!-- Flash Messages Container -->
+<div id="flashMessages" class="flash-messages" aria-live="polite"></div>
+
+<!-- JavaScript for flash messages -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    <?php foreach (Yii::$app->session->getAllFlashes() as $type => $messages): ?>
+        <?php foreach ((array) $messages as $message): ?>
+            if (typeof showNotification === 'function') {
+                showNotification(
+                    <?= json_encode($message) ?>, 
+                    <?= json_encode($type === 'error' ? 'error' : ($type === 'success' ? 'success' : 'info')) ?>
+                );
+            }
+        <?php endforeach; ?>
+    <?php endforeach; ?>
+});
+</script>
 
 <?php $this->endBody() ?>
 </body>

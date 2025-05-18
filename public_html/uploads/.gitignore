@@ -1,7 +1,0 @@
-*
-!.gitignore
-!*/
-!temp/.gitignore
-!thumbnails/.gitignore
-!watermark/.gitignore
-!chunks/.gitignore

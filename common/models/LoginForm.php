@@ -5,7 +5,7 @@ use Yii;
 use yii\base\Model;
 
 /**
- * Login form
+ * Login form with Polish error messages
  */
 class LoginForm extends Model
 {
@@ -22,7 +22,7 @@ class LoginForm extends Model
     {
         return [
             // username and password are both required
-            [['username', 'password'], 'required'],
+            [['username', 'password'], 'required', 'message' => '{attribute} nie może być puste.'],
             // rememberMe must be a boolean value
             ['rememberMe', 'boolean'],
             // password is validated by validatePassword()
@@ -85,5 +85,14 @@ class LoginForm extends Model
         }
 
         return $this->_user;
+    }
+
+    /**
+     * Custom error messages for better Polish translations
+     */
+    public function generateAttributeLabel($name)
+    {
+        $labels = $this->attributeLabels();
+        return isset($labels[$name]) ? $labels[$name] : parent::generateAttributeLabel($name);
     }
 }

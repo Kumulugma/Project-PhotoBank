@@ -76,7 +76,7 @@ class m250517_132926_initial_data extends Migration
         $defaultSettings = [
             // Ustawienia znaku wodnego
             ['key' => 'watermark.type', 'value' => 'text', 'description' => 'Typ znaku wodnego (text/image)'],
-            ['key' => 'watermark.text', 'value' => 'PersonalPhotoBank', 'description' => 'Tekst znaku wodnego'],
+            ['key' => 'watermark.text', 'value' => 'Zasobnik B', 'description' => 'Tekst znaku wodnego'],
             ['key' => 'watermark.position', 'value' => 'bottom-right', 'description' => 'Pozycja znaku wodnego'],
             ['key' => 'watermark.opacity', 'value' => '0.7', 'description' => 'Przezroczystość znaku wodnego (0-1)'],
             

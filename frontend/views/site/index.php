@@ -5,13 +5,13 @@
 use yii\helpers\Html;
 use yii\helpers\Url;
 
-$this->title = 'PersonalPhotoBank';
+$this->title = 'Zasobnik B';
 ?>
 <div class="site-index">
     <!-- Hero section -->
     <div class="hero-section">
         <div class="hero-content">
-            <h1 class="hero-title">PersonalPhotoBank</h1>
+            <h1 class="hero-title">Zasobnik B</h1>
             <p class="hero-subtitle">Twój osobisty bank zdjęć</p>
             <?php if (Yii::$app->user->isGuest): ?>
                 <div class="hero-actions">
