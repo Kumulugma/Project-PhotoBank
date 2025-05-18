@@ -290,3 +290,46 @@
     };
 
 })(jQuery);
+
+// Dodaj na początku frontend/web/js/main.js
+
+$(document).ready(function() {
+    // Manual navbar toggler fix
+    function fixNavbarToggler() {
+        const $toggler = $('.navbar-toggler');
+        const $collapse = $('.navbar-collapse');
+        
+        // Sprawdź rozmiar ekranu
+        function checkScreenSize() {
+            if ($(window).width() >= 992) {
+                // Desktop - ukryj toggler, pokaż menu
+                $toggler.hide();
+                $collapse.removeClass('collapse').addClass('d-flex');
+            } else {
+                // Mobile - pokaż toggler, ukryj menu (chyba że aktywne)
+                $toggler.show();
+                $collapse.removeClass('d-flex').addClass('collapse');
+                if (!$collapse.hasClass('show')) {
+                    $collapse.removeClass('show');
+                }
+            }
+        }
+        
+        // Sprawdź przy załadowaniu i resize
+        checkScreenSize();
+        $(window).on('resize', checkScreenSize);
+        
+        // Manual toggler click handler (backup)
+        $toggler.on('click', function() {
+            $collapse.toggleClass('show');
+        });
+    }
+    
+    // Uruchom po załadowaniu Bootstrap
+    if (typeof bootstrap !== 'undefined') {
+        fixNavbarToggler();
+    } else {
+        // Czekaj na Bootstrap
+        setTimeout(fixNavbarToggler, 100);
+    }
+});

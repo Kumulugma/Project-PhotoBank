@@ -1,5 +1,6 @@
 /**
- * Material Design Initialization for PersonalPhotoBank
+ * Bezpieczny Material Design dla PersonalPhotoBank
+ * Naprawiona wersja bez psujących efektów
  */
 
 (function($) {
@@ -7,127 +8,68 @@
 
     // Initialize when document is ready
     $(document).ready(function() {
-        initMaterialDesign();
-        initRippleEffects();
-        initFormAnimations();
-        initScrollAnimations();
-        enhancePhotoGallery();
+        // Najpierw sprawdź czy buttony istnieją
+        if ($('.btn').length === 0) {
+            console.warn('Nie znaleziono buttonów podczas inicjalizacji Material UI');
+            return;
+        }
+        
+        // Bezpieczna inicjalizacja
+        initSafeAnimations();
+        initSafeScrollAnimations();
+        initSafePhotoGallery();
+        
+        // Odłóż material design do momentu załadowania Bootstrap
+        setTimeout(function() {
+            initSafeMaterialDesign();
+        }, 100);
     });
 
     /**
-     * Initialize Material Design components
+     * Bezpieczna inicjalizacja Material Design - bez psujących buttonów
      */
-    function initMaterialDesign() {
-        // Initialize MDB components if available
-        if (typeof mdb !== 'undefined') {
-            // Initialize all MDB components
-            mdb.Ripple.init(document.querySelector('.btn'));
-            mdb.Input.init(document.querySelectorAll('.form-control'));
-            
-            // Initialize tooltips
-            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-mdb-toggle="tooltip"]'));
-            tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new mdb.Tooltip(tooltipTriggerEl);
-            });
+    function initSafeMaterialDesign() {
+        // Sprawdź czy Bootstrap się załadował
+        if (typeof bootstrap === 'undefined') {
+            console.warn('Bootstrap nie został załadowany');
+            return;
         }
 
-        // Add material design classes to existing elements
-        addMaterialClasses();
-    }
+        // NIE dodawaj ripple do buttonów - to je psuje!
+        // Zamiast tego, dodaj tylko subtelne efekty hover
 
-    /**
-     * Add Material Design classes to existing elements
-     */
-    function addMaterialClasses() {
-        // Add elevation to cards
-        $('.card').addClass('elevation-2');
-        
-        // Add material button classes
-        $('.btn').not('.btn-link').addClass('ripple');
-        
-        // Add material form classes
-        $('.form-control').closest('.form-group').addClass('md-form');
-        
-        // Add reveal animations to cards
-        $('.card').addClass('reveal-on-scroll');
-    }
-
-    /**
-     * Initialize ripple effects for buttons
-     */
-    function initRippleEffects() {
-        // Custom ripple effect for browsers without MDB
-        $('.btn, .card').on('click', function(e) {
-            if ($(this).find('.ripple-container').length === 0) {
-                $(this).prepend('<span class="ripple-container"></span>');
-            }
-
-            const $ripple = $(this).find('.ripple-container');
-            const $btn = $(this);
-            const offset = $btn.offset();
-            const x = e.pageX - offset.left;
-            const y = e.pageY - offset.top;
-            
-            $ripple.html('<span class="ripple" style="left:' + x + 'px; top:' + y + 'px;"></span>');
-            
-            setTimeout(function() {
-                $ripple.find('.ripple').addClass('animate');
-            }, 10);
-            
-            setTimeout(function() {
-                $ripple.find('.ripple').remove();
-            }, 600);
-        });
-    }
-
-    /**
-     * Initialize form animations
-     */
-    function initFormAnimations() {
-        // Label animations for form inputs
-        $('.form-control').on('focus blur', function() {
-            const $this = $(this);
-            const $label = $this.prev('label');
-            
-            if ($this.val() !== '' || $this.is(':focus')) {
-                $label.addClass('active');
-            } else {
-                $label.removeClass('active');
+        // Tylko bezpieczne klasy CSS
+        $('.card').each(function() {
+            if (!$(this).hasClass('material-enhanced')) {
+                $(this).addClass('material-enhanced');
             }
         });
 
-        // Initialize on page load
-        $('.form-control').each(function() {
-            const $this = $(this);
-            const $label = $this.prev('label');
-            
-            if ($this.val() !== '') {
-                $label.addClass('active');
+        // Bezpieczne tooltip (tylko jeśli MDB dostępne)
+        if (typeof mdb !== 'undefined') {
+            try {
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-mdb-toggle="tooltip"]'));
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new mdb.Tooltip(tooltipTriggerEl);
+                });
+            } catch (e) {
+                console.log('MDB tooltips nie mogły zostać zainicjalizowane:', e);
             }
-        });
-
-        // Animate search form
-        $('.search-box').on('focus', 'input', function() {
-            $(this).closest('.search-box').addClass('focused');
-        }).on('blur', 'input', function() {
-            if ($(this).val() === '') {
-                $(this).closest('.search-box').removeClass('focused');
-            }
-        });
+        }
     }
 
     /**
-     * Initialize scroll animations
+     * BEZPIECZNE animacje scroll - bez wpływu na buttony
      */
-    function initScrollAnimations() {
-        // Intersection Observer for reveal animations
+    function initSafeScrollAnimations() {
+        // Intersection Observer dla reveal animations
         if ('IntersectionObserver' in window) {
             const observer = new IntersectionObserver(function(entries) {
                 entries.forEach(function(entry) {
                     if (entry.isIntersecting) {
                         entry.target.classList.add('revealed');
                         
-                        // Add staggered animation delay for gallery items
+                        // Staggered animation tylko dla photo items
                         if (entry.target.classList.contains('photo-item')) {
                             const index = Array.from(entry.target.parentNode.children).indexOf(entry.target);
                             entry.target.style.animationDelay = (index * 0.1) + 's';
@@ -139,16 +81,16 @@
                 rootMargin: '0px 0px -50px 0px'
             });
 
-            // Observe all elements with reveal-on-scroll class
-            document.querySelectorAll('.reveal-on-scroll').forEach(function(el) {
+            // Obserwuj tylko elementy które nie są buttonami
+            document.querySelectorAll('.reveal-on-scroll:not(.btn)').forEach(function(el) {
                 observer.observe(el);
             });
         } else {
-            // Fallback for older browsers
-            $('.reveal-on-scroll').addClass('revealed');
+            // Fallback - ale tylko dla nie-buttonów
+            $('.reveal-on-scroll:not(.btn)').addClass('revealed');
         }
 
-        // Parallax effect for hero section
+        // Bezpieczny parallax
         if ($('.hero-section').length) {
             $(window).on('scroll', throttle(function() {
                 const scrolled = $(window).scrollTop();
@@ -159,60 +101,151 @@
     }
 
     /**
-     * Enhance photo gallery with Material Design
+     * Bezpieczne animacje podstawowe - NIE dotykają buttonów
      */
-    function enhancePhotoGallery() {
-        // Enhance photo cards
+    function initSafeAnimations() {
+        // Animacje tylko dla form inputs
+        $('.form-control').on('focus blur', function() {
+            const $this = $(this);
+            const $label = $this.prev('label');
+            
+            if ($this.val() !== '' || $this.is(':focus')) {
+                $label.addClass('active');
+            } else {
+                $label.removeClass('active');
+            }
+        });
+
+        // Initialize labels on page load
+        $('.form-control').each(function() {
+            const $this = $(this);
+            const $label = $this.prev('label');
+            
+            if ($this.val() !== '') {
+                $label.addClass('active');
+            }
+        });
+
+        // Search box animations
+        $('.search-box').on('focus', 'input', function() {
+            $(this).closest('.search-box').addClass('focused');
+        }).on('blur', 'input', function() {
+            if ($(this).val() === '') {
+                $(this).closest('.search-box').removeClass('focused');
+            }
+        });
+    }
+
+    /**
+     * Bezpieczne ulepszenia galerii - bez wpływu na buttony
+     */
+    function initSafePhotoGallery() {
+        // Bezpieczne efekty hover dla kart (NIE dla buttonów)
         $('.photo-item .card').each(function() {
             const $card = $(this);
             const $img = $card.find('img');
             
-            // Add loading animation
+            // Loading state
             $img.on('load', function() {
                 $card.addClass('loaded');
             });
             
-            // Add hover effects
+            // Bezpieczny hover effect - tylko dla card, nie buttonów
             $card.hover(
                 function() {
-                    $(this).addClass('elevation-3').removeClass('elevation-2');
+                    // Znajdź buttony w tej karcie i zabezpiecz je
+                    const $buttons = $(this).find('.btn');
+                    $buttons.each(function() {
+                        // Zapisz oryginalne style
+                        $(this).data('original-display', $(this).css('display'));
+                        $(this).data('original-visibility', $(this).css('visibility'));
+                    });
+                    
+                    $(this).addClass('card-hover');
                 },
                 function() {
-                    $(this).addClass('elevation-2').removeClass('elevation-3');
+                    $(this).removeClass('card-hover');
+                    
+                    // Przywróć buttony jeśli zostały zmienione
+                    const $buttons = $(this).find('.btn');
+                    $buttons.each(function() {
+                        const originalDisplay = $(this).data('original-display');
+                        const originalVisibility = $(this).data('original-visibility');
+                        
+                        if (originalDisplay) {
+                            $(this).css('display', originalDisplay);
+                        }
+                        if (originalVisibility) {
+                            $(this).css('visibility', originalVisibility);
+                        }
+                    });
                 }
             );
         });
 
-        // Enhance photo modal
+        // Modal enhancements - bez wpływu na buttony
         $('#photoModal').on('show.bs.modal', function() {
             $('body').addClass('modal-open-material');
         }).on('hidden.bs.modal', function() {
             $('body').removeClass('modal-open-material');
         });
 
-        // Add floating action button for scroll to top
+        // FAB scroll to top - ale z bezpiecznym buttonem
         if ($('.photo-gallery').length && $(window).height() < $(document).height()) {
-            $('body').append('<button class="fab" id="scrollToTop" title="Przewiń do góry"><i class="fas fa-arrow-up"></i></button>');
+            const fab = $('<button class="fab" id="scrollToTop" title="Przewiń do góry"><i class="fas fa-arrow-up"></i></button>');
             
-            $('#scrollToTop').on('click', function() {
+            // Dodaj bezpieczne style inline
+            fab.css({
+                'position': 'fixed',
+                'bottom': '20px',
+                'right': '20px',
+                'width': '56px',
+                'height': '56px',
+                'border-radius': '50%',
+                'border': 'none',
+                'background-color': '#007bff',
+                'color': 'white',
+                'box-shadow': '0 4px 8px rgba(0,0,0,0.2)',
+                'cursor': 'pointer',
+                'z-index': '1000',
+                'transition': 'all 0.3s ease',
+                'opacity': '0',
+                'visibility': 'hidden',
+                'transform': 'scale(0)',
+                'display': 'flex',
+                'align-items': 'center',
+                'justify-content': 'center'
+            });
+            
+            $('body').append(fab);
+            
+            fab.on('click', function() {
                 $('html, body').animate({
                     scrollTop: 0
-                }, 500, 'easeInOutCubic');
+                }, 500);
             });
 
-            // Show/hide FAB based on scroll position
+            // Show/hide FAB
             $(window).on('scroll', throttle(function() {
                 if ($(window).scrollTop() > 300) {
-                    $('#scrollToTop').addClass('show');
+                    fab.css({
+                        'opacity': '1',
+                        'visibility': 'visible',
+                        'transform': 'scale(1)'
+                    });
                 } else {
-                    $('#scrollToTop').removeClass('show');
+                    fab.css({
+                        'opacity': '0',
+                        'visibility': 'hidden',
+                        'transform': 'scale(0)'
+                    });
                 }
             }, 100));
         }
     }
 
     /**
-     * Throttle function for performance
+     * Throttle function
      */
     function throttle(func, limit) {
         let inThrottle;
@@ -227,59 +260,17 @@
         };
     }
 
-    /**
-     * Custom easing for animations
-     */
-    $.easing.easeInOutCubic = function (x, t, b, c, d) {
-        if ((t/=d/2) < 1) return c/2*t*t*t + b;
-        return c/2*((t-=2)*t*t + 2) + b;
-    };
-
-    // Add CSS for ripple effect
+    // Bezpieczne style CSS - NIE wpływają na buttony
     $('<style>').text(`
-        .ripple-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            overflow: hidden;
-            pointer-events: none;
+        /* Bezpieczne style które nie psują buttonów */
+        
+        .card.material-enhanced {
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
         }
         
-        .ripple {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.4);
-            transform: scale(0);
-            opacity: 1;
-            pointer-events: none;
-        }
-        
-        .ripple.animate {
-            animation: ripple-animation 0.6s linear;
-        }
-        
-        @keyframes ripple-animation {
-            to {
-                transform: scale(10);
-                opacity: 0;
-            }
-        }
-        
-        .fab {
-            opacity: 0;
-            visibility: hidden;
-            transform: scale(0);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .fab.show {
-            opacity: 1;
-            visibility: visible;
-            transform: scale(1);
+        .card.card-hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
         }
         
         .modal-open-material {
@@ -289,151 +280,108 @@
         .loaded {
             animation: fadeInUp 0.6s ease-out;
         }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Form enhancements */
+        .form-control:focus + label,
+        label.active {
+            color: #007bff;
+            font-size: 0.85em;
+            transform: translateY(-0.5rem);
+        }
+        
+        .search-box.focused {
+            box-shadow: 0 0 20px rgba(0,123,255,0.1);
+        }
+        
+        /* Reveal animations - ale NIE dla buttonów */
+        .reveal-on-scroll:not(.btn) {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s ease;
+        }
+        
+        .reveal-on-scroll.revealed:not(.btn) {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* FAB styles już są inline, więc nie potrzebujemy ich tutaj */
+        
     `).appendTo('head');
 
-    // Global Material Design utilities
-    window.MaterialPhotoBank = {
+    // Bezpieczne utilities - NIE dotykają buttonów
+    window.SafeMaterialPhotoBank = {
         showSnackbar: function(message, actionText, actionCallback) {
-            // Create snackbar element
             const snackbar = $(`
-                <div class="snackbar">
+                <div class="safe-snackbar">
                     <span class="snackbar-text">${message}</span>
                     ${actionText ? `<button class="snackbar-action" type="button">${actionText}</button>` : ''}
                 </div>
             `);
             
-            // Add styles if not already added
-            if (!$('#snackbar-styles').length) {
-                $(`<style id="snackbar-styles">
-                    .snackbar {
-                        position: fixed;
-                        bottom: 0;
-                        left: 50%;
-                        transform: translateX(-50%) translateY(100%);
-                        background: #323232;
-                        color: white;
-                        padding: 14px 24px;
-                        border-radius: 4px 4px 0 0;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-                        z-index: 9999;
-                        max-width: 568px;
-                        min-width: 288px;
-                        animation: slideUp 0.3s ease-out;
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                    }
-                    
-                    .snackbar-text {
-                        font-size: 14px;
-                        line-height: 20px;
-                    }
-                    
-                    .snackbar-action {
-                        background: none;
-                        border: none;
-                        color: #2196F3;
-                        font-weight: 500;
-                        text-transform: uppercase;
-                        margin-left: 24px;
-                        cursor: pointer;
-                        font-size: 14px;
-                    }
-                    
-                    @keyframes slideUp {
-                        from { transform: translateX(-50%) translateY(100%); }
-                        to { transform: translateX(-50%) translateY(0); }
-                    }
-                </style>`).appendTo('head');
-            }
+            // Inline styles dla snackbar
+            snackbar.css({
+                'position': 'fixed',
+                'bottom': '0',
+                'left': '50%',
+                'transform': 'translateX(-50%) translateY(100%)',
+                'background': '#323232',
+                'color': 'white',
+                'padding': '14px 24px',
+                'border-radius': '4px 4px 0 0',
+                'box-shadow': '0 4px 6px rgba(0,0,0,0.3)',
+                'z-index': '9999',
+                'max-width': '568px',
+                'min-width': '288px',
+                'display': 'flex',
+                'align-items': 'center',
+                'justify-content': 'space-between'
+            });
             
-            // Add to body
             $('body').append(snackbar);
             
-            // Animate in
             setTimeout(() => {
                 snackbar.css('transform', 'translateX(-50%) translateY(0)');
             }, 100);
             
-            // Handle action
             if (actionText && actionCallback) {
                 snackbar.find('.snackbar-action').on('click', actionCallback);
             }
             
-            // Auto remove after 4 seconds
             setTimeout(() => {
                 snackbar.css('transform', 'translateX(-50%) translateY(100%)');
                 setTimeout(() => snackbar.remove(), 300);
             }, 4000);
-        },
-        
-        showLoader: function(target) {
-            const loader = $(`
-                <div class="material-loader">
-                    <div class="material-spinner">
-                        <svg class="circular" viewBox="25 25 50 50">
-                            <circle class="path" cx="50" cy="50" r="20" fill="none" stroke="#2196F3" stroke-width="2" stroke-miterlimit="10"/>
-                        </svg>
-                    </div>
-                </div>
-            `);
-            
-            if (!$('#loader-styles').length) {
-                $(`<style id="loader-styles">
-                    .material-loader {
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: rgba(255,255,255,0.9);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        z-index: 1000;
-                    }
-                    
-                    .material-spinner {
-                        width: 40px;
-                        height: 40px;
-                    }
-                    
-                    .circular {
-                        animation: rotate 2s linear infinite;
-                        width: 40px;
-                        height: 40px;
-                    }
-                    
-                    .path {
-                        stroke-dasharray: 90, 150;
-                        stroke-dashoffset: 0;
-                        stroke-linecap: round;
-                        animation: dash 1.5s ease-in-out infinite;
-                    }
-                    
-                    @keyframes rotate {
-                        100% { transform: rotate(360deg); }
-                    }
-                    
-                    @keyframes dash {
-                        0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
-                        50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
-                        100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
-                    }
-                </style>`).appendTo('head');
-            }
-            
-            $(target).css('position', 'relative').append(loader);
-            return loader;
-        },
-        
-        hideLoader: function(loader) {
-            if (loader) {
-                loader.fadeOut(300, function() {
-                    $(this).remove();
-                });
-            }
         }
+    };
+
+    // Debug function do sprawdzania buttonów
+    window.debugButtons = function() {
+        const buttons = $('.btn');
+        console.log(`Znaleziono ${buttons.length} buttonów`);
+        
+        buttons.each(function(i) {
+            const $btn = $(this);
+            const styles = {
+                display: $btn.css('display'),
+                visibility: $btn.css('visibility'),
+                opacity: $btn.css('opacity'),
+                width: $btn.width(),
+                height: $btn.height()
+            };
+            console.log(`Button ${i}:`, styles, $btn[0]);
+        });
     };
 
 })(jQuery);
