@@ -11,7 +11,7 @@ class AppAsset extends AssetBundle
     public $basePath = '@webroot';
     public $baseUrl = '@web';
     public $css = [
-        'css/site.css',
+        'css/admin.css',
     ];
     public $js = [
         'js/admin.js',
@@ -19,6 +19,9 @@ class AppAsset extends AssetBundle
     public $depends = [
         'yii\web\YiiAsset',
         'yii\bootstrap5\BootstrapAsset',
-        'yii\bootstrap5\BootstrapPluginAsset',
+    ];
+    
+    public $publishOptions = [
+        'forceCopy' => YII_DEBUG,
     ];
 }

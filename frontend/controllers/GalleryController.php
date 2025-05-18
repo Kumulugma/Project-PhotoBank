@@ -4,39 +4,34 @@ namespace frontend\controllers;
 use Yii;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
-use yii\filters\VerbFilter;
+use yii\filters\AccessControl;
 use yii\data\ActiveDataProvider;
 use common\models\Photo;
 use common\models\Category;
 use common\models\Tag;
-use yii\helpers\Url;
 
 /**
- * GalleryController implements the gallery actions.
+ * GalleryController - tylko dla zalogowanych użytkowników
  */
 class GalleryController extends Controller
 {
-    /**
-     * {@inheritdoc}
-     */
     public function behaviors()
     {
         return [
-            'verbs' => [
-                'class' => VerbFilter::class,
-                'actions' => [
-                    'index' => ['get'],
-                    'view' => ['get'],
-                    'category' => ['get'],
-                    'tag' => ['get'],
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [
+                    [
+                        'allow' => true,
+                        'roles' => ['@'],
+                    ],
                 ],
             ],
         ];
     }
 
     /**
-     * Lists all public photos.
-     * @return mixed
+     * Lists all public photos
      */
     public function actionIndex()
     {
@@ -47,7 +42,7 @@ class GalleryController extends Controller
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
             'pagination' => [
-                'pageSize' => Yii::$app->params['galleryPageSize'],
+                'pageSize' => Yii::$app->params['galleryPageSize'] ?? 24,
             ],
         ]);
 
@@ -57,16 +52,13 @@ class GalleryController extends Controller
     }
 
     /**
-     * Displays a single Photo model.
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
+     * Displays a single photo
      */
     public function actionView($id)
     {
         $model = $this->findModel($id);
         
-        // Pobieranie wcześniejszego i następnego zdjęcia
+        // Get previous and next photos
         $prevPhoto = Photo::find()
             ->where(['status' => Photo::STATUS_ACTIVE, 'is_public' => true])
             ->andWhere(['<', 'id', $model->id])
@@ -87,16 +79,13 @@ class GalleryController extends Controller
     }
 
     /**
-     * Displays photos by category.
-     * @param string $slug Category slug
-     * @return mixed
-     * @throws NotFoundHttpException if the category cannot be found
+     * Displays photos by category
      */
     public function actionCategory($slug)
     {
         $category = Category::findOne(['slug' => $slug]);
         if (!$category) {
-            throw new NotFoundHttpException('Kategoria nie istnieje.');
+            throw new NotFoundHttpException('Kategoria nie została znaleziona.');
         }
         
         $query = Photo::find()
@@ -108,7 +97,7 @@ class GalleryController extends Controller
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
             'pagination' => [
-                'pageSize' => Yii::$app->params['galleryPageSize'],
+                'pageSize' => Yii::$app->params['galleryPageSize'] ?? 24,
             ],
         ]);
 
@@ -119,16 +108,13 @@ class GalleryController extends Controller
     }
 
     /**
-     * Displays photos by tag.
-     * @param string $name Tag name
-     * @return mixed
-     * @throws NotFoundHttpException if the tag cannot be found
+     * Displays photos by tag
      */
     public function actionTag($name)
     {
         $tag = Tag::findOne(['name' => $name]);
         if (!$tag) {
-            throw new NotFoundHttpException('Tag nie istnieje.');
+            throw new NotFoundHttpException('Tag nie został znaleziony.');
         }
         
         $query = Photo::find()
@@ -140,7 +126,7 @@ class GalleryController extends Controller
         $dataProvider = new ActiveDataProvider([
             'query' => $query,
             'pagination' => [
-                'pageSize' => Yii::$app->params['galleryPageSize'],
+                'pageSize' => Yii::$app->params['galleryPageSize'] ?? 24,
             ],
         ]);
 
@@ -151,10 +137,7 @@ class GalleryController extends Controller
     }
 
     /**
-     * Finds the Photo model based on its primary key value.
-     * @param integer $id
-     * @return Photo the loaded model
-     * @throws NotFoundHttpException if the model cannot be found or not public
+     * Find photo model
      */
     protected function findModel($id)
     {
@@ -165,7 +148,7 @@ class GalleryController extends Controller
         ]);
         
         if ($model === null) {
-            throw new NotFoundHttpException('Zdjęcie nie istnieje lub nie jest publiczne.');
+            throw new NotFoundHttpException('Zdjęcie nie zostało znalezione.');
         }
 
         return $model;

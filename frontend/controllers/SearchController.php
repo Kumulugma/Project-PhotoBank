@@ -4,20 +4,34 @@ namespace frontend\controllers;
 use Yii;
 use yii\web\Controller;
 use yii\data\ActiveDataProvider;
-use yii\helpers\Html;
+use yii\filters\AccessControl;
 use common\models\Photo;
 use common\models\Category;
 use common\models\Tag;
 use frontend\models\SearchForm;
 
 /**
- * SearchController implements the search functionality.
+ * SearchController - tylko dla zalogowanych użytkowników
  */
 class SearchController extends Controller
 {
+    public function behaviors()
+    {
+        return [
+            'access' => [
+                'class' => AccessControl::class,
+                'rules' => [
+                    [
+                        'allow' => true,
+                        'roles' => ['@'],
+                    ],
+                ],
+            ],
+        ];
+    }
+
     /**
-     * Search photos by keywords, tags and categories.
-     * @return mixed
+     * Search photos
      */
     public function actionIndex()
     {
@@ -28,7 +42,7 @@ class SearchController extends Controller
             $query = Photo::find()
                 ->where(['status' => Photo::STATUS_ACTIVE, 'is_public' => true]);
                 
-            // Wyszukiwanie po słowach kluczowych
+            // Search by keywords
             if (!empty($model->keywords)) {
                 $query->andWhere([
                     'or',
@@ -37,35 +51,33 @@ class SearchController extends Controller
                 ]);
             }
             
-            // Wyszukiwanie po tagach
+            // Search by tags
             if (!empty($model->tags)) {
                 $query->joinWith('photoTags');
                 $query->andWhere(['in', 'photo_tag.tag_id', $model->tags]);
             }
             
-            // Wyszukiwanie po kategoriach
+            // Search by categories
             if (!empty($model->categories)) {
                 $query->joinWith('photoCategories');
                 $query->andWhere(['in', 'photo_category.category_id', $model->categories]);
             }
             
-            // Sortowanie
             $query->orderBy(['created_at' => SORT_DESC]);
             
             $dataProvider = new ActiveDataProvider([
                 'query' => $query,
                 'pagination' => [
-                    'pageSize' => Yii::$app->params['galleryPageSize'],
+                    'pageSize' => Yii::$app->params['galleryPageSize'] ?? 24,
                 ],
             ]);
         }
         
-        // Pobieranie listy kategorii dla formularza
+        // Get categories and tags for form
         $categories = Category::find()
             ->orderBy(['name' => SORT_ASC])
             ->all();
         
-        // Pobieranie popularnych tagów dla formularza
         $tags = Tag::find()
             ->orderBy(['frequency' => SORT_DESC])
             ->limit(50)
