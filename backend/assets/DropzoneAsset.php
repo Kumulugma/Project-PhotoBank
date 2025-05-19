@@ -8,14 +8,25 @@ use yii\web\AssetBundle;
  */
 class DropzoneAsset extends AssetBundle
 {
-    public $sourcePath = '@npm/dropzone/dist';
-    public $css = [
-        'min/dropzone.min.css',
-    ];
-    public $js = [
-        'min/dropzone.min.js',
-    ];
+//    public $sourcePath = '@vendor/bower-asset/dropzone/dist';
+//    public $css = [
+//        'dropzone.css',
+//    ];
+//    public $js = [
+//        'dropzone.js',
+//    ];
     public $depends = [
         'yii\web\JqueryAsset',
     ];
+    
+    // Alternatywnie można użyć CDN:
+    
+    public $baseUrl = 'https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/';
+    public $css = [
+        'dropzone.min.css',
+    ];
+    public $js = [
+        'dropzone.min.js',
+    ];
+    
 }

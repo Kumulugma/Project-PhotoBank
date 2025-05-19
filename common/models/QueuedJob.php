@@ -10,9 +10,10 @@ use yii\db\ActiveRecord;
  *
  * @property integer $id
  * @property string $type
- * @property string $data
+ * @property string $params
  * @property integer $status
- * @property string $error
+ * @property string $error_message
+ * @property integer $attempts
  * @property integer $created_at
  * @property integer $updated_at
  * @property integer $started_at
@@ -47,42 +48,44 @@ class QueuedJob extends ActiveRecord
      * {@inheritdoc}
      */
     public function rules()
-    {
-        return [
-            [['type', 'data'], 'required'],
-            [['data', 'error'], 'string'],
-            [['status', 'created_at', 'updated_at', 'started_at', 'finished_at'], 'integer'],
-            [['type'], 'string', 'max' => 255],
-            [['status'], 'default', 'value' => self::STATUS_PENDING],
-        ];
-    }
+{
+    return [
+        [['type', 'params'], 'required'],
+        [['params', 'error_message'], 'string'],
+        [['status', 'attempts', 'created_at', 'updated_at', 'started_at', 'completed_at'], 'integer'],
+        [['type'], 'string', 'max' => 255],
+        [['status'], 'default', 'value' => self::STATUS_PENDING],
+        [['attempts'], 'default', 'value' => 0],
+    ];
+}
 
-    /**
-     * {@inheritdoc}
-     */
-    public function attributeLabels()
-    {
-        return [
-            'id' => 'ID',
-            'type' => 'Typ zadania',
-            'data' => 'Dane',
-            'status' => 'Status',
-            'error' => 'Błąd',
-            'created_at' => 'Data utworzenia',
-            'updated_at' => 'Data aktualizacji',
-            'started_at' => 'Data rozpoczęcia',
-            'finished_at' => 'Data zakończenia',
-        ];
-    }
+// Popraw attributeLabels():
+
+public function attributeLabels()
+{
+    return [
+        'id' => 'ID',
+        'type' => 'Typ zadania',
+        'params' => 'Parametry',
+        'status' => 'Status',
+        'attempts' => 'Próby',
+        'error_message' => 'Komunikat błędu',
+        'created_at' => 'Data utworzenia',
+        'updated_at' => 'Data aktualizacji',
+        'started_at' => 'Data rozpoczęcia',
+        'completed_at' => 'Data zakończenia',
+    ];
+}
+
     
     /**
-     * Gets decoded data
+     * Gets decoded params
      * 
-     * @return mixed Decoded data
+     * @return mixed Decoded params
      */
-    public function getDecodedData()
+    public function getDecodedParams()
     {
-        return json_decode($this->data, true);
+        return json_decode($this->params, true);
     }
     
     /**
@@ -106,15 +109,16 @@ class QueuedJob extends ActiveRecord
      * Create a new job
      * 
      * @param string $type Job type
-     * @param mixed $data Job data
+     * @param mixed $params Job params
      * @return QueuedJob|null Created job or null on failure
      */
-    public static function createJob($type, $data)
+    public static function createJob($type, $params)
     {
         $job = new self();
         $job->type = $type;
-        $job->data = json_encode($data);
+        $job->params = json_encode($params);
         $job->status = self::STATUS_PENDING;
+        $job->attempts = 0;
         
         return $job->save() ? $job : null;
     }
@@ -128,6 +132,7 @@ class QueuedJob extends ActiveRecord
     {
         $this->status = self::STATUS_PROCESSING;
         $this->started_at = time();
+        $this->attempts += 1;
         
         return $this->save();
     }
@@ -154,7 +159,7 @@ class QueuedJob extends ActiveRecord
     public function markAsFailed($error)
     {
         $this->status = self::STATUS_FAILED;
-        $this->error = $error;
+        $this->error_message = $error;
         $this->finished_at = time();
         
         return $this->save();

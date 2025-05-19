@@ -20,7 +20,8 @@
         "yiisoft/yii2-symfonymailer": "~2.0.3",
         "intervention/image": "^2.7",
         "aws/aws-sdk-php": "^3.337",
-        "firebase/php-jwt": "^6.11"
+        "firebase/php-jwt": "^6.11",
+        "bower-asset/dropzone": "^5.9"
     },
     "require-dev": {
         "yiisoft/yii2-debug": "~2.1.0",

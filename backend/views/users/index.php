@@ -135,7 +135,8 @@ $roleOptions = [
                 'label' => 'Ostatnia aktywność',
                 'format' => 'raw',
                 'value' => function ($model) {
-                    if ($model->last_login_at) {
+                    // BEZPIECZNE użycie last_login_at
+                    if (property_exists($model, 'last_login_at') && $model->last_login_at) {
                         $lastLogin = Yii::$app->formatter->asRelativeTime($model->last_login_at);
                         $fullDate = date('Y-m-d H:i:s', $model->last_login_at);
                         return '<span title="' . $fullDate . '" class="text-success">' . $lastLogin . '</span>';

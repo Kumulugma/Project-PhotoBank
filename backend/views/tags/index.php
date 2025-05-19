@@ -10,6 +10,10 @@ use yii\widgets\Pjax;
 
 $this->title = 'Tags';
 $this->params['breadcrumbs'][] = $this->title;
+
+// Register CSS/JS for datepicker
+$this->registerCssFile('https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css');
+$this->registerJsFile('https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js');
 ?>
 <div class="tag-index">
 
@@ -20,7 +24,6 @@ $this->params['breadcrumbs'][] = $this->title;
     </p>
 
     <?php Pjax::begin(); ?>
-    <?php // echo $this->render('_search', ['model' => $searchModel]); ?>
 
     <?= GridView::widget([
         'dataProvider' => $dataProvider,
@@ -36,12 +39,10 @@ $this->params['breadcrumbs'][] = $this->title;
                 'value' => function ($model) {
                     return date('Y-m-d H:i', $model->created_at);
                 },
-                'filter' => \yii\jui\DatePicker::widget([
-                    'model' => $searchModel,
-                    'attribute' => 'created_at',
-                    'language' => 'en',
-                    'dateFormat' => 'yyyy-MM-dd',
-                    'options' => ['class' => 'form-control', 'placeholder' => 'Date'],
+                'filter' => Html::activeTextInput($searchModel, 'created_at', [
+                    'class' => 'form-control datepicker',
+                    'placeholder' => 'YYYY-MM-DD',
+                    'autocomplete' => 'off'
                 ]),
             ],
             [
@@ -49,12 +50,10 @@ $this->params['breadcrumbs'][] = $this->title;
                 'value' => function ($model) {
                     return date('Y-m-d H:i', $model->updated_at);
                 },
-                'filter' => \yii\jui\DatePicker::widget([
-                    'model' => $searchModel,
-                    'attribute' => 'updated_at',
-                    'language' => 'en',
-                    'dateFormat' => 'yyyy-MM-dd',
-                    'options' => ['class' => 'form-control', 'placeholder' => 'Date'],
+                'filter' => Html::activeTextInput($searchModel, 'updated_at', [
+                    'class' => 'form-control datepicker',
+                    'placeholder' => 'YYYY-MM-DD',
+                    'autocomplete' => 'off'
                 ]),
             ],
 
@@ -64,3 +63,13 @@ $this->params['breadcrumbs'][] = $this->title;
 
     <?php Pjax::end(); ?>
 </div>
+
+<?php
+$this->registerJs("
+    $('.datepicker').datepicker({
+        format: 'yyyy-mm-dd',
+        autoclose: true,
+        todayHighlight: true
+    });
+");
+?>

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "eee346f120da07de99fb54effc1c4af7",
+    "content-hash": "47e23fda946ea0986d42957051255979",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -170,6 +170,21 @@
                 "type": "zip",
                 "url": "https://api.github.com/repos/twbs/bootstrap/zipball/f849680d16a9695c9a6c9c062d6cff55ddcf071e",
                 "reference": "f849680d16a9695c9a6c9c062d6cff55ddcf071e"
+            },
+            "type": "bower-asset"
+        },
+        {
+            "name": "bower-asset/dropzone",
+            "version": "v5.9.3",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:enyo/dropzone.git",
+                "reference": "9f97ace16d9b6c85216c15f2b0349362ee1a4002"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/enyo/dropzone/zipball/9f97ace16d9b6c85216c15f2b0349362ee1a4002",
+                "reference": "9f97ace16d9b6c85216c15f2b0349362ee1a4002"
             },
             "type": "bower-asset"
         },

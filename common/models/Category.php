@@ -4,6 +4,7 @@ namespace common\models;
 use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
+use yii\helpers\Inflector;
 
 /**
  * Category model
@@ -76,6 +77,16 @@ class Category extends ActiveRecord
     }
     
     /**
+     * Gets query for all photo-category relations
+     * 
+     * @return \yii\db\ActiveQuery
+     */
+    public function getPhotoCategories()
+    {
+        return $this->hasMany(PhotoCategory::class, ['category_id' => 'id']);
+    }
+    
+    /**
      * Gets photo count for this category
      * 
      * @param bool $onlyActive Count only active photos
@@ -104,7 +115,7 @@ class Category extends ActiveRecord
     {
         if (parent::beforeSave($insert)) {
             if ($insert || $this->isAttributeChanged('name')) {
-                $this->slug = Yii::$app->getFormatter()->asSlug($this->name);
+                $this->slug = Inflector::slug($this->name);
             }
             return true;
         }

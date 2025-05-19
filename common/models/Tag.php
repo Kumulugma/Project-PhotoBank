@@ -74,6 +74,16 @@ class Tag extends ActiveRecord
     }
     
     /**
+     * Gets query for all photo-tag relations
+     * 
+     * @return \yii\db\ActiveQuery
+     */
+    public function getPhotoTags()
+    {
+        return $this->hasMany(PhotoTag::class, ['tag_id' => 'id']);
+    }
+    
+    /**
      * Gets photo count for this tag
      * 
      * @param bool $onlyActive Count only active photos
