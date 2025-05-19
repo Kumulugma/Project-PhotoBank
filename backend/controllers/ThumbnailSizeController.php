@@ -4,7 +4,7 @@ namespace backend\controllers;
 
 use Yii;
 use common\models\ThumbnailSize;
-use common\models\ThumbnailSizeSearch;
+use common\models\search\ThumbnailSizeSearch;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;

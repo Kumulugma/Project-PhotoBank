@@ -4,7 +4,7 @@ namespace backend\controllers;
 
 use Yii;
 use common\models\Category;
-use common\models\CategorySearch;
+use common\models\search\CategorySearch;
 use common\models\Photo;
 use common\models\PhotoCategory;
 use yii\web\Controller;

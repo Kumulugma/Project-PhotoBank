@@ -4,11 +4,11 @@ namespace backend\controllers;
 
 use Yii;
 use common\models\QueuedJob;
-use common\models\QueuedJobSearch;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
+use common\models\search\QueuedJobSearch;
 
 /**
  * QueueController implements the CRUD actions for QueuedJob model.
