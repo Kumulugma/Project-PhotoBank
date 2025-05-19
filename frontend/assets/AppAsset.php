@@ -12,18 +12,18 @@ class AppAsset extends AssetBundle
     public $baseUrl = '@web';
     
     public $css = [
-        'css/variables.css',
-        'css/base.css',
-        'css/components.css',
-        'css/layout.css',
-        'css/responsive.css',
+        'css/variables.css',    // Najpierw zmienne
+        'css/base.css',         // Potem podstawowe style
+        'css/layout.css',       // Następnie layout (z hamburger menu)
+        'css/components.css',   // Komponenty
+        'css/responsive.css',   // Na końcu responsive
     ];
     
     public $js = [
         'js/main.js',
         'js/photo-gallery.js',
         'js/modal.js',
-        'js/search.js', // Add search-specific JS
+        'js/search.js',
     ];
     
     public $depends = [
