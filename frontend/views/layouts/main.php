@@ -53,6 +53,74 @@ frontend\assets\IconAsset::register($this);
         h1, h2, h3, h4, h5, h6, .logo, .hero-title, .section-title {
             font-family: var(--font-family-display);
         }
+        
+        /* Critical mobile menu styles - inline to prevent FOUC */
+        .mobile-menu-toggle {
+            display: none;
+            flex-direction: column;
+            justify-content: space-around;
+            width: 40px;
+            height: 40px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 0.25rem;
+            transition: all 0.15s ease-in-out;
+        }
+        
+        .hamburger {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .hamburger-line {
+            display: block;
+            height: 3px;
+            width: 100%;
+            background: #1f2937;
+            border-radius: 2px;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transform-origin: center;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: flex;
+                z-index: 1001;
+                position: relative;
+            }
+            
+            .nav-menu {
+                position: fixed;
+                top: 0;
+                left: -100%;
+                width: 100%;
+                height: 100vh;
+                background: #ffffff;
+                flex-direction: column;
+                justify-content: flex-start;
+                align-items: stretch;
+                padding: 80px 0 2rem;
+                margin: 0;
+                z-index: 1000;
+                transition: left 0.3s ease-in-out;
+                border-right: 1px solid #e5e7eb;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                overflow-y: auto;
+            }
+            
+            .nav-menu.active {
+                left: 0;
+            }
+            
+            body.menu-open {
+                overflow: hidden;
+            }
+        }
     </style>
 </head>
 <body class="<?= Yii::$app->user->isGuest ? 'guest' : 'authenticated' ?>">
@@ -298,6 +366,170 @@ frontend\assets\IconAsset::register($this);
 <!-- JavaScript initialization and flash messages -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    
+    // Mobile menu functionality - IMPROVED VERSION
+    const mobileToggle = document.getElementById('mobileToggle');
+    const navMenu = document.getElementById('navMenu');
+    
+    console.log('Mobile toggle:', mobileToggle);
+    console.log('Nav menu:', navMenu);
+    
+    if (mobileToggle && navMenu) {
+        console.log('Initializing mobile menu...');
+        
+        // Handle menu toggle
+        mobileToggle.addEventListener('click', function(e) {
+            console.log('Mobile toggle clicked');
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const isExpanded = this.getAttribute('aria-expanded') === 'true';
+            const newState = !isExpanded;
+            
+            console.log('Current state:', isExpanded, 'New state:', newState);
+            
+            // Update button state
+            this.setAttribute('aria-expanded', newState);
+            
+            // Toggle menu visibility
+            navMenu.classList.toggle('active', newState);
+            
+            // Visual feedback for hamburger button
+            if (newState) {
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 150);
+            }
+            
+            // Prevent body scroll when menu is open
+            document.body.classList.toggle('menu-open', newState);
+            
+            // Focus management
+            if (newState) {
+                // Focus first menu item when opening
+                const firstMenuItem = navMenu.querySelector('.nav-link');
+                if (firstMenuItem) {
+                    setTimeout(() => firstMenuItem.focus(), 100);
+                }
+            }
+            
+            // Update hamburger animation
+            const hamburgerLines = this.querySelectorAll('.hamburger-line');
+            if (newState) {
+                hamburgerLines[0].style.transform = 'rotate(45deg) translate(6px, 6px)';
+                hamburgerLines[1].style.opacity = '0';
+                hamburgerLines[1].style.transform = 'scale(0)';
+                hamburgerLines[2].style.transform = 'rotate(-45deg) translate(6px, -6px)';
+            } else {
+                hamburgerLines[0].style.transform = '';
+                hamburgerLines[1].style.opacity = '';
+                hamburgerLines[1].style.transform = '';
+                hamburgerLines[2].style.transform = '';
+            }
+            
+            console.log('Menu toggled, active class:', navMenu.classList.contains('active'));
+        });
+        
+        // Close menu when clicking on nav links (not dropdown toggles)
+        navMenu.querySelectorAll('.nav-link:not(.dropdown-toggle)').forEach(link => {
+            link.addEventListener('click', function() {
+                console.log('Nav link clicked, closing menu');
+                closeMobileMenu();
+            });
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', function(e) {
+            if (navMenu.classList.contains('active') && 
+                !mobileToggle.contains(e.target) && 
+                !navMenu.contains(e.target)) {
+                console.log('Clicked outside, closing menu');
+                closeMobileMenu();
+            }
+        });
+        
+        // Handle escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && navMenu.classList.contains('active')) {
+                console.log('Escape pressed, closing menu');
+                closeMobileMenu();
+                mobileToggle.focus();
+            }
+        });
+        
+        // Handle window resize
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                // Close mobile menu on resize to desktop
+                if (window.innerWidth > 768 && navMenu.classList.contains('active')) {
+                    console.log('Resized to desktop, closing menu');
+                    closeMobileMenu();
+                }
+            }, 150);
+        });
+        
+        // Helper function to close mobile menu
+        function closeMobileMenu() {
+            console.log('Closing mobile menu...');
+            mobileToggle.setAttribute('aria-expanded', 'false');
+            navMenu.classList.remove('active');
+            document.body.classList.remove('menu-open');
+            
+            // Reset hamburger animation
+            const hamburgerLines = mobileToggle.querySelectorAll('.hamburger-line');
+            hamburgerLines.forEach(line => {
+                line.style.transform = '';
+                line.style.opacity = '';
+            });
+            
+            // Close any open dropdowns
+            navMenu.querySelectorAll('.dropdown-menu.show').forEach(dropdown => {
+                dropdown.classList.remove('show');
+                const toggle = dropdown.previousElementSibling;
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+        
+        // Handle dropdown toggles in mobile menu
+        navMenu.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+            toggle.addEventListener('click', function(e) {
+                console.log('Dropdown toggle clicked');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                const dropdown = this.nextElementSibling;
+                
+                // Close other dropdowns
+                navMenu.querySelectorAll('.dropdown-toggle').forEach(otherToggle => {
+                    if (otherToggle !== this) {
+                        otherToggle.setAttribute('aria-expanded', 'false');
+                        const otherDropdown = otherToggle.nextElementSibling;
+                        if (otherDropdown) {
+                            otherDropdown.classList.remove('show');
+                        }
+                    }
+                });
+                
+                // Toggle current dropdown
+                this.setAttribute('aria-expanded', !isExpanded);
+                if (dropdown) {
+                    dropdown.classList.toggle('show', !isExpanded);
+                }
+            });
+        });
+        
+        console.log('Mobile menu initialization complete');
+    } else {
+        console.error('Mobile toggle or nav menu not found!');
+    }
+    
     // Initialize back to top button
     const backToTop = document.getElementById('backToTop');
     if (backToTop) {
@@ -342,10 +574,13 @@ document.addEventListener('DOMContentLoaded', function() {
         <?php endforeach; ?>
     <?php endforeach; ?>
     
-    // Initialize dropdown menus
+    // Initialize dropdown menus (desktop)
     const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
     dropdownToggles.forEach(toggle => {
         toggle.addEventListener('click', function() {
+            // Skip if this is in mobile menu (handled separately)
+            if (window.innerWidth <= 768) return;
+            
             const isExpanded = this.getAttribute('aria-expanded') === 'true';
             
             // Close all other dropdowns
@@ -366,9 +601,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Close dropdowns when clicking outside
+    // Close dropdowns when clicking outside (desktop only)
     document.addEventListener('click', function(e) {
-        if (!e.target.closest('.nav-dropdown')) {
+        if (window.innerWidth > 768 && !e.target.closest('.nav-dropdown')) {
             dropdownToggles.forEach(toggle => {
                 toggle.setAttribute('aria-expanded', 'false');
                 const menu = toggle.nextElementSibling;
@@ -376,34 +611,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-    
-    // Mobile menu functionality
-    const mobileToggle = document.getElementById('mobileToggle');
-    const navMenu = document.getElementById('navMenu');
-    
-    if (mobileToggle && navMenu) {
-        mobileToggle.addEventListener('click', function() {
-            const isExpanded = this.getAttribute('aria-expanded') === 'true';
-            this.setAttribute('aria-expanded', !isExpanded);
-            navMenu.classList.toggle('active', !isExpanded);
-            
-            // Prevent body scroll when menu is open
-            if (!isExpanded) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = '';
-            }
-        });
-        
-        // Close mobile menu when clicking on a link
-        navMenu.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', function() {
-                mobileToggle.setAttribute('aria-expanded', 'false');
-                navMenu.classList.remove('active');
-                document.body.style.overflow = '';
-            });
-        });
-    }
     
     // Header scroll behavior
     const header = document.querySelector('.header');
@@ -430,26 +637,74 @@ document.addEventListener('DOMContentLoaded', function() {
         }, { passive: true });
     }
     
-    // Performance: Preload critical resources
-    const preloadLinks = [
-        '/images/zasobnik.png',
-        '/images/zasobnik_be.png'
-    ];
-    
-    preloadLinks.forEach(href => {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'image';
-        link.href = href;
-        document.head.appendChild(link);
-    });
+    console.log('All initialization complete');
 });
+
+// Touch gesture support for mobile menu
+let touchStartX = 0;
+let touchStartY = 0;
+
+document.addEventListener('touchstart', function(e) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchend', function(e) {
+    const mobileToggle = document.getElementById('mobileToggle');
+    const navMenu = document.getElementById('navMenu');
+    
+    if (!mobileToggle || !navMenu) return;
+    
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    
+    // Swipe right to open menu (when closed)
+    if (deltaX > 50 && Math.abs(deltaY) < 100 && !navMenu.classList.contains('active') && touchStartX < 50) {
+        console.log('Swipe right detected, opening menu');
+        mobileToggle.click();
+    }
+    
+    // Swipe left to close menu (when open)
+    if (deltaX < -50 && Math.abs(deltaY) < 100 && navMenu.classList.contains('active')) {
+        console.log('Swipe left detected, closing menu');
+        if (mobileToggle.getAttribute('aria-expanded') === 'true') {
+            mobileToggle.click();
+        }
+    }
+}, { passive: true });
+
+// Screen reader announcement helper
+window.announceToScreenReader = function(message) {
+    const announcement = document.createElement('div');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('aria-atomic', 'true');
+    announcement.className = 'sr-only';
+    announcement.textContent = message;
+    
+    document.body.appendChild(announcement);
+    
+    // Remove after announcement
+    setTimeout(() => {
+        if (document.body.contains(announcement)) {
+            document.body.removeChild(announcement);
+        }
+    }, 1000);
+};
 
 // Global error handler
 window.addEventListener('error', function(e) {
     console.error('Global error:', e.error);
-    // You could send this to an error tracking service
 });
+
+// Global notification function fallback
+if (typeof showNotification === 'undefined') {
+    window.showNotification = function(message, type) {
+        console.log('Notification:', type, message);
+        alert(message);
+    };
+}
 
 // Service worker registration (if available)
 if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
