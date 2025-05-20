@@ -10,14 +10,15 @@ use yii\db\ActiveRecord;
  *
  * @property integer $id
  * @property string $type
- * @property string $params
+ * @property string $data
  * @property integer $status
- * @property integer $attempts
- * @property string $error_message
+ * @property string $error
  * @property integer $created_at
  * @property integer $updated_at
  * @property integer $started_at
- * @property integer $completed_at
+ * @property integer $finished_at
+ * @property integer $attempts
+ * @property string $error_message
  */
 class QueuedJob extends ActiveRecord
 {
@@ -51,8 +52,8 @@ class QueuedJob extends ActiveRecord
     {
         return [
             [['type'], 'required'],
-            [['params', 'error_message'], 'string'],
-            [['status', 'attempts', 'created_at', 'updated_at', 'started_at', 'completed_at'], 'integer'],
+            [['data', 'error', 'error_message'], 'string'],
+            [['status', 'attempts', 'created_at', 'updated_at', 'started_at', 'finished_at'], 'integer'],
             [['type'], 'string', 'max' => 255],
             [['status'], 'default', 'value' => self::STATUS_PENDING],
             [['attempts'], 'default', 'value' => 0],
@@ -67,25 +68,26 @@ class QueuedJob extends ActiveRecord
         return [
             'id' => 'ID',
             'type' => 'Typ zadania',
-            'params' => 'Parametry',
+            'data' => 'Dane',
             'status' => 'Status',
+            'error' => 'Błąd',
             'attempts' => 'Próby',
-            'error_message' => 'Błąd',
+            'error_message' => 'Komunikat błędu',
             'created_at' => 'Data utworzenia',
             'updated_at' => 'Data aktualizacji',
             'started_at' => 'Data rozpoczęcia',
-            'completed_at' => 'Data zakończenia',
+            'finished_at' => 'Data zakończenia',
         ];
     }
     
     /**
-     * Gets decoded parameters
+     * Gets decoded data
      * 
-     * @return mixed Decoded parameters
+     * @return mixed Decoded data
      */
-    public function getDecodedParams()
+    public function getDecodedData()
     {
-        return json_decode($this->params, true);
+        return json_decode($this->data, true) ?: [];
     }
     
     /**
@@ -106,17 +108,35 @@ class QueuedJob extends ActiveRecord
     }
     
     /**
+     * Gets formatted job type name
+     * 
+     * @return string
+     */
+    public function getTypeName()
+    {
+        $typeMap = [
+            's3_sync' => 'Synchronizacja S3',
+            'regenerate_thumbnails' => 'Regeneracja miniatur',
+            'analyze_photo' => 'Analiza zdjęcia',
+            'analyze_batch' => 'Analiza wsadowa',
+            'import_photos' => 'Import zdjęć',
+        ];
+        
+        return isset($typeMap[$this->type]) ? $typeMap[$this->type] : $this->type;
+    }
+    
+    /**
      * Create a new job
      * 
      * @param string $type Job type
-     * @param mixed $params Job parameters
+     * @param mixed $data Job data
      * @return QueuedJob|null Created job or null on failure
      */
-    public static function createJob($type, $params)
+    public static function createJob($type, $data = [])
     {
         $job = new self();
         $job->type = $type;
-        $job->params = json_encode($params);
+        $job->data = json_encode($data);
         $job->status = self::STATUS_PENDING;
         $job->attempts = 0;
         
@@ -138,14 +158,14 @@ class QueuedJob extends ActiveRecord
     }
     
     /**
-     * Mark job as completed
+     * Mark job as finished (completed)
      * 
      * @return bool Success
      */
-    public function markAsCompleted()
+    public function markAsFinished()
     {
         $this->status = self::STATUS_COMPLETED;
-        $this->completed_at = time();
+        $this->finished_at = time();
         
         return $this->save();
     }
@@ -159,6 +179,7 @@ class QueuedJob extends ActiveRecord
     public function markAsFailed($error)
     {
         $this->status = self::STATUS_FAILED;
+        $this->error = $error;
         $this->error_message = $error;
         
         return $this->save();
@@ -181,5 +202,47 @@ class QueuedJob extends ActiveRecord
         }
         
         return $query->one();
+    }
+    
+    /**
+     * Get job duration in seconds
+     * 
+     * @return int|null Duration in seconds or null if job not completed
+     */
+    public function getDuration()
+    {
+        if ($this->started_at && $this->finished_at) {
+            return $this->finished_at - $this->started_at;
+        }
+        
+        if ($this->started_at && $this->status === self::STATUS_PROCESSING) {
+            return time() - $this->started_at;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Get formatted duration
+     * 
+     * @return string Formatted duration
+     */
+    public function getFormattedDuration()
+    {
+        $duration = $this->getDuration();
+        
+        if ($duration === null) {
+            return '-';
+        }
+        
+        if ($duration < 60) {
+            return $duration . ' s';
+        }
+        
+        if ($duration < 3600) {
+            return round($duration / 60, 1) . ' min';
+        }
+        
+        return round($duration / 3600, 1) . ' godz';
     }
 }

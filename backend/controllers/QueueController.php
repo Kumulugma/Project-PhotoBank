@@ -208,39 +208,95 @@ class QueueController extends Controller
         return $this->redirect(['index']);
     }
 
-    /**
-     * Creates a new manual job.
-     * @return mixed
-     */
     public function actionCreate()
-    {
-        $model = new QueuedJob();
-        $model->status = QueuedJob::STATUS_PENDING;
+{
+    $model = new QueuedJob();
+    $model->status = QueuedJob::STATUS_PENDING;
+    
+    if ($model->load(Yii::$app->request->post())) {
+        $model->created_at = time();
+        $model->updated_at = time();
         
-        if ($model->load(Yii::$app->request->post())) {
-            $model->created_at = time();
-            $model->updated_at = time();
-            
-            if ($model->save()) {
-                Yii::$app->session->setFlash('success', 'Job created successfully.');
-                return $this->redirect(['view', 'id' => $model->id]);
+        // Sprawdź czy parametry są w formacie JSON
+        if (!empty($model->params)) {
+            if (!json_decode($model->params)) {
+                $model->addError('params', 'Parametry muszą być w formacie JSON.');
+                
+                // Job type options
+                $jobTypes = [
+                    's3_sync' => 'Synchronizacja S3',
+                    'regenerate_thumbnails' => 'Regeneracja Miniatur',
+                    'analyze_photo' => 'Analiza Zdjęcia',
+                    'analyze_batch' => 'Analiza Wsadowa',
+                    'import_photos' => 'Import Zdjęć',
+                ];
+                
+                return $this->render('create', [
+                    'model' => $model,
+                    'jobTypes' => $jobTypes,
+                ]);
             }
         }
         
-        // Job type options
-        $jobTypes = [
-            's3_sync' => 'S3 Synchronization',
-            'regenerate_thumbnails' => 'Regenerate Thumbnails',
-            'analyze_photo' => 'Analyze Photo',
-            'analyze_batch' => 'Analyze Photo Batch',
-            'import_photos' => 'Import Photos',
-        ];
-        
-        return $this->render('create', [
-            'model' => $model,
-            'jobTypes' => $jobTypes,
-        ]);
+        if ($model->save()) {
+            // Sprawdź czy należy uruchomić zadanie natychmiast
+            $runNow = Yii::$app->request->post('run_now', false);
+            
+            if ($runNow) {
+                try {
+                    // Oznacz zadanie jako przetwarzane
+                    $model->status = QueuedJob::STATUS_PROCESSING;
+                    $model->started_at = time();
+                    $model->updated_at = time();
+                    $model->save();
+                    
+                    // Przetwórz zadanie
+                    $jobProcessor = new \common\components\JobProcessor();
+                    $result = $jobProcessor->processJob($model);
+                    
+                    if ($result) {
+                        $model->status = QueuedJob::STATUS_COMPLETED;
+                        $model->completed_at = time();
+                        $model->error_message = null;
+                        $model->save();
+                        
+                        Yii::$app->session->setFlash('success', 'Zadanie zostało pomyślnie utworzone i wykonane.');
+                    } else {
+                        $model->status = QueuedJob::STATUS_FAILED;
+                        $model->error_message = 'Zadanie nie zostało wykonane pomyślnie.';
+                        $model->save();
+                        
+                        Yii::$app->session->setFlash('error', 'Zadanie zostało utworzone, ale jego wykonanie nie powiodło się.');
+                    }
+                } catch (\Exception $e) {
+                    $model->status = QueuedJob::STATUS_FAILED;
+                    $model->error_message = $e->getMessage();
+                    $model->save();
+                    
+                    Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas wykonywania zadania: ' . $e->getMessage());
+                }
+            } else {
+                Yii::$app->session->setFlash('success', 'Zadanie zostało pomyślnie dodane do kolejki.');
+            }
+            
+            return $this->redirect(['view', 'id' => $model->id]);
+        }
     }
+    
+    // Job type options
+    $jobTypes = [
+        's3_sync' => 'Synchronizacja S3',
+        'regenerate_thumbnails' => 'Regeneracja Miniatur',
+        'analyze_photo' => 'Analiza Zdjęcia',
+        'analyze_batch' => 'Analiza Wsadowa',
+        'import_photos' => 'Import Zdjęć',
+    ];
+    
+    return $this->render('create', [
+        'model' => $model,
+        'jobTypes' => $jobTypes,
+    ]);
+}
 
     /**
      * Run the queue processor to execute pending jobs.
