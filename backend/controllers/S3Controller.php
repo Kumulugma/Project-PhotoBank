@@ -5,9 +5,11 @@ namespace backend\controllers;
 use Yii;
 use common\models\Settings;
 use common\models\Photo;
+use common\models\QueuedJob;
 use yii\web\Controller;
 use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
+use yii\web\Response;
 
 /**
  * S3Controller handles AWS S3 integration.
@@ -47,12 +49,12 @@ class S3Controller extends Controller
     {
         // Get S3 settings
         $s3Settings = [
-            'bucket' => Settings::findOne(['key' => 's3.bucket'])->value ?? '',
-            'region' => Settings::findOne(['key' => 's3.region'])->value ?? '',
-            'access_key' => Settings::findOne(['key' => 's3.access_key'])->value ? '********' : '',
+            'bucket' => $this->getSettingValue('s3.bucket', ''),
+            'region' => $this->getSettingValue('s3.region', ''),
+            'access_key' => $this->getSettingValue('s3.access_key') ? '********' : '',
             'secret_key' => '********', // Always masked
-            'directory' => Settings::findOne(['key' => 's3.directory'])->value ?? 'photos',
-            'deleted_directory' => Settings::findOne(['key' => 's3.deleted_directory'])->value ?? 'deleted'
+            'directory' => $this->getSettingValue('s3.directory', 'photos'),
+            'deleted_directory' => $this->getSettingValue('s3.deleted_directory', 'deleted')
         ];
         
         return $this->render('index', [
@@ -118,16 +120,20 @@ class S3Controller extends Controller
      */
     public function actionTest()
     {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
         // Get S3 settings
-        $bucket = Settings::findOne(['key' => 's3.bucket'])->value ?? '';
-        $region = Settings::findOne(['key' => 's3.region'])->value ?? '';
-        $accessKey = Settings::findOne(['key' => 's3.access_key'])->value ?? '';
-        $secretKey = Settings::findOne(['key' => 's3.secret_key'])->value ?? '';
+        $bucket = $this->getSettingValue('s3.bucket', '');
+        $region = $this->getSettingValue('s3.region', '');
+        $accessKey = $this->getSettingValue('s3.access_key', '');
+        $secretKey = $this->getSettingValue('s3.secret_key', '');
         
         // Validate required settings
         if (empty($bucket) || empty($region) || empty($accessKey) || empty($secretKey)) {
-            Yii::$app->session->setFlash('error', 'Missing S3 settings. Please configure all required fields.');
-            return $this->redirect(['index']);
+            return [
+                'success' => false,
+                'message' => 'Missing S3 settings. Please configure all required fields.'
+            ];
         }
         
         try {
@@ -140,12 +146,16 @@ class S3Controller extends Controller
                 'MaxKeys' => 1
             ]);
             
-            Yii::$app->session->setFlash('success', 'S3 connection test successful.');
+            return [
+                'success' => true,
+                'message' => 'S3 connection test successful.'
+            ];
         } catch (\Exception $e) {
-            Yii::$app->session->setFlash('error', 'S3 connection test failed: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'S3 connection test failed: ' . $e->getMessage()
+            ];
         }
-        
-        return $this->redirect(['index']);
     }
 
     /**
@@ -157,10 +167,10 @@ class S3Controller extends Controller
         $deleteLocal = (bool)Yii::$app->request->post('delete_local', false);
         
         // Queue the synchronization task
-        $task = new \common\models\QueuedJob();
+        $task = new QueuedJob();
         $task->type = 's3_sync';
         $task->params = json_encode(['delete_local' => $deleteLocal]);
-        $task->status = \common\models\QueuedJob::STATUS_PENDING;
+        $task->status = QueuedJob::STATUS_PENDING;
         $task->created_at = time();
         
         if ($task->save()) {
@@ -170,6 +180,19 @@ class S3Controller extends Controller
         }
         
         return $this->redirect(['index']);
+    }
+
+    /**
+     * Get a setting value with fallback default
+     * 
+     * @param string $key Setting key
+     * @param mixed $default Default value
+     * @return string Setting value or default
+     */
+    protected function getSettingValue($key, $default = null)
+    {
+        $setting = Settings::findOne(['key' => $key]);
+        return $setting ? $setting->value : $default;
     }
 
     /**

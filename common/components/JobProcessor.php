@@ -140,6 +140,8 @@ class JobProcessor
     protected function processRegenerateThumbnails($params)
     {
         $photoId = isset($params['photo_id']) ? $params['photo_id'] : null;
+        $sizeId = isset($params['size_id']) ? $params['size_id'] : null;
+        $partial = isset($params['partial']) ? (bool)$params['partial'] : false;
         
         // Prepare query for photos to regenerate
         $query = Photo::find()->where(['status' => [Photo::STATUS_ACTIVE, Photo::STATUS_QUEUE]]);
@@ -150,7 +152,18 @@ class JobProcessor
         }
         
         $photos = $query->all();
-        $thumbnailSizes = ThumbnailSize::find()->all();
+        
+        // Get the thumbnail sizes
+        $thumbnailSizes = $sizeId 
+            ? [ThumbnailSize::findOne($sizeId)] 
+            : ThumbnailSize::find()->all();
+        
+        // Filter out null in case the size doesn't exist
+        $thumbnailSizes = array_filter($thumbnailSizes);
+        
+        if (empty($thumbnailSizes)) {
+            throw new \Exception('No thumbnail sizes defined');
+        }
         
         $regeneratedCount = 0;
         
@@ -174,7 +187,7 @@ class JobProcessor
                     $s3Client = Yii::$app->get('s3');
                     
                     // Download file from S3
-                    $result = $s3Client->getObject([
+                    $s3Client->getObject([
                         'Bucket' => $s3Settings['bucket'],
                         'Key' => $photo->s3_path,
                         'SaveAs' => $tempPath
@@ -195,6 +208,11 @@ class JobProcessor
             foreach ($thumbnailSizes as $size) {
                 $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $photo->file_name);
                 
+                // Skip if partial regeneration and thumbnail already exists
+                if ($partial && file_exists($thumbnailPath)) {
+                    continue;
+                }
+                
                 try {
                     $thumbnailImage = Image::make($tempPath);
                     
@@ -210,6 +228,12 @@ class JobProcessor
                     if ($size->watermark) {
                         // Add watermark according to settings
                         $this->addWatermark($thumbnailImage);
+                    }
+                    
+                    // Create thumbnails directory if it doesn't exist
+                    $thumbnailDir = dirname($thumbnailPath);
+                    if (!is_dir($thumbnailDir)) {
+                        FileHelper::createDirectory($thumbnailDir, 0777, true);
                     }
                     
                     $thumbnailImage->save($thumbnailPath);
@@ -291,7 +315,7 @@ class JobProcessor
                 $s3Client = Yii::$app->get('s3');
                 
                 // Download file from S3
-                $result = $s3Client->getObject([
+                $s3Client->getObject([
                     'Bucket' => $s3Settings['bucket'],
                     'Key' => $s3Path,
                     'SaveAs' => $tempPath
@@ -594,9 +618,14 @@ class JobProcessor
     protected function addWatermark($image)
     {
         // Get watermark settings
-        $watermarkType = Settings::findOne(['key' => 'watermark.type'])->value ?? 'text';
-        $watermarkPosition = Settings::findOne(['key' => 'watermark.position'])->value ?? 'bottom-right';
-        $watermarkOpacity = (float)Settings::findOne(['key' => 'watermark.opacity'])->value ?? 0.5;
+        $watermarkSetting = Settings::findOne(['key' => 'watermark.type']);
+        $watermarkType = $watermarkSetting ? $watermarkSetting->value : 'text';
+        
+        $positionSetting = Settings::findOne(['key' => 'watermark.position']);
+        $watermarkPosition = $positionSetting ? $positionSetting->value : 'bottom-right';
+        
+        $opacitySetting = Settings::findOne(['key' => 'watermark.opacity']);
+        $watermarkOpacity = $opacitySetting ? (float)$opacitySetting->value : 0.5;
         
         // Position mapping
         $positionMap = [
@@ -611,7 +640,8 @@ class JobProcessor
         
         if ($watermarkType === 'text') {
             // Text watermark
-            $watermarkText = Settings::findOne(['key' => 'watermark.text'])->value ?? '';
+            $textSetting = Settings::findOne(['key' => 'watermark.text']);
+            $watermarkText = $textSetting ? $textSetting->value : '';
             
             if (!empty($watermarkText)) {
                 $fontSize = min($image->width(), $image->height()) / 20; // Scale font size
@@ -626,7 +656,8 @@ class JobProcessor
             }
         } elseif ($watermarkType === 'image') {
             // Image watermark
-            $watermarkImage = Settings::findOne(['key' => 'watermark.image'])->value ?? '';
+            $imageSetting = Settings::findOne(['key' => 'watermark.image']);
+            $watermarkImage = $imageSetting ? $imageSetting->value : '';
             
             if (!empty($watermarkImage)) {
                 $watermarkPath = Yii::getAlias('@webroot/uploads/watermark/' . $watermarkImage);

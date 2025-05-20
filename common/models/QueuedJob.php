@@ -12,12 +12,12 @@ use yii\db\ActiveRecord;
  * @property string $type
  * @property string $params
  * @property integer $status
- * @property string $error_message
  * @property integer $attempts
+ * @property string $error_message
  * @property integer $created_at
  * @property integer $updated_at
  * @property integer $started_at
- * @property integer $finished_at
+ * @property integer $completed_at
  */
 class QueuedJob extends ActiveRecord
 {
@@ -48,40 +48,40 @@ class QueuedJob extends ActiveRecord
      * {@inheritdoc}
      */
     public function rules()
-{
-    return [
-        [['type', 'params'], 'required'],
-        [['params', 'error_message'], 'string'],
-        [['status', 'attempts', 'created_at', 'updated_at', 'started_at', 'completed_at'], 'integer'],
-        [['type'], 'string', 'max' => 255],
-        [['status'], 'default', 'value' => self::STATUS_PENDING],
-        [['attempts'], 'default', 'value' => 0],
-    ];
-}
+    {
+        return [
+            [['type'], 'required'],
+            [['params', 'error_message'], 'string'],
+            [['status', 'attempts', 'created_at', 'updated_at', 'started_at', 'completed_at'], 'integer'],
+            [['type'], 'string', 'max' => 255],
+            [['status'], 'default', 'value' => self::STATUS_PENDING],
+            [['attempts'], 'default', 'value' => 0],
+        ];
+    }
 
-// Popraw attributeLabels():
-
-public function attributeLabels()
-{
-    return [
-        'id' => 'ID',
-        'type' => 'Typ zadania',
-        'params' => 'Parametry',
-        'status' => 'Status',
-        'attempts' => 'Próby',
-        'error_message' => 'Komunikat błędu',
-        'created_at' => 'Data utworzenia',
-        'updated_at' => 'Data aktualizacji',
-        'started_at' => 'Data rozpoczęcia',
-        'completed_at' => 'Data zakończenia',
-    ];
-}
-
+    /**
+     * {@inheritdoc}
+     */
+    public function attributeLabels()
+    {
+        return [
+            'id' => 'ID',
+            'type' => 'Typ zadania',
+            'params' => 'Parametry',
+            'status' => 'Status',
+            'attempts' => 'Próby',
+            'error_message' => 'Błąd',
+            'created_at' => 'Data utworzenia',
+            'updated_at' => 'Data aktualizacji',
+            'started_at' => 'Data rozpoczęcia',
+            'completed_at' => 'Data zakończenia',
+        ];
+    }
     
     /**
-     * Gets decoded params
+     * Gets decoded parameters
      * 
-     * @return mixed Decoded params
+     * @return mixed Decoded parameters
      */
     public function getDecodedParams()
     {
@@ -109,7 +109,7 @@ public function attributeLabels()
      * Create a new job
      * 
      * @param string $type Job type
-     * @param mixed $params Job params
+     * @param mixed $params Job parameters
      * @return QueuedJob|null Created job or null on failure
      */
     public static function createJob($type, $params)
@@ -145,7 +145,7 @@ public function attributeLabels()
     public function markAsCompleted()
     {
         $this->status = self::STATUS_COMPLETED;
-        $this->finished_at = time();
+        $this->completed_at = time();
         
         return $this->save();
     }
@@ -160,7 +160,6 @@ public function attributeLabels()
     {
         $this->status = self::STATUS_FAILED;
         $this->error_message = $error;
-        $this->finished_at = time();
         
         return $this->save();
     }

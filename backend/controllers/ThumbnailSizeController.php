@@ -5,10 +5,12 @@ namespace backend\controllers;
 use Yii;
 use common\models\ThumbnailSize;
 use common\models\search\ThumbnailSizeSearch;
+use common\models\QueuedJob;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
+use yii\web\Response;
 
 /**
  * ThumbnailSizeController implements the CRUD actions for ThumbnailSize model.
@@ -147,26 +149,88 @@ class ThumbnailSizeController extends Controller
     }
 
     /**
-     * Regenerates thumbnails for all or specific photo.
+     * Regenerates thumbnails for a specific size or for all photos.
      * @return mixed
      */
     public function actionRegenerate()
     {
+        // Get the size ID and other parameters
+        $sizeId = Yii::$app->request->post('size_id');
         $photoId = Yii::$app->request->post('photo_id');
+        $partial = (bool)Yii::$app->request->post('partial', false);
         
-        // Queue the regeneration task
-        $task = new \common\models\QueuedJob();
-        $task->type = 'regenerate_thumbnails';
-        $task->params = $photoId ? json_encode(['photo_id' => $photoId]) : '{}';
-        $task->status = \common\models\QueuedJob::STATUS_PENDING;
-        $task->created_at = time();
-        
-        if ($task->save()) {
-            Yii::$app->session->setFlash('success', 'Thumbnail regeneration task queued successfully.');
-        } else {
-            Yii::$app->session->setFlash('error', 'Error queuing thumbnail regeneration task: ' . json_encode($task->errors));
+        // Validate size ID if provided
+        if ($sizeId && !ThumbnailSize::findOne($sizeId)) {
+            Yii::$app->session->setFlash('error', 'Invalid thumbnail size ID.');
+            return $this->redirect(['index']);
         }
         
+        // Queue the regeneration task
+        $job = new QueuedJob();
+        $job->type = 'regenerate_thumbnails';
+        
+        // Build job parameters
+        $params = [];
+        if ($sizeId) {
+            $params['size_id'] = $sizeId;
+        }
+        if ($photoId) {
+            $params['photo_id'] = $photoId;
+        }
+        if ($partial) {
+            $params['partial'] = true;
+        }
+        
+        $job->params = json_encode($params);
+        $job->status = QueuedJob::STATUS_PENDING;
+        $job->created_at = time();
+        $job->updated_at = time();
+        
+        if ($job->save()) {
+            $sizeModel = $sizeId ? ThumbnailSize::findOne($sizeId) : null;
+            $sizeName = $sizeModel ? "for size '{$sizeModel->name}'" : "for all sizes";
+            
+            Yii::$app->session->setFlash('success', "Thumbnail regeneration $sizeName queued successfully.");
+        } else {
+            Yii::$app->session->setFlash('error', 'Error queuing thumbnail regeneration task: ' . json_encode($job->errors));
+        }
+        
+        // Redirect based on request type
+        if ($sizeId) {
+            return $this->redirect(['view', 'id' => $sizeId]);
+        } else {
+            return $this->redirect(['index']);
+        }
+    }
+
+    /**
+     * Exports thumbnail size configuration.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionExport($id)
+    {
+        $model = $this->findModel($id);
+        
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        Yii::$app->response->setDownloadHeaders(
+            "thumbnail-size-{$model->name}.json",
+            'application/json',
+            false,
+            strlen(json_encode($model->attributes))
+        );
+        
+        return $model->attributes;
+    }
+
+    /**
+     * Imports thumbnail size configuration.
+     * @return mixed
+     */
+    public function actionImport()
+    {
+        // TO BE IMPLEMENTED
         return $this->redirect(['index']);
     }
 

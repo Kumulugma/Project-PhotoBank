@@ -56,11 +56,11 @@ class AIController extends Controller
     {
         // Get AI settings
         $aiSettings = [
-            'provider' => Settings::findOne(['key' => 'ai.provider'])->value ?? '',
-            'api_key' => Settings::findOne(['key' => 'ai.api_key'])->value ? '********' : '',
-            'region' => Settings::findOne(['key' => 'ai.region'])->value ?? '',
-            'model' => Settings::findOne(['key' => 'ai.model'])->value ?? '',
-            'enabled' => (bool)Settings::findOne(['key' => 'ai.enabled'])->value ?? false
+            'provider' => $this->getSettingValue('ai.provider', ''),
+            'api_key' => $this->getSettingValue('ai.api_key') ? '********' : '',
+            'region' => $this->getSettingValue('ai.region', ''),
+            'model' => $this->getSettingValue('ai.model', ''),
+            'enabled' => (bool)$this->getSettingValue('ai.enabled', false)
         ];
         
         return $this->render('index', [
@@ -129,16 +129,20 @@ class AIController extends Controller
      */
     public function actionTest()
     {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
         // Get AI settings
-        $provider = Settings::findOne(['key' => 'ai.provider'])->value ?? '';
-        $apiKey = Settings::findOne(['key' => 'ai.api_key'])->value ?? '';
-        $region = Settings::findOne(['key' => 'ai.region'])->value ?? '';
-        $model = Settings::findOne(['key' => 'ai.model'])->value ?? '';
+        $provider = $this->getSettingValue('ai.provider', '');
+        $apiKey = $this->getSettingValue('ai.api_key', '');
+        $region = $this->getSettingValue('ai.region', '');
+        $model = $this->getSettingValue('ai.model', '');
         
         // Validate required settings
         if (empty($provider) || empty($apiKey)) {
-            Yii::$app->session->setFlash('error', 'Missing AI settings. Please configure provider and API key.');
-            return $this->redirect(['index']);
+            return [
+                'success' => false,
+                'message' => 'Missing AI settings. Please configure provider and API key.'
+            ];
         }
         
         try {
@@ -153,7 +157,7 @@ class AIController extends Controller
                         'region' => $region,
                         'credentials' => [
                             'key' => $apiKey,
-                            'secret' => Settings::findOne(['key' => 'ai.api_secret'])->value ?? '',
+                            'secret' => $this->getSettingValue('ai.api_secret', ''),
                         ]
                     ]);
                 }
@@ -186,12 +190,16 @@ class AIController extends Controller
                 }
             }
             
-            Yii::$app->session->setFlash('success', $message);
+            return [
+                'success' => true,
+                'message' => $message
+            ];
         } catch (\Exception $e) {
-            Yii::$app->session->setFlash('error', 'AI service connection test failed: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'AI service connection test failed: ' . $e->getMessage()
+            ];
         }
-        
-        return $this->redirect(['index']);
     }
 
     /**
@@ -207,7 +215,7 @@ class AIController extends Controller
         }
         
         // Check if AI is enabled
-        $aiEnabled = (bool)Settings::findOne(['key' => 'ai.enabled'])->value ?? false;
+        $aiEnabled = (bool)$this->getSettingValue('ai.enabled', false);
         if (!$aiEnabled) {
             Yii::$app->session->setFlash('error', 'AI integration is disabled. Please enable it in the settings.');
             return $this->redirect(['photos/view', 'id' => $id]);
@@ -226,6 +234,7 @@ class AIController extends Controller
         ]);
         $job->status = QueuedJob::STATUS_PENDING;
         $job->created_at = time();
+        $job->updated_at = time();
         
         if ($job->save()) {
             Yii::$app->session->setFlash('success', 'Photo analysis job queued successfully.');
@@ -242,14 +251,16 @@ class AIController extends Controller
      */
     public function actionAnalyzeBatch()
     {
-        $ids = Yii::$app->request->post('ids', []);
+        $idsStr = Yii::$app->request->post('ids', '');
+        $ids = explode(',', $idsStr);
+        
         if (empty($ids)) {
             Yii::$app->session->setFlash('error', 'No photos selected.');
             return $this->redirect(['photos/index']);
         }
         
         // Check if AI is enabled
-        $aiEnabled = (bool)Settings::findOne(['key' => 'ai.enabled'])->value ?? false;
+        $aiEnabled = (bool)$this->getSettingValue('ai.enabled', false);
         if (!$aiEnabled) {
             Yii::$app->session->setFlash('error', 'AI integration is disabled. Please enable it in the settings.');
             return $this->redirect(['photos/index']);
@@ -268,6 +279,7 @@ class AIController extends Controller
         ]);
         $job->status = QueuedJob::STATUS_PENDING;
         $job->created_at = time();
+        $job->updated_at = time();
         
         if ($job->save()) {
             Yii::$app->session->setFlash('success', 'Batch photo analysis job queued successfully.');
@@ -408,6 +420,19 @@ class AIController extends Controller
                 'message' => 'Error applying description: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Get a setting value with fallback default
+     * 
+     * @param string $key Setting key
+     * @param mixed $default Default value
+     * @return string Setting value or default
+     */
+    protected function getSettingValue($key, $default = null)
+    {
+        $setting = Settings::findOne(['key' => $key]);
+        return $setting ? $setting->value : $default;
     }
 
     /**

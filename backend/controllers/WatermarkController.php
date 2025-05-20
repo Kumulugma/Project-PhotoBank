@@ -49,11 +49,11 @@ class WatermarkController extends Controller
     {
         // Get watermark settings
         $watermarkSettings = [
-            'type' => Settings::findOne(['key' => 'watermark.type'])->value ?? 'text',
-            'text' => Settings::findOne(['key' => 'watermark.text'])->value ?? '',
-            'image' => Settings::findOne(['key' => 'watermark.image'])->value ?? '',
-            'position' => Settings::findOne(['key' => 'watermark.position'])->value ?? 'bottom-right',
-            'opacity' => (float)Settings::findOne(['key' => 'watermark.opacity'])->value ?? 0.5,
+            'type' => $this->getSettingValue('watermark.type', 'text'),
+            'text' => $this->getSettingValue('watermark.text', ''),
+            'image' => $this->getSettingValue('watermark.image', ''),
+            'position' => $this->getSettingValue('watermark.position', 'bottom-right'),
+            'opacity' => (float)$this->getSettingValue('watermark.opacity', 0.5),
         ];
         
         // Get image URL if exists
@@ -241,7 +241,7 @@ class WatermarkController extends Controller
                     $watermarkPath = $tempPath;
                 } else {
                     // Use existing watermark image if available
-                    $existingImage = Settings::findOne(['key' => 'watermark.image'])->value ?? '';
+                    $existingImage = $this->getSettingValue('watermark.image', '');
                     if (!empty($existingImage)) {
                         $watermarkPath = Yii::getAlias('@webroot/uploads/watermark/' . $existingImage);
                     }
@@ -287,6 +287,19 @@ class WatermarkController extends Controller
                 'message' => 'Error generating preview: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Get a setting value with fallback default
+     * 
+     * @param string $key Setting key
+     * @param mixed $default Default value
+     * @return string Setting value or default
+     */
+    protected function getSettingValue($key, $default = null)
+    {
+        $setting = Settings::findOne(['key' => $key]);
+        return $setting ? $setting->value : $default;
     }
 
     /**

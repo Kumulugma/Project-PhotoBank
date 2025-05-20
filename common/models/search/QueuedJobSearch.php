@@ -17,7 +17,7 @@ class QueuedJobSearch extends QueuedJob
     public function rules()
     {
         return [
-            [['id', 'status', 'created_at', 'updated_at', 'started_at', 'finished_at', 'attempts'], 'integer'],
+            [['id', 'status', 'attempts', 'created_at', 'updated_at', 'started_at', 'completed_at'], 'integer'],
             [['type', 'params', 'error_message'], 'safe'],
         ];
     }
@@ -69,52 +69,11 @@ class QueuedJobSearch extends QueuedJob
             'id' => $this->id,
             'status' => $this->status,
             'attempts' => $this->attempts,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+            'started_at' => $this->started_at,
+            'completed_at' => $this->completed_at,
         ]);
-        
-        // Date range filtering
-        if (!empty($this->created_at)) {
-            if (strpos($this->created_at, ' - ') !== false) {
-                list($start_date, $end_date) = explode(' - ', $this->created_at);
-                $query->andFilterWhere(['>=', 'created_at', strtotime($start_date . ' 00:00:00')])
-                    ->andFilterWhere(['<=', 'created_at', strtotime($end_date . ' 23:59:59')]);
-            } else {
-                $query->andFilterWhere(['>=', 'created_at', strtotime($this->created_at . ' 00:00:00')])
-                    ->andFilterWhere(['<=', 'created_at', strtotime($this->created_at . ' 23:59:59')]);
-            }
-        }
-        
-        if (!empty($this->updated_at)) {
-            if (strpos($this->updated_at, ' - ') !== false) {
-                list($start_date, $end_date) = explode(' - ', $this->updated_at);
-                $query->andFilterWhere(['>=', 'updated_at', strtotime($start_date . ' 00:00:00')])
-                    ->andFilterWhere(['<=', 'updated_at', strtotime($end_date . ' 23:59:59')]);
-            } else {
-                $query->andFilterWhere(['>=', 'updated_at', strtotime($this->updated_at . ' 00:00:00')])
-                    ->andFilterWhere(['<=', 'updated_at', strtotime($this->updated_at . ' 23:59:59')]);
-            }
-        }
-        
-        if (!empty($this->started_at)) {
-            if (strpos($this->started_at, ' - ') !== false) {
-                list($start_date, $end_date) = explode(' - ', $this->started_at);
-                $query->andFilterWhere(['>=', 'started_at', strtotime($start_date . ' 00:00:00')])
-                    ->andFilterWhere(['<=', 'started_at', strtotime($end_date . ' 23:59:59')]);
-            } else {
-                $query->andFilterWhere(['>=', 'started_at', strtotime($this->started_at . ' 00:00:00')])
-                    ->andFilterWhere(['<=', 'started_at', strtotime($this->started_at . ' 23:59:59')]);
-            }
-        }
-        
-        if (!empty($this->finished_at)) {
-            if (strpos($this->finished_at, ' - ') !== false) {
-                list($start_date, $end_date) = explode(' - ', $this->finished_at);
-                $query->andFilterWhere(['>=', 'finished_at', strtotime($start_date . ' 00:00:00')])
-                    ->andFilterWhere(['<=', 'finished_at', strtotime($end_date . ' 23:59:59')]);
-            } else {
-                $query->andFilterWhere(['>=', 'finished_at', strtotime($this->finished_at . ' 00:00:00')])
-                    ->andFilterWhere(['<=', 'finished_at', strtotime($this->finished_at . ' 23:59:59')]);
-            }
-        }
 
         $query->andFilterWhere(['like', 'type', $this->type])
             ->andFilterWhere(['like', 'params', $this->params])
