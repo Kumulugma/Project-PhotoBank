@@ -58,6 +58,8 @@ return [
                 'thumbnails' => 'thumbnails/index',
                 'watermark' => 'watermark/index',
                 'ai' => 'ai/index',
+                'ai/<action>' => 'ai/<action>', // Dodaj tę regułę
+                'ai/<action>/<id:\d+>' => 'ai/<action>', // Dodaj tę regułę dla akcji z ID
                 'queue' => 'queue/index',
             ],
         ],

@@ -15,7 +15,7 @@ use common\models\Category;
 /* @var $selectedCategories array */
 
 $this->title = 'Edytuj zdjęcie: ' . $model->title;
-$this->params['breadcrumbs'][] = ['label' => 'Zdjęcia', 'url' => ['index']];
+$this->params['breadcrumbs'][] = ['label' => 'Wszystkie zdjęcia', 'url' => ['index']];
 $this->params['breadcrumbs'][] = ['label' => $model->title, 'url' => ['view', 'id' => $model->id]];
 $this->params['breadcrumbs'][] = 'Edytuj';
 
@@ -212,7 +212,7 @@ $statusOptions = [
                     <p class="text-muted small">Użyj sztucznej inteligencji do automatycznego analizowania zdjęcia:</p>
                     
                     <?php $aiForm = ActiveForm::begin([
-                        'action' => ['/ai/analyze-photo', 'id' => $model->id],
+                        'action' => ['ai/analyze-photo', 'id' => $model->id],
                         'options' => ['class' => 'ai-analyze-form'],
                     ]); ?>
                     

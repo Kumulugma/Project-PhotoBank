@@ -223,21 +223,30 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Set active navigation
-    const currentPath = window.location.pathname;
-    const navLinks = document.querySelectorAll('.nav-link');
-    
-    navLinks.forEach(link => {
-        const href = link.getAttribute('href');
-        if (href && currentPath.includes(href.replace(/.*\//, ''))) {
+    // Set active navigation
+const currentPath = window.location.pathname;
+const navLinks = document.querySelectorAll('.nav-link');
+
+
+navLinks.forEach(link => {
+    const href = link.getAttribute('href');
+    if (href) {
+        
+        
+        if (href !== '/' && currentPath == href && 
+                (currentPath === href || currentPath[href.length] === '/')) {
             link.classList.add('active');
-            
-            // Expand parent menu
+        }
+        
+        // Expand parent menu for active links
+        if (link.classList.contains('active')) {
             const parentCollapse = link.closest('.collapse');
             if (parentCollapse) {
                 parentCollapse.classList.add('show');
             }
         }
-    });
+    }
+});
 });
 </script>
 
