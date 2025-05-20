@@ -173,7 +173,7 @@ class WatermarkController extends Controller
             
             // Add text
             $img->text('Sample Image', 300, 200, function($font) {
-                $font->file(Yii::getAlias('@webroot/fonts/arial.ttf'));
+                //$font->file(Yii::getAlias('@webroot/fonts/arial.ttf'));
                 $font->size(30);
                 $font->color('#999999');
                 $font->align('center');
@@ -223,7 +223,7 @@ class WatermarkController extends Controller
                 
                 // Add watermark text
                 $img->text($text, $x, $y, function($font) use ($opacity, $alignH, $alignV) {
-                    $font->file(Yii::getAlias('@webroot/fonts/arial.ttf'));
+                    //$font->file(Yii::getAlias('@webroot/fonts/arial.ttf'));
                     $font->size(20);
                     $font->color(array(255, 255, 255, $opacity * 255));
                     $font->align($alignH);

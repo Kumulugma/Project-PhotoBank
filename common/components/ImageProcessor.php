@@ -87,7 +87,7 @@ class ImageProcessor extends Component
                 $fontSize = min($image->width(), $image->height()) / 20;
                 
                 $image->text($watermarkText, $image->width() - 20, $image->height() - 20, function($font) use ($fontSize, $watermarkOpacity) {
-                    $font->file(Yii::getAlias('@webroot/fonts/arial.ttf'));
+                    //$font->file(Yii::getAlias('@webroot/fonts/arial.ttf'));
                     $font->size($fontSize);
                     $font->color([255, 255, 255, $watermarkOpacity * 255]);
                     $font->align('right');
