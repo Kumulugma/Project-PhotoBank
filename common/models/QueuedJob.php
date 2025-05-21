@@ -19,6 +19,7 @@ use yii\db\ActiveRecord;
  * @property integer $finished_at
  * @property integer $attempts
  * @property string $error_message
+ * @property string $results
  */
 class QueuedJob extends ActiveRecord
 {
@@ -52,7 +53,7 @@ class QueuedJob extends ActiveRecord
     {
         return [
             [['type'], 'required'],
-            [['data', 'error', 'error_message'], 'string'],
+            [['data', 'error', 'error_message', 'results'], 'string'],
             [['status', 'attempts', 'created_at', 'updated_at', 'started_at', 'finished_at'], 'integer'],
             [['type'], 'string', 'max' => 255],
             [['status'], 'default', 'value' => self::STATUS_PENDING],
@@ -73,6 +74,7 @@ class QueuedJob extends ActiveRecord
             'error' => 'Błąd',
             'attempts' => 'Próby',
             'error_message' => 'Komunikat błędu',
+            'results' => 'Wyniki przetwarzania',
             'created_at' => 'Data utworzenia',
             'updated_at' => 'Data aktualizacji',
             'started_at' => 'Data rozpoczęcia',
@@ -88,6 +90,16 @@ class QueuedJob extends ActiveRecord
     public function getDecodedData()
     {
         return json_decode($this->data, true) ?: [];
+    }
+    
+    /**
+     * Gets decoded results
+     * 
+     * @return mixed Decoded results
+     */
+    public function getDecodedResults()
+    {
+        return json_decode($this->results, true) ?: [];
     }
     
     /**
@@ -160,12 +172,17 @@ class QueuedJob extends ActiveRecord
     /**
      * Mark job as finished (completed)
      * 
+     * @param array $results Optional job results
      * @return bool Success
      */
-    public function markAsFinished()
+    public function markAsFinished($results = null)
     {
         $this->status = self::STATUS_COMPLETED;
         $this->finished_at = time();
+        
+        if ($results !== null) {
+            $this->results = is_string($results) ? $results : json_encode($results);
+        }
         
         return $this->save();
     }

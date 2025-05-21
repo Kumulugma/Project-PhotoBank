@@ -23,14 +23,23 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3"><?= Html::encode($this->title) ?></h1>
         <div class="btn-group">
-            <?= Html::a('<i class="fas fa-upload me-2"></i>Prześlij więcej', ['upload'], [
+            <?=
+            Html::a('<i class="fas fa-upload me-2"></i>Prześlij więcej', ['upload'], [
                 'class' => 'btn btn-success'
-            ]) ?>
-            <?= Html::a('<i class="fas fa-file-import me-2"></i>Importuj z FTP', ['import-from-ftp'], [
+            ])
+            ?>
+            <?=
+            Html::a('<i class="fas fa-file-import me-2"></i>Importuj z FTP', ['import-from-ftp'], [
                 'class' => 'btn btn-info',
                 'data-method' => 'post',
                 'data-confirm' => 'Czy na pewno chcesz zaimportować zdjęcia z domyślnego katalogu FTP?',
-            ]) ?>
+            ])
+            ?>
+<?=
+Html::a('<i class="fas fa-file-import me-2"></i>Import zdjęć', ['import'], [
+    'class' => 'btn btn-success'
+])
+?>
             <button type="button" class="btn btn-primary batch-action-btn" style="display: none;" 
                     data-bs-toggle="modal" data-bs-target="#batchApproveModal">
                 <i class="fas fa-check me-2"></i>Zatwierdź zaznaczone
@@ -42,14 +51,16 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
         </div>
     </div>
 
-    <?php if ($dataProvider->totalCount == 0): ?>
+        <?php if ($dataProvider->totalCount == 0): ?>
         <div class="alert alert-info text-center">
             <i class="fas fa-clock fa-3x mb-3"></i>
             <h4>Brak zdjęć w kolejce</h4>
             <p>Wszystkie zdjęcia zostały już przetworzone lub nie ma żadnych oczekujących.</p>
-            <?= Html::a('<i class="fas fa-upload me-2"></i>Prześlij nowe zdjęcia', ['upload'], [
-                'class' => 'btn btn-primary'
-            ]) ?>
+    <?=
+    Html::a('<i class="fas fa-upload me-2"></i>Prześlij nowe zdjęcia', ['upload'], [
+        'class' => 'btn btn-primary'
+    ])
+    ?>
         </div>
     <?php else: ?>
         <div class="alert alert-warning">
@@ -60,7 +71,8 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
 
         <?php Pjax::begin(['id' => 'photos-queue-pjax']); ?>
 
-        <?= GridView::widget([
+        <?=
+        GridView::widget([
             'dataProvider' => $dataProvider,
             'filterModel' => $searchModel,
             'options' => ['class' => 'table-responsive'],
@@ -85,9 +97,9 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                         if ($thumbnailSize) {
                             $thumbnailUrl = Yii::getAlias('@web/uploads/thumbnails/' . $thumbnailSize->name . '_' . $model->file_name);
                             return Html::img($thumbnailUrl, [
-                                'class' => 'img-thumbnail',
-                                'style' => 'max-width: 80px; max-height: 80px; object-fit: cover;',
-                                'alt' => $model->title,
+                                        'class' => 'img-thumbnail',
+                                        'style' => 'max-width: 80px; max-height: 80px; object-fit: cover;',
+                                        'alt' => $model->title,
                             ]);
                         }
                         return '<span class="text-muted">Brak</span>';
@@ -115,10 +127,10 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                     'label' => 'Rozmiar',
                     'format' => 'raw',
                     'value' => function ($model) {
-                        return '<span class="badge bg-info">' . 
-                               Yii::$app->formatter->asShortSize($model->file_size, 2) . 
-                               '</span><br><small class="text-muted">' . 
-                               $model->width . '×' . $model->height . 'px</small>';
+                        return '<span class="badge bg-info">' .
+                        Yii::$app->formatter->asShortSize($model->file_size, 2) .
+                        '</span><br><small class="text-muted">' .
+                        $model->width . '×' . $model->height . 'px</small>';
                     },
                     'filter' => false,
                     'headerOptions' => ['style' => 'width: 100px;'],
@@ -128,8 +140,8 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                     'attribute' => 'created_at',
                     'format' => 'raw',
                     'value' => function ($model) {
-                        return '<span title="' . date('Y-m-d H:i:s', $model->created_at) . '">' . 
-                               Yii::$app->formatter->asRelativeTime($model->created_at) . '</span>';
+                        return '<span title="' . date('Y-m-d H:i:s', $model->created_at) . '">' .
+                        Yii::$app->formatter->asRelativeTime($model->created_at) . '</span>';
                     },
                     'filter' => Html::activeTextInput($searchModel, 'created_at', [
                         'class' => 'form-control',
@@ -181,10 +193,11 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                     'contentOptions' => ['class' => 'text-end'],
                 ],
             ],
-        ]); ?>
+        ]);
+        ?>
 
-        <?php Pjax::end(); ?>
-    <?php endif; ?>
+    <?php Pjax::end(); ?>
+            <?php endif; ?>
 </div>
 
 <!-- Batch Approve Modal -->
@@ -195,19 +208,21 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                 <h5 class="modal-title">Zatwierdź zaznaczone zdjęcia</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <?php $form = \yii\bootstrap5\ActiveForm::begin([
-                'id' => 'batch-approve-form',
-                'action' => ['approve-batch'],
-            ]); ?>
+<?php
+$form = \yii\bootstrap5\ActiveForm::begin([
+            'id' => 'batch-approve-form',
+            'action' => ['approve-batch'],
+        ]);
+?>
             <div class="modal-body">
                 <input type="hidden" name="ids" id="approve-photo-ids">
-                
+
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     Wybrane zdjęcia zostaną zatwierdzone i przeniesione do głównej galerii.
                     Ta operacja jest nieodwracalna.
                 </div>
-                
+
                 <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="auto_publish" value="1" id="auto-publish" checked>
@@ -237,19 +252,21 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                 <h5 class="modal-title">Usuń zaznaczone zdjęcia</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <?php $form = \yii\bootstrap5\ActiveForm::begin([
-                'id' => 'batch-delete-form',
-                'action' => ['batch-delete'],
-            ]); ?>
+<?php
+$form = \yii\bootstrap5\ActiveForm::begin([
+            'id' => 'batch-delete-form',
+            'action' => ['batch-delete'],
+        ]);
+?>
             <div class="modal-body">
                 <input type="hidden" name="ids" id="delete-photo-ids">
-                
+
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
                     <strong>Uwaga!</strong> Ta akcja jest nieodwracalna. 
                     Wybrane zdjęcia zostaną trwale usunięte z systemu.
                 </div>
-                
+
                 <p>Czy na pewno chcesz usunąć zaznaczone zdjęcia z kolejki?</p>
             </div>
             <div class="modal-footer">
@@ -258,52 +275,52 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                     <i class="fas fa-trash me-1"></i>Usuń zdjęcia
                 </button>
             </div>
-            <?php \yii\bootstrap5\ActiveForm::end(); ?>
+<?php \yii\bootstrap5\ActiveForm::end(); ?>
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle batch operations
-    const checkboxes = document.querySelectorAll('input[name="selection[]"]');
-    const batchButtons = document.querySelectorAll('.batch-action-btn');
-    const selectAll = document.querySelector('input[name="selection_all"]');
-    
-    function updateBatchButtons() {
-        const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
-        batchButtons.forEach(btn => {
-            btn.style.display = checkedBoxes.length > 0 ? 'inline-block' : 'none';
+    document.addEventListener('DOMContentLoaded', function () {
+        // Handle batch operations
+        const checkboxes = document.querySelectorAll('input[name="selection[]"]');
+        const batchButtons = document.querySelectorAll('.batch-action-btn');
+        const selectAll = document.querySelector('input[name="selection_all"]');
+
+        function updateBatchButtons() {
+            const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
+            batchButtons.forEach(btn => {
+                btn.style.display = checkedBoxes.length > 0 ? 'inline-block' : 'none';
+            });
+        }
+
+        // Select all functionality
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
+                checkboxes.forEach(cb => cb.checked = selectAll.checked);
+                updateBatchButtons();
+            });
+        }
+
+        // Individual checkboxes
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateBatchButtons);
         });
-    }
-    
-    // Select all functionality
-    if (selectAll) {
-        selectAll.addEventListener('change', function() {
-            checkboxes.forEach(cb => cb.checked = selectAll.checked);
-            updateBatchButtons();
+
+        // Batch approve form submission
+        document.getElementById('batch-approve-submit').addEventListener('click', function () {
+            const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
+            const ids = Array.from(checkedBoxes).map(cb => cb.value);
+            document.getElementById('approve-photo-ids').value = ids.join(',');
+            document.getElementById('batch-approve-form').submit();
         });
-    }
-    
-    // Individual checkboxes
-    checkboxes.forEach(cb => {
-        cb.addEventListener('change', updateBatchButtons);
+
+        // Batch delete form submission
+        document.getElementById('batch-delete-submit').addEventListener('click', function () {
+            const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
+            const ids = Array.from(checkedBoxes).map(cb => cb.value);
+            document.getElementById('delete-photo-ids').value = ids.join(',');
+            document.getElementById('batch-delete-form').submit();
+        });
     });
-    
-    // Batch approve form submission
-    document.getElementById('batch-approve-submit').addEventListener('click', function() {
-        const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
-        const ids = Array.from(checkedBoxes).map(cb => cb.value);
-        document.getElementById('approve-photo-ids').value = ids.join(',');
-        document.getElementById('batch-approve-form').submit();
-    });
-    
-    // Batch delete form submission
-    document.getElementById('batch-delete-submit').addEventListener('click', function() {
-        const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
-        const ids = Array.from(checkedBoxes).map(cb => cb.value);
-        document.getElementById('delete-photo-ids').value = ids.join(',');
-        document.getElementById('batch-delete-form').submit();
-    });
-});
 </script>

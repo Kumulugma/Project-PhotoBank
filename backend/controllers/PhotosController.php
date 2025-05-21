@@ -20,6 +20,7 @@ use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
 use yii\helpers\FileHelper;
 use Intervention\Image\ImageManagerStatic as Image;
+use common\models\QueuedJob;
 
 /**
  * PhotosController handles photo management operations
@@ -928,35 +929,70 @@ class PhotosController extends Controller {
         return $this->redirect(['index']);
     }
 
-/**
- * Importuje zdjęcia z domyślnego katalogu FTP.
- *
- * @return mixed
- */
-public function actionImportFromFtp()
-{
-    // Pobierz domyślny katalog importu z ustawień
-    $importDirectory = \common\models\Settings::findOne(['key' => 'upload.import_directory']);
-    $directory = $importDirectory ? $importDirectory->value : 'uploads/import';
-    
-    // Utwórz zadanie w kolejce do przetwarzania w tle
-    $job = new \common\models\QueuedJob();
-    $job->type = 'import_photos';
-    // ZMIANA Z params NA data
-    $job->data = json_encode([
-        'directory' => $directory,
-        'recursive' => true
-    ]);
-    $job->status = \common\models\QueuedJob::STATUS_PENDING;
-    $job->created_at = time();
-    $job->updated_at = time();
-    
-    if ($job->save()) {
-        Yii::$app->session->setFlash('success', 'Zadanie importu zdjęć z katalogu ' . $directory . ' zostało dodane do kolejki. Zdjęcia pojawią się wkrótce w poczekalni.');
-    } else {
-        Yii::$app->session->setFlash('error', 'Nie udało się utworzyć zadania importu: ' . json_encode($job->errors));
+    /**
+     * Importuje zdjęcia z domyślnego katalogu FTP.
+     *
+     * @return mixed
+     */
+    public function actionImportFromFtp() {
+        // Pobierz domyślny katalog importu z ustawień
+        $importDirectory = Settings::findOne(['key' => 'upload.import_directory']);
+        $directory = $importDirectory ? $importDirectory->value : 'uploads/import';
+
+        // Opcje dodatkowe
+        $recursive = (bool) Yii::$app->request->post('recursive', true);
+        $deleteOriginals = (bool) Yii::$app->request->post('delete_originals', false);
+
+        // Utwórz zadanie w kolejce do przetwarzania w tle
+        $job = new QueuedJob();
+        $job->type = 'import_photos';
+        $job->data = json_encode([
+            'directory' => $directory,
+            'recursive' => $recursive,
+            'delete_originals' => $deleteOriginals,
+            'created_by' => Yii::$app->user->id,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
+        $job->status = QueuedJob::STATUS_PENDING;
+        $job->created_at = time();
+        $job->updated_at = time();
+
+        if ($job->save()) {
+            Yii::$app->session->setFlash('success', 'Zadanie importu zdjęć z katalogu ' . $directory . ' zostało dodane do kolejki. Zdjęcia pojawią się wkrótce w poczekalni.');
+
+            // Opcjonalnie: od razu uruchom przetwarzanie zadania
+            if (Yii::$app->request->post('run_now', false)) {
+                try {
+                    $jobProcessor = new \common\components\JobProcessor();
+                    $job->markAsStarted();
+
+                    if ($jobProcessor->processJob($job)) {
+                        $job->markAsFinished();
+                        Yii::$app->session->setFlash('success', 'Import zdjęć został zakończony pomyślnie. ' .
+                                (isset($job->results) ? 'Szczegóły dostępne w widoku zadania.' : ''));
+                    } else {
+                        $job->markAsFailed('Błąd podczas przetwarzania zadania importu');
+                        Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu zdjęć. ' .
+                                (isset($job->results) ? 'Szczegóły dostępne w widoku zadania.' : ''));
+                    }
+
+                    return $this->redirect(['queue/view', 'id' => $job->id]);
+                } catch (\Exception $e) {
+                    $job->markAsFailed($e->getMessage());
+                    Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu zdjęć: ' . $e->getMessage());
+                    return $this->redirect(['queue/view', 'id' => $job->id]);
+                }
+            }
+        } else {
+            Yii::$app->session->setFlash('error', 'Nie udało się utworzyć zadania importu: ' . json_encode($job->errors));
+        }
+
+        return $this->redirect(['queue/index']);
     }
     
-    return $this->redirect(['queue']);
+    public function actionImport()
+{
+    return $this->render('import');
 }
+
 }
