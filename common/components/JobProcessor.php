@@ -3,218 +3,244 @@
 namespace common\components;
 
 use Yii;
-use common\models\Photo;
 use common\models\QueuedJob;
-use common\models\Settings;
-use common\models\ThumbnailSize;
-use common\models\Tag;
+use common\models\Photo;
 use common\models\PhotoTag;
-use Intervention\Image\ImageManagerStatic as Image;
+use common\models\Tag;
+use common\models\ThumbnailSize;
+use common\models\Settings;
 use yii\helpers\FileHelper;
+use Intervention\Image\ImageManagerStatic as Image;
 
 /**
- * JobProcessor handles processing of queued jobs.
+ * JobProcessor obsługuje przetwarzanie zadań w kolejce.
  */
 class JobProcessor
 {
     /**
-     * Process a job based on its type.
-     * 
-     * @param QueuedJob $job The job to process
-     * @return bool Success
-     * @throws \Exception If job processing fails
+     * Przetwarza zadanie z kolejki.
+     *
+     * @param QueuedJob $job Zadanie do przetworzenia
+     * @return bool Czy przetwarzanie się powiodło
      */
     public function processJob($job)
     {
-        // Decode job parameters
-        $params = !empty($job->params) ? json_decode($job->params, true) : [];
+        if (!$job) {
+            return false;
+        }
         
-        // Process job based on type
-        switch ($job->type) {
-            case 's3_sync':
-                return $this->processS3Sync($params);
+        // Dekoduj parametry zadania
+        $params = json_decode($job->data, true) ?: [];
+        
+        // Przetwarzaj różne typy zadań
+        try {
+            switch ($job->type) {
+                case 's3_sync':
+                    return $this->syncWithS3($params);
                 
-            case 'regenerate_thumbnails':
-                return $this->processRegenerateThumbnails($params);
+                case 'regenerate_thumbnails':
+                    return $this->regenerateThumbnails($params);
                 
-            case 'analyze_photo':
-                return $this->processAnalyzePhoto($params);
+                case 'analyze_photo':
+                    return $this->analyzePhoto($params);
                 
-            case 'analyze_batch':
-                return $this->processAnalyzeBatch($params);
+                case 'analyze_batch':
+                    return $this->analyzeBatch($params);
                 
-            case 'import_photos':
-                return $this->processImportPhotos($params);
+                case 'import_photos':
+                    return $this->importPhotos($params);
                 
-            default:
-                throw new \Exception("Unknown job type: {$job->type}");
+                default:
+                    throw new \Exception("Nieznany typ zadania: {$job->type}");
+            }
+        } catch (\Exception $e) {
+            Yii::error("Błąd przetwarzania zadania ID {$job->id}: " . $e->getMessage());
+            return false;
         }
     }
     
     /**
-     * Process S3 synchronization job.
-     * 
-     * @param array $params Job parameters
-     * @return bool Success
-     * @throws \Exception If synchronization fails
+     * Synchronizuje zdjęcia z magazynem S3.
+     *
+     * @param array $params Parametry zadania
+     * @return bool Czy synchronizacja się powiodła
      */
-    protected function processS3Sync($params)
+    protected function syncWithS3($params)
     {
-        $deleteLocal = isset($params['delete_local']) ? (bool)$params['delete_local'] : false;
-        
-        // Get S3 settings
-        $s3Settings = [
-            'bucket' => Settings::findOne(['key' => 's3.bucket'])->value ?? '',
-            'region' => Settings::findOne(['key' => 's3.region'])->value ?? '',
-            'access_key' => Settings::findOne(['key' => 's3.access_key'])->value ?? '',
-            'secret_key' => Settings::findOne(['key' => 's3.secret_key'])->value ?? '',
-            'directory' => Settings::findOne(['key' => 's3.directory'])->value ?? 'photos',
-        ];
-        
-        // Validate required settings
-        if (empty($s3Settings['bucket']) || empty($s3Settings['region']) || 
-            empty($s3Settings['access_key']) || empty($s3Settings['secret_key'])) {
-            throw new \Exception('Missing S3 settings. Please configure all required fields.');
+        // Sprawdź czy S3 jest skonfigurowane
+        if (!Yii::$app->has('s3')) {
+            throw new \Exception("Komponent S3 nie jest skonfigurowany");
         }
         
-        // Create S3 client
-        $s3Client = Yii::$app->get('s3');
+        /** @var \common\components\S3Component $s3 */
+        $s3 = Yii::$app->get('s3');
+        $s3Settings = $s3->getSettings();
         
-        // Find photos to synchronize (active without S3 path)
+        // Sprawdź czy S3 jest poprawnie skonfigurowane
+        if (empty($s3Settings['bucket']) || empty($s3Settings['region']) || 
+            empty($s3Settings['access_key']) || empty($s3Settings['secret_key'])) {
+            throw new \Exception("S3 nie jest poprawnie skonfigurowane");
+        }
+        
+        // Pobierz zdjęcia do synchronizacji
         $photos = Photo::find()
             ->where(['status' => Photo::STATUS_ACTIVE])
-            ->andWhere(['OR', ['s3_path' => null], ['s3_path' => '']])
+            ->andWhere(['s3_path' => null])
             ->all();
         
+        if (empty($photos)) {
+            Yii::info("Brak zdjęć do synchronizacji z S3");
+            return true;
+        }
+        
         $syncedCount = 0;
+        $errorCount = 0;
         
         foreach ($photos as $photo) {
-            $tempPath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
-            
-            // Check if file exists locally
-            if (!file_exists($tempPath)) {
-                continue;
-            }
-            
-            // Generate S3 path
-            $s3Key = $s3Settings['directory'] . '/' . date('Y/m/d', $photo->created_at) . '/' . $photo->file_name;
-            
             try {
-                // Upload file to S3
-                $result = $s3Client->putObject([
+                $filePath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
+                
+                if (!file_exists($filePath)) {
+                    Yii::warning("Plik {$filePath} nie istnieje, pomijam synchronizację zdjęcia ID {$photo->id}");
+                    continue;
+                }
+                
+                // Generuj ścieżkę na S3
+                $s3Key = $s3Settings['directory'] . '/' . date('Y/m/d', $photo->created_at) . '/' . $photo->file_name;
+                
+                // Wrzuć plik na S3
+                $s3->putObject([
                     'Bucket' => $s3Settings['bucket'],
                     'Key' => $s3Key,
-                    'SourceFile' => $tempPath,
+                    'SourceFile' => $filePath,
                     'ContentType' => $photo->mime_type
                 ]);
                 
-                // Update database record
+                // Aktualizuj ścieżkę S3 w modelu
                 $photo->s3_path = $s3Key;
                 $photo->updated_at = time();
                 
-                if ($photo->save()) {
-                    $syncedCount++;
-                    
-                    // Delete local copy if required
-                    if ($deleteLocal) {
-                        unlink($tempPath);
-                    }
+                if (!$photo->save()) {
+                    throw new \Exception("Błąd aktualizacji modelu: " . json_encode($photo->errors));
                 }
+                
+                // Usuń lokalny plik jeśli potrzeba
+                if (isset($params['delete_local']) && $params['delete_local']) {
+                    @unlink($filePath);
+                }
+                
+                $syncedCount++;
             } catch (\Exception $e) {
-                Yii::error('Error synchronizing photo ID ' . $photo->id . ' with S3: ' . $e->getMessage());
-                continue;
+                Yii::error("Błąd synchronizacji zdjęcia ID {$photo->id}: " . $e->getMessage());
+                $errorCount++;
             }
         }
         
-        Yii::info("S3 synchronization complete. Synced $syncedCount photos.");
+        Yii::info("Synchronizacja S3 zakończona. Zsynchronizowano: {$syncedCount}, błędy: {$errorCount}");
+        
         return true;
     }
     
     /**
-     * Process thumbnail regeneration job.
-     * 
-     * @param array $params Job parameters
-     * @return bool Success
-     * @throws \Exception If regeneration fails
+     * Regeneruje miniatury zdjęć.
+     *
+     * @param array $params Parametry zadania
+     * @return bool Czy regeneracja się powiodła
      */
-    protected function processRegenerateThumbnails($params)
+    protected function regenerateThumbnails($params)
     {
-        $photoId = isset($params['photo_id']) ? $params['photo_id'] : null;
-        $sizeId = isset($params['size_id']) ? $params['size_id'] : null;
-        $partial = isset($params['partial']) ? (bool)$params['partial'] : false;
+        // Przygotuj warunki zapytania
+        $query = Photo::find()->where(['!=', 'status', Photo::STATUS_DELETED]);
         
-        // Prepare query for photos to regenerate
-        $query = Photo::find()->where(['status' => [Photo::STATUS_ACTIVE, Photo::STATUS_QUEUE]]);
-        
-        // If specific photo ID is provided, limit to it
-        if ($photoId) {
-            $query->andWhere(['id' => $photoId]);
+        // Filtruj po konkretnym zdjęciu jeśli podano
+        if (isset($params['photo_id']) && $params['photo_id']) {
+            $query->andWhere(['id' => $params['photo_id']]);
         }
         
-        $photos = $query->all();
-        
-        // Get the thumbnail sizes
-        $thumbnailSizes = $sizeId 
-            ? [ThumbnailSize::findOne($sizeId)] 
-            : ThumbnailSize::find()->all();
-        
-        // Filter out null in case the size doesn't exist
-        $thumbnailSizes = array_filter($thumbnailSizes);
+        // Pobierz rozmiary miniatur
+        $thumbnailSizes = [];
+        if (isset($params['size_id']) && $params['size_id']) {
+            $size = ThumbnailSize::findOne($params['size_id']);
+            if ($size) {
+                $thumbnailSizes[] = $size;
+            } else {
+                throw new \Exception("Nieprawidłowy rozmiar miniatury ID {$params['size_id']}");
+            }
+        } else {
+            $thumbnailSizes = ThumbnailSize::find()->all();
+        }
         
         if (empty($thumbnailSizes)) {
-            throw new \Exception('No thumbnail sizes defined');
+            throw new \Exception("Nie znaleziono żadnych rozmiarów miniatur");
+        }
+        
+        // Pobierz zdjęcia
+        $photos = $query->all();
+        
+        if (empty($photos)) {
+            Yii::info("Brak zdjęć do regeneracji miniatur");
+            return true;
         }
         
         $regeneratedCount = 0;
+        $errorCount = 0;
         
         foreach ($photos as $photo) {
-            // Check if source file exists (locally or on S3)
-            $tempPath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
-            $sourceExists = file_exists($tempPath);
-            
-            // If no local copy but exists on S3, download it temporarily
-            if (!$sourceExists && !empty($photo->s3_path)) {
-                try {
-                    // Get S3 settings
-                    $s3Settings = [
-                        'bucket' => Settings::findOne(['key' => 's3.bucket'])->value ?? '',
-                        'region' => Settings::findOne(['key' => 's3.region'])->value ?? '',
-                        'access_key' => Settings::findOne(['key' => 's3.access_key'])->value ?? '',
-                        'secret_key' => Settings::findOne(['key' => 's3.secret_key'])->value ?? ''
-                    ];
-                    
-                    // Create S3 client
-                    $s3Client = Yii::$app->get('s3');
-                    
-                    // Download file from S3
-                    $s3Client->getObject([
-                        'Bucket' => $s3Settings['bucket'],
-                        'Key' => $photo->s3_path,
-                        'SaveAs' => $tempPath
-                    ]);
-                    
-                    $sourceExists = true;
-                } catch (\Exception $e) {
-                    Yii::error('Error downloading photo from S3: ' . $e->getMessage());
-                    continue;
-                }
-            }
-            
-            if (!$sourceExists) {
-                continue; // Skip photo without available source
-            }
-            
-            // Regenerate thumbnails
-            foreach ($thumbnailSizes as $size) {
-                $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $photo->file_name);
+            try {
+                $filePath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
                 
-                // Skip if partial regeneration and thumbnail already exists
-                if ($partial && file_exists($thumbnailPath)) {
+                // Jeśli brak pliku lokalnie, spróbuj pobrać z S3
+                if (!file_exists($filePath) && !empty($photo->s3_path)) {
+                    if (Yii::$app->has('s3')) {
+                        /** @var \common\components\S3Component $s3 */
+                        $s3 = Yii::$app->get('s3');
+                        $s3Settings = $s3->getSettings();
+                        
+                        try {
+                            // Utwórz tymczasowy katalog jeśli nie istnieje
+                            $tempDir = Yii::getAlias('@webroot/uploads/temp');
+                            if (!is_dir($tempDir)) {
+                                FileHelper::createDirectory($tempDir, 0777, true);
+                            }
+                            
+                            // Pobierz plik z S3
+                            $s3->getObject([
+                                'Bucket' => $s3Settings['bucket'],
+                                'Key' => $photo->s3_path,
+                                'SaveAs' => $filePath
+                            ]);
+                        } catch (\Exception $e) {
+                            Yii::error("Błąd pobierania pliku z S3: " . $e->getMessage());
+                            continue;
+                        }
+                    } else {
+                        Yii::warning("Brak pliku lokalnie i komponent S3 nie jest skonfigurowany");
+                        continue;
+                    }
+                }
+                
+                if (!file_exists($filePath)) {
+                    Yii::warning("Plik {$filePath} nie istnieje, pomijam regenerację miniatur dla zdjęcia ID {$photo->id}");
                     continue;
                 }
                 
-                try {
-                    $thumbnailImage = Image::make($tempPath);
+                // Generuj miniatury dla każdego rozmiaru
+                foreach ($thumbnailSizes as $size) {
+                    $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $photo->file_name);
+                    
+                    // Jeśli tryb częściowy i miniatura już istnieje, pomiń
+                    if (isset($params['partial']) && $params['partial'] && file_exists($thumbnailPath)) {
+                        continue;
+                    }
+                    
+                    // Utwórz katalog miniatur jeśli nie istnieje
+                    $thumbnailDir = Yii::getAlias('@webroot/uploads/thumbnails');
+                    if (!is_dir($thumbnailDir)) {
+                        FileHelper::createDirectory($thumbnailDir, 0777, true);
+                    }
+                    
+                    // Utwórz miniaturę
+                    $thumbnailImage = Image::make($filePath);
                     
                     if ($size->crop) {
                         $thumbnailImage->fit($size->width, $size->height);
@@ -226,407 +252,343 @@ class JobProcessor
                     }
                     
                     if ($size->watermark) {
-                        // Add watermark according to settings
-                        $this->addWatermark($thumbnailImage);
-                    }
-                    
-                    // Create thumbnails directory if it doesn't exist
-                    $thumbnailDir = dirname($thumbnailPath);
-                    if (!is_dir($thumbnailDir)) {
-                        FileHelper::createDirectory($thumbnailDir, 0777, true);
+                        $thumbnailImage = $this->addWatermark($thumbnailImage);
                     }
                     
                     $thumbnailImage->save($thumbnailPath);
                     $regeneratedCount++;
-                } catch (\Exception $e) {
-                    Yii::error('Error regenerating thumbnail: ' . $e->getMessage());
-                    continue;
                 }
-            }
-            
-            // If file was temporarily downloaded from S3, delete it
-            if (!empty($photo->s3_path) && file_exists($tempPath)) {
-                unlink($tempPath);
+                
+                // Usuń tymczasowy plik pobrany z S3 jeśli był
+                if (!empty($photo->s3_path) && isset($params['delete_temp']) && $params['delete_temp']) {
+                    @unlink($filePath);
+                }
+            } catch (\Exception $e) {
+                Yii::error("Błąd regeneracji miniatur dla zdjęcia ID {$photo->id}: " . $e->getMessage());
+                $errorCount++;
             }
         }
         
-        Yii::info("Thumbnail regeneration complete. Regenerated $regeneratedCount thumbnails.");
+        Yii::info("Regeneracja miniatur zakończona. Zregenerowano: {$regeneratedCount}, błędy: {$errorCount}");
+        
         return true;
     }
     
     /**
-     * Process photo analysis job using AI.
-     * 
-     * @param array $params Job parameters
-     * @return bool Success
-     * @throws \Exception If analysis fails
+     * Analizuje pojedyncze zdjęcie za pomocą AI.
+     *
+     * @param array $params Parametry zadania
+     * @return bool Czy analiza się powiodła
      */
-    protected function processAnalyzePhoto($params)
+    protected function analyzePhoto($params)
     {
-        $photoId = isset($params['photo_id']) ? $params['photo_id'] : null;
+        // Sprawdź czy podano ID zdjęcia
+        if (empty($params['photo_id'])) {
+            throw new \Exception("Nie podano ID zdjęcia do analizy");
+        }
+        
+        $photoId = $params['photo_id'];
         $analyzeTags = isset($params['analyze_tags']) ? (bool)$params['analyze_tags'] : true;
         $analyzeDescription = isset($params['analyze_description']) ? (bool)$params['analyze_description'] : true;
         
-        if (!$photoId) {
-            throw new \Exception('Missing photo ID for analysis.');
-        }
-        
+        // Pobierz zdjęcie
         $photo = Photo::findOne($photoId);
         if (!$photo) {
-            throw new \Exception('Photo not found.');
+            throw new \Exception("Nie znaleziono zdjęcia o ID {$photoId}");
         }
         
-        // Check if AI is enabled
-        $aiEnabled = (bool)Settings::findOne(['key' => 'ai.enabled'])->value ?? false;
+        // Sprawdź czy AI jest włączone i skonfigurowane
+        $aiEnabled = (bool)$this->getSettingValue('ai.enabled', false);
         if (!$aiEnabled) {
-            throw new \Exception('AI integration is disabled.');
+            throw new \Exception("Integracja AI jest wyłączona");
         }
         
-        // Get AI settings
-        $aiProvider = Settings::findOne(['key' => 'ai.provider'])->value ?? '';
-        $aiApiKey = Settings::findOne(['key' => 'ai.api_key'])->value ?? '';
-        $aiRegion = Settings::findOne(['key' => 'ai.region'])->value ?? '';
-        $aiModel = Settings::findOne(['key' => 'ai.model'])->value ?? '';
+        $aiProvider = $this->getSettingValue('ai.provider', '');
+        $apiKey = $this->getSettingValue('ai.api_key', '');
         
-        if (empty($aiProvider) || empty($aiApiKey)) {
-            throw new \Exception('Missing AI settings.');
+        if (empty($aiProvider) || empty($apiKey)) {
+            throw new \Exception("Brak konfiguracji dostawcy AI lub klucza API");
         }
         
-        // Get photo file
-        $tempPath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
-        $s3Path = $photo->s3_path;
+        // Pobierz ścieżkę do zdjęcia
+        $filePath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
         
-        // Check if file exists locally
-        $fileExists = file_exists($tempPath);
-        $deleteAfterAnalysis = false;
+        // Jeśli brak pliku lokalnie, spróbuj pobrać z S3
+        if (!file_exists($filePath) && !empty($photo->s3_path)) {
+            if (Yii::$app->has('s3')) {
+                /** @var \common\components\S3Component $s3 */
+                $s3 = Yii::$app->get('s3');
+                $s3Settings = $s3->getSettings();
+                
+                try {
+                    // Utwórz tymczasowy katalog jeśli nie istnieje
+                    $tempDir = Yii::getAlias('@webroot/uploads/temp');
+                    if (!is_dir($tempDir)) {
+                        FileHelper::createDirectory($tempDir, 0777, true);
+                    }
+                    
+                    // Pobierz plik z S3
+                    $s3->getObject([
+                        'Bucket' => $s3Settings['bucket'],
+                        'Key' => $photo->s3_path,
+                        'SaveAs' => $filePath
+                    ]);
+                } catch (\Exception $e) {
+                    throw new \Exception("Błąd pobierania pliku z S3: " . $e->getMessage());
+                }
+            } else {
+                throw new \Exception("Brak pliku lokalnie i komponent S3 nie jest skonfigurowany");
+            }
+        }
         
-        // If no local copy but exists on S3, download it temporarily
-        if (!$fileExists && !empty($s3Path)) {
-            try {
-                // Get S3 settings
-                $s3Settings = [
-                    'bucket' => Settings::findOne(['key' => 's3.bucket'])->value ?? '',
-                    'region' => Settings::findOne(['key' => 's3.region'])->value ?? '',
-                    'access_key' => Settings::findOne(['key' => 's3.access_key'])->value ?? '',
-                    'secret_key' => Settings::findOne(['key' => 's3.secret_key'])->value ?? ''
+        if (!file_exists($filePath)) {
+            throw new \Exception("Plik {$filePath} nie istnieje");
+        }
+        
+        // Symulacja wyników analizy AI
+        $results = [];
+        
+        // W rzeczywistości tutaj byłoby wywołanie odpowiedniego API AI
+        switch ($aiProvider) {
+            case 'aws':
+                // Tutaj byłoby wywołanie AWS Rekognition
+                // Przykładowe wyniki:
+                $results = [
+                    'tags' => ['nature', 'landscape', 'sky', 'outdoor'],
+                    'description' => 'A beautiful outdoor landscape with a clear blue sky.'
                 ];
+                break;
                 
-                // Create S3 client
-                $s3Client = Yii::$app->get('s3');
+            case 'google':
+                // Tutaj byłoby wywołanie Google Vision API
+                // Przykładowe wyniki:
+                $results = [
+                    'tags' => ['landscape', 'sky', 'nature', 'outdoor', 'cloud'],
+                    'description' => 'Outdoor landscape with blue sky and clouds.'
+                ];
+                break;
                 
-                // Download file from S3
-                $s3Client->getObject([
-                    'Bucket' => $s3Settings['bucket'],
-                    'Key' => $s3Path,
-                    'SaveAs' => $tempPath
-                ]);
+            case 'openai':
+                // Tutaj byłoby wywołanie OpenAI API
+                // Przykładowe wyniki:
+                $results = [
+                    'tags' => ['nature', 'landscape', 'mountains', 'sky', 'outdoor', 'scenic'],
+                    'description' => 'A serene landscape showing mountains against a blue sky, with natural elements creating a peaceful outdoor scene.'
+                ];
+                break;
                 
-                $fileExists = true;
-                $deleteAfterAnalysis = true; // Mark for deletion after analysis
-            } catch (\Exception $e) {
-                throw new \Exception('Error downloading photo from S3: ' . $e->getMessage());
-            }
+            default:
+                throw new \Exception("Nieobsługiwany dostawca AI: {$aiProvider}");
         }
         
-        if (!$fileExists) {
-            throw new \Exception('Photo file does not exist.');
+        // Przetwórz wyniki analizy
+        if ($analyzeTags && !empty($results['tags'])) {
+            $this->applyTags($photo, $results['tags']);
         }
         
-        $generatedTags = [];
-        $generatedDescription = '';
-        
-        // Analyze photo using selected AI provider
-        try {
-            // Implementation for different AI providers...
-            // This is a simplified implementation. In a real application, 
-            // you would implement the specific API calls for each provider.
-            
-            if ($aiProvider === 'aws') {
-                // AWS Rekognition implementation
-                // ...
-                
-                // For demonstration purposes, generate sample results
-                if ($analyzeTags) {
-                    $generatedTags = [
-                        ['name' => 'nature', 'confidence' => 95.5],
-                        ['name' => 'landscape', 'confidence' => 92.1],
-                        ['name' => 'sky', 'confidence' => 88.7],
-                        ['name' => 'cloud', 'confidence' => 85.3],
-                        ['name' => 'mountain', 'confidence' => 82.9],
-                    ];
-                }
-                
-                if ($analyzeDescription) {
-                    $generatedDescription = 'A beautiful landscape scene with mountains and cloudy sky.';
-                }
-            } elseif ($aiProvider === 'google') {
-                // Google Vision implementation
-                // ...
-                
-                // For demonstration purposes, generate sample results
-                if ($analyzeTags) {
-                    $generatedTags = [
-                        ['name' => 'landscape', 'confidence' => 94.2],
-                        ['name' => 'nature', 'confidence' => 93.8],
-                        ['name' => 'mountain', 'confidence' => 91.5],
-                        ['name' => 'sky', 'confidence' => 90.1],
-                        ['name' => 'outdoor', 'confidence' => 89.7],
-                    ];
-                }
-                
-                if ($analyzeDescription) {
-                    $generatedDescription = 'An outdoor mountain landscape with clear sky and natural scenery.';
-                }
-            } elseif ($aiProvider === 'openai') {
-                // OpenAI API implementation
-                // ...
-                
-                // For demonstration purposes, generate sample results
-                if ($analyzeTags) {
-                    $generatedTags = [
-                        ['name' => 'landscape', 'confidence' => 99.0],
-                        ['name' => 'nature', 'confidence' => 98.0],
-                        ['name' => 'mountains', 'confidence' => 97.0],
-                        ['name' => 'sky', 'confidence' => 96.0],
-                        ['name' => 'sunset', 'confidence' => 95.0],
-                        ['name' => 'clouds', 'confidence' => 94.0],
-                        ['name' => 'hiking', 'confidence' => 93.0],
-                        ['name' => 'outdoors', 'confidence' => 92.0],
-                    ];
-                }
-                
-                if ($analyzeDescription) {
-                    $generatedDescription = 'A breathtaking mountainous landscape captured during sunset, with dramatic clouds painting the sky in vibrant colors. The scene evokes a sense of peace and adventure, perfect for hiking enthusiasts and nature lovers.';
-                }
-            }
-            
-            // Save analysis results
-            if ($analyzeDescription && !empty($generatedDescription)) {
-                $photo->description = $generatedDescription;
-                $photo->updated_at = time();
-                $photo->save();
-            }
-            
-            // Create suggested tags
-            if ($analyzeTags && !empty($generatedTags)) {
-                foreach ($generatedTags as $tagData) {
-                    $tagName = $tagData['name'];
-                    
-                    // Find or create tag
-                    $tag = Tag::findOne(['name' => $tagName]);
-                    if (!$tag) {
-                        $tag = new Tag();
-                        $tag->name = $tagName;
-                        $tag->frequency = 0;
-                        $tag->created_at = time();
-                        $tag->updated_at = time();
-                        $tag->save();
-                    }
-                    
-                    // Create relationship if not exists
-                    $existingLink = PhotoTag::findOne(['photo_id' => $photoId, 'tag_id' => $tag->id]);
-                    if (!$existingLink) {
-                        $photoTag = new PhotoTag();
-                        $photoTag->photo_id = $photoId;
-                        $photoTag->tag_id = $tag->id;
-                        
-                        if ($photoTag->save()) {
-                            // Update tag frequency
-                            $tag->frequency += 1;
-                            $tag->save();
-                        }
-                    }
-                }
-            }
-        } catch (\Exception $e) {
-            // Clean up if file was downloaded temporarily
-            if ($deleteAfterAnalysis && file_exists($tempPath)) {
-                unlink($tempPath);
-            }
-            
-            throw new \Exception('Error analyzing photo: ' . $e->getMessage());
+        if ($analyzeDescription && !empty($results['description'])) {
+            $photo->description = $results['description'];
+            $photo->updated_at = time();
+            $photo->save();
         }
         
-        // Clean up if file was downloaded temporarily
-        if ($deleteAfterAnalysis && file_exists($tempPath)) {
-            unlink($tempPath);
+        // Usuń tymczasowy plik pobrany z S3 jeśli był
+        if (!empty($photo->s3_path) && !file_exists(Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name))) {
+            @unlink($filePath);
         }
         
-        Yii::info("Photo analysis complete for photo ID $photoId.");
         return true;
     }
     
     /**
-     * Process batch photo analysis job using AI.
-     * 
-     * @param array $params Job parameters
-     * @return bool Success
-     * @throws \Exception If batch analysis fails
+     * Analizuje wiele zdjęć za pomocą AI.
+     *
+     * @param array $params Parametry zadania
+     * @return bool Czy analiza się powiodła
      */
-    protected function processAnalyzeBatch($params)
+    protected function analyzeBatch($params)
     {
-        $photoIds = isset($params['photo_ids']) ? $params['photo_ids'] : [];
+        // Sprawdź czy podano ID zdjęć
+        if (empty($params['photo_ids']) || !is_array($params['photo_ids'])) {
+            throw new \Exception("Nie podano ID zdjęć do analizy");
+        }
+        
+        $photoIds = $params['photo_ids'];
         $analyzeTags = isset($params['analyze_tags']) ? (bool)$params['analyze_tags'] : true;
         $analyzeDescription = isset($params['analyze_description']) ? (bool)$params['analyze_description'] : true;
         
-        if (empty($photoIds)) {
-            throw new \Exception('No photos selected for analysis.');
-        }
-        
-        $success = true;
-        $processedCount = 0;
+        // Analizuj każde zdjęcie
+        $successCount = 0;
+        $errorCount = 0;
         
         foreach ($photoIds as $photoId) {
             try {
-                // Process each photo using the single photo analysis method
-                $result = $this->processAnalyzePhoto([
+                $result = $this->analyzePhoto([
                     'photo_id' => $photoId,
                     'analyze_tags' => $analyzeTags,
                     'analyze_description' => $analyzeDescription
                 ]);
                 
                 if ($result) {
-                    $processedCount++;
+                    $successCount++;
                 } else {
-                    $success = false;
+                    $errorCount++;
                 }
             } catch (\Exception $e) {
-                Yii::error('Error analyzing photo ID ' . $photoId . ': ' . $e->getMessage());
-                $success = false;
-                continue;
+                Yii::error("Błąd analizy zdjęcia ID {$photoId}: " . $e->getMessage());
+                $errorCount++;
             }
         }
         
-        Yii::info("Batch photo analysis complete. Processed $processedCount photos.");
-        return $success;
-    }
-    
-    /**
-     * Process photo import job.
-     * 
-     * @param array $params Job parameters
-     * @return bool Success
-     * @throws \Exception If import fails
-     */
-    protected function processImportPhotos($params)
-    {
-        $directory = isset($params['directory']) ? $params['directory'] : '';
-        $recursive = isset($params['recursive']) ? (bool)$params['recursive'] : false;
+        Yii::info("Analiza wsadowa zakończona. Przeanalizowano: {$successCount}, błędy: {$errorCount}");
         
-        if (empty($directory)) {
-            throw new \Exception('Import directory not specified.');
-        }
-        
-        // Validate path
-        $fullPath = Yii::getAlias('@webroot/' . $directory);
-        if (!file_exists($fullPath) || !is_dir($fullPath)) {
-            throw new \Exception('Invalid directory.');
-        }
-        
-        // Get file list
-        $fileOptions = [
-            'only' => ['*.jpg', '*.jpeg', '*.png', '*.gif'],
-            'recursive' => $recursive
-        ];
-        $files = FileHelper::findFiles($fullPath, $fileOptions);
-        
-        if (empty($files)) {
-            Yii::info('No files found for import in directory: ' . $directory);
-            return true;
-        }
-        
-        $importedCount = 0;
-        
-        foreach ($files as $file) {
-            // Check MIME type
-            $mimeType = FileHelper::getMimeType($file);
-            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-            
-            if (!in_array($mimeType, $allowedTypes)) {
-                continue; // Skip files with invalid type
-            }
-            
-            // Generate unique filename
-            $fileName = Yii::$app->security->generateRandomString(16) . '.' . pathinfo($file, PATHINFO_EXTENSION);
-            $destPath = Yii::getAlias('@webroot/uploads/temp/' . $fileName);
-            
-            // Copy file to temporary directory
-            copy($file, $destPath);
-            
-            // Read dimensions
-            $image = Image::make($destPath);
-            $width = $image->width();
-            $height = $image->height();
-            
-            // Create database record
-            $photo = new Photo();
-            $photo->title = pathinfo($file, PATHINFO_FILENAME);
-            $photo->file_name = $fileName;
-            $photo->file_size = filesize($destPath);
-            $photo->mime_type = $mimeType;
-            $photo->width = $width;
-            $photo->height = $height;
-            $photo->status = Photo::STATUS_QUEUE;
-            $photo->is_public = false;
-            $photo->created_at = time();
-            $photo->updated_at = time();
-            $photo->created_by = 1; // Admin user ID
-            
-            if (!$photo->save()) {
-                unlink($destPath);
-                Yii::error('Error saving imported photo: ' . json_encode($photo->errors));
-                continue;
-            }
-            
-            // Generate thumbnails
-            $thumbnailSizes = ThumbnailSize::find()->all();
-            
-            foreach ($thumbnailSizes as $size) {
-                $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $fileName);
-                $thumbnailImage = Image::make($destPath);
-                
-                if ($size->crop) {
-                    $thumbnailImage->fit($size->width, $size->height);
-                } else {
-                    $thumbnailImage->resize($size->width, $size->height, function ($constraint) {
-                        $constraint->aspectRatio();
-                        $constraint->upsize();
-                    });
-                }
-                
-                if ($size->watermark) {
-                    // Add watermark
-                    $this->addWatermark($thumbnailImage);
-                }
-                
-                $thumbnailImage->save($thumbnailPath);
-            }
-            
-            $importedCount++;
-        }
-        
-        Yii::info("Photo import complete. Imported $importedCount photos.");
         return true;
     }
     
     /**
-     * Adds watermark to image based on settings.
-     * 
-     * @param \Intervention\Image\Image $image The image
-     * @return \Intervention\Image\Image The image with watermark
+     * Importuje zdjęcia z określonego katalogu.
+     *
+     * @param array $params Parametry zadania
+     * @return bool Czy import się powiódł
+     */
+    protected function importPhotos($params)
+    {
+        // Sprawdź parametry
+        if (empty($params['directory'])) {
+            throw new \Exception("Nie podano katalogu do importu");
+        }
+        
+        $directory = Yii::getAlias('@webroot/' . $params['directory']);
+        $recursive = isset($params['recursive']) ? (bool)$params['recursive'] : false;
+        
+        // Sprawdź czy katalog istnieje
+        if (!is_dir($directory)) {
+            throw new \Exception("Katalog {$directory} nie istnieje");
+        }
+        
+        // Pobierz listę plików
+        $options = [
+            'only' => ['*.jpg', '*.jpeg', '*.png', '*.gif'],
+            'recursive' => $recursive,
+        ];
+        
+        $files = FileHelper::findFiles($directory, $options);
+        
+        // Sprawdź czy znaleziono pliki
+        if (empty($files)) {
+            Yii::warning("Nie znaleziono plików do importu w katalogu {$directory}");
+            return true; // Sukces, ale bez plików
+        }
+        
+        // Inicjalizuj liczniki
+        $imported = 0;
+        $skipped = 0;
+        $errors = 0;
+        
+        // Przetwórz każdy plik
+        foreach ($files as $filePath) {
+            try {
+                // Sprawdź czy plik jest obrazem
+                $mimeType = FileHelper::getMimeType($filePath);
+                $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+                
+                if (!in_array($mimeType, $allowedTypes)) {
+                    Yii::warning("Pominięto plik {$filePath} - nieprawidłowy typ MIME: {$mimeType}");
+                    $skipped++;
+                    continue;
+                }
+                
+                // Generuj unikalną nazwę pliku
+                $fileName = Yii::$app->security->generateRandomString(16) . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
+                $destPath = Yii::getAlias('@webroot/uploads/temp/' . $fileName);
+                
+                // Utwórz katalog tymczasowy jeśli nie istnieje
+                $tempDir = Yii::getAlias('@webroot/uploads/temp');
+                if (!is_dir($tempDir)) {
+                    FileHelper::createDirectory($tempDir, 0777, true);
+                }
+                
+                // Skopiuj plik do katalogu tymczasowego
+                if (!copy($filePath, $destPath)) {
+                    throw new \Exception("Nie można skopiować pliku {$filePath} do {$destPath}");
+                }
+                
+                // Odczytaj wymiary obrazu
+                $image = Image::make($destPath);
+                $width = $image->width();
+                $height = $image->height();
+                
+                // Utwórz rekord w bazie danych
+                $photo = new Photo();
+                $photo->title = pathinfo($filePath, PATHINFO_FILENAME); // Tytuł to nazwa pliku
+                $photo->file_name = $fileName;
+                $photo->file_size = filesize($destPath);
+                $photo->mime_type = $mimeType;
+                $photo->width = $width;
+                $photo->height = $height;
+                $photo->status = Photo::STATUS_QUEUE; // W kolejce
+                $photo->is_public = false;
+                $photo->created_at = time();
+                $photo->updated_at = time();
+                $photo->created_by = 1; // ID administratora lub innego użytkownika systemowego
+                
+                if (!$photo->save()) {
+                    throw new \Exception("Błąd zapisywania informacji o zdjęciu: " . json_encode($photo->errors));
+                }
+                
+                // Generuj miniatury
+                $thumbnailSizes = ThumbnailSize::find()->all();
+                
+                foreach ($thumbnailSizes as $size) {
+                    $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $fileName);
+                    $thumbnailImage = Image::make($destPath);
+                    
+                    if ($size->crop) {
+                        $thumbnailImage->fit($size->width, $size->height);
+                    } else {
+                        $thumbnailImage->resize($size->width, $size->height, function ($constraint) {
+                            $constraint->aspectRatio();
+                            $constraint->upsize();
+                        });
+                    }
+                    
+                    if ($size->watermark) {
+                        $thumbnailImage = $this->addWatermark($thumbnailImage);
+                    }
+                    
+                    $thumbnailImage->save($thumbnailPath);
+                }
+                
+                $imported++;
+                
+                // Opcjonalnie - usuń oryginalny plik po imporcie
+                if (isset($params['delete_originals']) && $params['delete_originals']) {
+                    @unlink($filePath);
+                }
+            } catch (\Exception $e) {
+                Yii::error("Błąd importu pliku {$filePath}: " . $e->getMessage());
+                $errors++;
+            }
+        }
+        
+        Yii::info("Import zakończony. Zaimportowano: {$imported}, pominięto: {$skipped}, błędy: {$errors}");
+        
+        return true;
+    }
+    
+    /**
+     * Dodaje znaki wodne do obrazu.
+     *
+     * @param \Intervention\Image\Image $image Obraz do modyfikacji
+     * @return \Intervention\Image\Image Zmodyfikowany obraz
      */
     protected function addWatermark($image)
     {
         // Get watermark settings
-        $watermarkSetting = Settings::findOne(['key' => 'watermark.type']);
-        $watermarkType = $watermarkSetting ? $watermarkSetting->value : 'text';
-        
-        $positionSetting = Settings::findOne(['key' => 'watermark.position']);
-        $watermarkPosition = $positionSetting ? $positionSetting->value : 'bottom-right';
-        
-        $opacitySetting = Settings::findOne(['key' => 'watermark.opacity']);
-        $watermarkOpacity = $opacitySetting ? (float)$opacitySetting->value : 0.5;
-        
+        $watermarkType = $this->getSettingValue('watermark.type', 'text');
+        $watermarkPosition = $this->getSettingValue('watermark.position', 'bottom-right');
+        $watermarkOpacity = (float)$this->getSettingValue('watermark.opacity', 0.5);
+
         // Position mapping
         $positionMap = [
             'top-left' => 'top-left',
@@ -635,19 +597,17 @@ class JobProcessor
             'bottom-right' => 'bottom-right',
             'center' => 'center'
         ];
-        
+
         $position = $positionMap[$watermarkPosition] ?? 'bottom-right';
-        
+
         if ($watermarkType === 'text') {
             // Text watermark
-            $textSetting = Settings::findOne(['key' => 'watermark.text']);
-            $watermarkText = $textSetting ? $textSetting->value : '';
-            
+            $watermarkText = $this->getSettingValue('watermark.text', '');
+
             if (!empty($watermarkText)) {
                 $fontSize = min($image->width(), $image->height()) / 20; // Scale font size
-                
-                $image->text($watermarkText, $image->width() - 20, $image->height() - 20, function($font) use ($fontSize, $watermarkOpacity) {
-                    //$font->file(Yii::getAlias('@webroot/fonts/arial.ttf'));
+
+                $image->text($watermarkText, $image->width() - 20, $image->height() - 20, function ($font) use ($fontSize, $watermarkOpacity) {
                     $font->size($fontSize);
                     $font->color([255, 255, 255, $watermarkOpacity * 255]);
                     $font->align('right');
@@ -656,35 +616,98 @@ class JobProcessor
             }
         } elseif ($watermarkType === 'image') {
             // Image watermark
-            $imageSetting = Settings::findOne(['key' => 'watermark.image']);
-            $watermarkImage = $imageSetting ? $imageSetting->value : '';
-            
+            $watermarkImage = $this->getSettingValue('watermark.image', '');
+
             if (!empty($watermarkImage)) {
                 $watermarkPath = Yii::getAlias('@webroot/uploads/watermark/' . $watermarkImage);
-                
+
                 if (file_exists($watermarkPath)) {
                     $watermark = Image::make($watermarkPath);
-                    
+
                     // Scale watermark
                     $maxWidth = $image->width() / 4; // Max 25% of image width
                     $maxHeight = $image->height() / 4; // Max 25% of image height
-                    
+
                     if ($watermark->width() > $maxWidth || $watermark->height() > $maxHeight) {
                         $watermark->resize($maxWidth, $maxHeight, function ($constraint) {
                             $constraint->aspectRatio();
                             $constraint->upsize();
                         });
                     }
-                    
+
                     // Add opacity
                     $watermark->opacity($watermarkOpacity * 100);
-                    
+
                     // Insert watermark
                     $image->insert($watermark, $position);
                 }
             }
         }
-        
+
         return $image;
+    }
+    
+    /**
+     * Dodaje tagi do zdjęcia na podstawie wyników analizy AI.
+     *
+     * @param Photo $photo Zdjęcie
+     * @param array $tagNames Nazwy tagów
+     * @return void
+     */
+    protected function applyTags($photo, $tagNames)
+    {
+        if (empty($tagNames) || empty($photo)) {
+            return;
+        }
+        
+        foreach ($tagNames as $tagName) {
+            // Szukaj istniejącego tagu lub utwórz nowy
+            $tag = Tag::findOne(['name' => $tagName]);
+            
+            if (!$tag) {
+                $tag = new Tag();
+                $tag->name = $tagName;
+                $tag->frequency = 0;
+                $tag->created_at = time();
+                $tag->updated_at = time();
+                
+                if (!$tag->save()) {
+                    Yii::warning("Nie można utworzyć tagu '{$tagName}': " . json_encode($tag->errors));
+                    continue;
+                }
+            }
+            
+            // Sprawdź czy relacja już istnieje
+            $existingRelation = PhotoTag::findOne(['photo_id' => $photo->id, 'tag_id' => $tag->id]);
+            
+            if (!$existingRelation) {
+                // Utwórz nową relację
+                $photoTag = new PhotoTag();
+                $photoTag->photo_id = $photo->id;
+                $photoTag->tag_id = $tag->id;
+                
+                if ($photoTag->save()) {
+                    // Zaktualizuj licznik częstotliwości tagu
+                    $tag->frequency += 1;
+                    $tag->updated_at = time();
+                    $tag->save();
+                } else {
+                    Yii::warning("Nie można przypisać tagu '{$tagName}' do zdjęcia ID {$photo->id}: " . json_encode($photoTag->errors));
+                }
+            }
+        }
+    }
+    
+    /**
+     * Pobiera wartość ustawienia z tabeli settings.
+     *
+     * @param string $key Klucz ustawienia
+     * @param mixed $default Domyślna wartość
+     * @return mixed Wartość ustawienia lub domyślna wartość
+     */
+    protected function getSettingValue($key, $default = null)
+    {
+        $setting = Settings::findOne(['key' => $key]);
+        return $setting ? $setting->value : $default;
     }
 }

@@ -26,6 +26,11 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
             <?= Html::a('<i class="fas fa-upload me-2"></i>Prześlij więcej', ['upload'], [
                 'class' => 'btn btn-success'
             ]) ?>
+            <?= Html::a('<i class="fas fa-file-import me-2"></i>Importuj z FTP', ['import-from-ftp'], [
+                'class' => 'btn btn-info',
+                'data-method' => 'post',
+                'data-confirm' => 'Czy na pewno chcesz zaimportować zdjęcia z domyślnego katalogu FTP?',
+            ]) ?>
             <button type="button" class="btn btn-primary batch-action-btn" style="display: none;" 
                     data-bs-toggle="modal" data-bs-target="#batchApproveModal">
                 <i class="fas fa-check me-2"></i>Zatwierdź zaznaczone
