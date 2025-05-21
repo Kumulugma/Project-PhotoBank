@@ -173,7 +173,7 @@ $jobTypeOptions = [
         </div>
     </div>
 
-    <?php if ($model->type === 'import_photos' && !empty($model->results)): 
+<?php if ($model->type === 'import_photos' && property_exists($model, 'results') && !empty($model->results)):  
         $results = json_decode($model->results, true);
     ?>
     <div class="row mt-4">

@@ -83,6 +83,19 @@ class QueuedJob extends ActiveRecord
     }
     
     /**
+ * {@inheritdoc}
+ */
+public function attributes()
+{
+    // Jawne zdefiniowanie wszystkich atrybutów modelu
+    return [
+        'id', 'type', 'data', 'status', 'error', 
+        'created_at', 'updated_at', 'started_at', 'finished_at',
+        'attempts', 'error_message', 'results'
+    ];
+}
+
+    /**
      * Gets decoded data
      * 
      * @return mixed Decoded data
@@ -92,15 +105,24 @@ class QueuedJob extends ActiveRecord
         return json_decode($this->data, true) ?: [];
     }
     
-    /**
-     * Gets decoded results
-     * 
-     * @return mixed Decoded results
-     */
-    public function getDecodedResults()
-    {
+/**
+ * Gets decoded results
+ * 
+ * @return mixed Decoded results
+ */
+public function getDecodedResults()
+{
+    try {
+        // Sprawdź, czy właściwość istnieje i nie jest pusta
+        if (!$this->hasAttribute('results') || $this->results === null) {
+            return [];
+        }
         return json_decode($this->results, true) ?: [];
+    } catch (\Exception $e) {
+        Yii::warning('Błąd pobierania wyników: ' . $e->getMessage());
+        return [];
     }
+}
     
     /**
      * Gets formatted status name
@@ -262,4 +284,22 @@ class QueuedJob extends ActiveRecord
         
         return round($duration / 3600, 1) . ' godz';
     }
+    
+    /**
+ * Alias for finished_at to maintain compatibility
+ * @return int|null
+ */
+public function getCompleted_at()
+{
+    return $this->finished_at;
+}
+
+/**
+ * Alias for setting finished_at through completed_at
+ * @param int $value
+ */
+public function setCompleted_at($value)
+{
+    $this->finished_at = $value;
+}
 }

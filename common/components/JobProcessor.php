@@ -629,6 +629,8 @@ class JobProcessor {
                 }
 
                 Yii::info("Plik skopiowany do: {$destPath}");
+                Yii::info("Plik docelowy istnieje: " . (file_exists($destPath) ? 'tak' : 'nie'));
+                Yii::info("Rozmiar pliku docelowego: " . filesize($destPath) . " bajtów");
 
                 // Odczytaj wymiary obrazu
                 $image = Image::make($destPath);
@@ -693,9 +695,35 @@ class JobProcessor {
 
                 // Opcjonalnie - usuń oryginalny plik po imporcie
                 if (isset($params['delete_originals']) && $params['delete_originals']) {
-                    @unlink($filePath);
-                    $fileInfo['original_deleted'] = true;
-                    Yii::info("Usunięto oryginalny plik: {$filePath}");
+                    Yii::info("Próba usunięcia pliku źródłowego: {$filePath}");
+                    Yii::info("Parametr delete_originals: " . var_export($params['delete_originals'], true));
+
+                    // Sprawdź, czy plik istnieje i jest dostępny do zapisu
+                    if (file_exists($filePath)) {
+                        Yii::info("Plik istnieje");
+                        if (is_writable($filePath)) {
+                            Yii::info("Plik ma uprawnienia do zapisu");
+
+                            // Próba usunięcia pliku
+                            $result = unlink($filePath);
+                            if ($result) {
+                                Yii::info("Pomyślnie usunięto plik: {$filePath}");
+                                $fileInfo['original_deleted'] = true;
+                            } else {
+                                Yii::error("Nie udało się usunąć pliku: {$filePath}");
+                                $fileInfo['original_deleted'] = false;
+                                $fileInfo['delete_error'] = "Funkcja unlink() nie powiodła się";
+                            }
+                        } else {
+                            Yii::error("Brak uprawnień do usunięcia pliku: {$filePath}");
+                            $fileInfo['original_deleted'] = false;
+                            $fileInfo['delete_error'] = "Brak uprawnień do pliku";
+                        }
+                    } else {
+                        Yii::error("Plik nie istnieje: {$filePath}");
+                        $fileInfo['original_deleted'] = false;
+                        $fileInfo['delete_error'] = "Plik nie istnieje";
+                    }
                 }
 
                 // Aktualizuj wyniki zadania co 5 przetworzonych plików
@@ -715,7 +743,7 @@ class JobProcessor {
             }
         }
 
-        // Podsumowanie importu
+// Podsumowanie importu
         $results['completed_at'] = date('Y-m-d H:i:s');
         $results['imported'] = $imported;
         $results['skipped'] = $skipped;
@@ -724,7 +752,7 @@ class JobProcessor {
 
         Yii::info("Import zakończony. {$results['summary']}");
 
-        // Zapisz wyniki do zadania
+// Zapisz wyniki do zadania
         if ($job) {
             $job->results = json_encode($results, JSON_PRETTY_PRINT);
             $job->save();

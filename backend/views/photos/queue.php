@@ -150,16 +150,6 @@ Html::a('<i class="fas fa-file-import me-2"></i>Import zdjęć', ['import'], [
                     'headerOptions' => ['style' => 'width: 140px;'],
                 ],
                 [
-                    'attribute' => 'created_by',
-                    'format' => 'raw',
-                    'value' => function ($model) {
-                        $user = \common\models\User::findOne($model->created_by);
-                        return $user ? '<span class="badge bg-secondary">' . Html::encode($user->username) . '</span>' : 'System';
-                    },
-                    'filter' => false,
-                    'headerOptions' => ['style' => 'width: 100px;'],
-                ],
-                [
                     'class' => 'yii\grid\ActionColumn',
                     'template' => '{view} {approve} {delete}',
                     'buttons' => [
