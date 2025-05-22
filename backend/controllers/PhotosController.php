@@ -21,6 +21,8 @@ use yii\filters\AccessControl;
 use yii\helpers\FileHelper;
 use Intervention\Image\ImageManagerStatic as Image;
 use common\models\QueuedJob;
+use common\helpers\PathHelper;
+
 
 /**
  * PhotosController handles photo management operations
@@ -59,51 +61,50 @@ class PhotosController extends Controller {
     }
 
     /**
- * Finds photo by search code and redirects to view
- * @param string $code
- * @return mixed
- */
-public function actionFindByCode($code = null) 
-{
-    // Jeśli to żądanie AJAX, zwróć odpowiedź JSON
-    if (Yii::$app->request->isAjax) {
-        Yii::$app->response->format = Response::FORMAT_JSON;
-        
+     * Finds photo by search code and redirects to view
+     * @param string $code
+     * @return mixed
+     */
+    public function actionFindByCode($code = null) {
+        // Jeśli to żądanie AJAX, zwróć odpowiedź JSON
+        if (Yii::$app->request->isAjax) {
+            Yii::$app->response->format = Response::FORMAT_JSON;
+
+            if (empty($code)) {
+                return ['success' => false, 'message' => 'Nie podano kodu'];
+            }
+
+            $photo = Photo::findBySearchCode($code);
+
+            if (!$photo) {
+                return ['success' => false, 'message' => 'Nie znaleziono zdjęcia o kodzie: ' . $code];
+            }
+
+            return [
+                'success' => true,
+                'redirect' => Yii::$app->urlManager->createUrl(['photos/view', 'id' => $photo->id])
+            ];
+        }
+
+        // Dla zwykłych żądań HTTP
         if (empty($code)) {
-            return ['success' => false, 'message' => 'Nie podano kodu'];
+            $code = Yii::$app->request->get('code');
         }
-        
+
+        if (empty($code)) {
+            Yii::$app->session->setFlash('error', 'Nie podano kodu wyszukiwania');
+            return $this->redirect(['index']);
+        }
+
         $photo = Photo::findBySearchCode($code);
-        
+
         if (!$photo) {
-            return ['success' => false, 'message' => 'Nie znaleziono zdjęcia o kodzie: ' . $code];
+            Yii::$app->session->setFlash('error', 'Nie znaleziono zdjęcia o kodzie: ' . $code);
+            return $this->redirect(['index']);
         }
-        
-        return [
-            'success' => true, 
-            'redirect' => Yii::$app->urlManager->createUrl(['photos/view', 'id' => $photo->id])
-        ];
+
+        return $this->redirect(['view', 'id' => $photo->id]);
     }
-    
-    // Dla zwykłych żądań HTTP
-    if (empty($code)) {
-        $code = Yii::$app->request->get('code');
-    }
-    
-    if (empty($code)) {
-        Yii::$app->session->setFlash('error', 'Nie podano kodu wyszukiwania');
-        return $this->redirect(['index']);
-    }
-    
-    $photo = Photo::findBySearchCode($code);
-    
-    if (!$photo) {
-        Yii::$app->session->setFlash('error', 'Nie znaleziono zdjęcia o kodzie: ' . $code);
-        return $this->redirect(['index']);
-    }
-    
-    return $this->redirect(['view', 'id' => $photo->id]);
-}
 
     /**
      * Lists all active photos.
@@ -116,8 +117,8 @@ public function actionFindByCode($code = null)
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
 
         return $this->render('index', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
+                    'searchModel' => $searchModel,
+                    'dataProvider' => $dataProvider,
         ]);
     }
 
@@ -132,8 +133,8 @@ public function actionFindByCode($code = null)
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
 
         return $this->render('queue', [
-            'searchModel' => $searchModel,
-            'dataProvider' => $dataProvider,
+                    'searchModel' => $searchModel,
+                    'dataProvider' => $dataProvider,
         ]);
     }
 
@@ -161,10 +162,10 @@ public function actionFindByCode($code = null)
         $categories = $model->getCategories()->all();
 
         return $this->render('view', [
-            'model' => $model,
-            'thumbnails' => $thumbnails,
-            'tags' => $tags,
-            'categories' => $categories,
+                    'model' => $model,
+                    'thumbnails' => $thumbnails,
+                    'tags' => $tags,
+                    'categories' => $categories,
         ]);
     }
 
@@ -202,9 +203,15 @@ public function actionFindByCode($code = null)
             ];
         }
 
-        // Generate unique filename
-        $fileName = Yii::$app->security->generateRandomString(16) . '.' . $uploadedFile->extension;
-        $filePath = Yii::getAlias('@webroot/uploads/temp/' . $fileName);
+        // Generate filename with original name + hash
+        $originalName = pathinfo($uploadedFile->name, PATHINFO_FILENAME);
+        $extension = $uploadedFile->extension;
+        $hash = substr(Yii::$app->security->generateRandomString(12), 0, 8);
+        $fileName = $originalName . '_' . $hash . '.' . $extension;
+
+        // Use PathHelper for file paths
+        PathHelper::ensureDirectoryExists('temp');
+        $filePath = PathHelper::getPhotoPath($fileName, 'temp');
 
         // Save file
         if (!$uploadedFile->saveAs($filePath)) {
@@ -221,35 +228,35 @@ public function actionFindByCode($code = null)
 
         // Create database record
         $photo = new Photo();
-        $photo->title = pathinfo($uploadedFile->name, PATHINFO_FILENAME); // Default title is the filename
+        $photo->title = $originalName; // Use original name as title
         $photo->file_name = $fileName;
         $photo->file_size = $uploadedFile->size;
         $photo->mime_type = $uploadedFile->type;
         $photo->width = $width;
         $photo->height = $height;
-        $photo->status = Photo::STATUS_QUEUE; // In queue
-        $photo->is_public = false;
+        $photo->status = Photo::STATUS_QUEUE;
+        $photo->is_public = 0;
         $photo->created_at = time();
         $photo->updated_at = time();
         $photo->created_by = Yii::$app->user->id;
-        // search_code will be generated automatically in beforeSave()
 
         if (!$photo->save()) {
-            unlink($filePath); // Delete file if database save fails
+            unlink($filePath);
             return [
                 'success' => false,
                 'message' => 'Error saving photo data: ' . json_encode($photo->errors),
             ];
         }
-        
+
         $photo->extractAndSaveExif();
 
-        // Generate thumbnails
+        // Generate thumbnails using PathHelper
+        PathHelper::ensureDirectoryExists('thumbnails');
         $thumbnailSizes = ThumbnailSize::find()->all();
         $thumbnails = [];
 
         foreach ($thumbnailSizes as $size) {
-            $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $fileName);
+            $thumbnailPath = PathHelper::getThumbnailPath($size->name, $fileName);
             $thumbnailImage = Image::make($filePath);
 
             if ($size->crop) {
@@ -262,12 +269,11 @@ public function actionFindByCode($code = null)
             }
 
             if ($size->watermark) {
-                // Add watermark according to settings
                 $this->addWatermark($thumbnailImage);
             }
 
             $thumbnailImage->save($thumbnailPath);
-            $thumbnails[$size->name] = Yii::getAlias('@web/uploads/thumbnails/' . $size->name . '_' . $fileName);
+            $thumbnails[$size->name] = PathHelper::getThumbnailUrl($size->name, $fileName);
         }
 
         return [
@@ -372,7 +378,6 @@ public function actionFindByCode($code = null)
 
             fclose($out);
             rmdir($chunkDir); // Delete chunks directory
-            
             // Validate MIME type
             $mimeType = FileHelper::getMimeType($filePath);
             $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
@@ -410,7 +415,7 @@ public function actionFindByCode($code = null)
                     'message' => 'Error saving photo data: ' . json_encode($photo->errors),
                 ];
             }
-            
+
             $photo->extractAndSaveExif();
 
             // Generate thumbnails
@@ -503,14 +508,14 @@ public function actionFindByCode($code = null)
                         $tag->frequency = 0;
                         $tag->created_at = time();
                         $tag->updated_at = time();
-                        
+
                         if ($tag->save()) {
                             $tagId = $tag->id;
                         } else {
                             throw new \Exception('Error creating new tag: ' . json_encode($tag->errors));
                         }
                     }
-                    
+
                     $tag = Tag::findOne($tagId);
                     if ($tag) {
                         $photoTag = new PhotoTag();
@@ -550,11 +555,11 @@ public function actionFindByCode($code = null)
         }
 
         return $this->render('update', [
-            'model' => $model,
-            'allTags' => $allTags,
-            'allCategories' => $allCategories,
-            'selectedTags' => $selectedTags,
-            'selectedCategories' => $selectedCategories,
+                    'model' => $model,
+                    'allTags' => $allTags,
+                    'allCategories' => $allCategories,
+                    'selectedTags' => $selectedTags,
+                    'selectedCategories' => $selectedCategories,
         ]);
     }
 
@@ -1072,7 +1077,7 @@ public function actionFindByCode($code = null)
 
         return $this->redirect(['queue/index']);
     }
-    
+
     /**
      * Renders the import form.
      *
@@ -1167,4 +1172,5 @@ public function actionFindByCode($code = null)
 
         return $image;
     }
+
 }

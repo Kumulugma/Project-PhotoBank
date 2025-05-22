@@ -9,6 +9,7 @@ use common\models\PhotoTag;
 use common\models\Tag;
 use common\models\ThumbnailSize;
 use common\models\Settings;
+use common\helpers\PathHelper;
 use yii\helpers\FileHelper;
 use Intervention\Image\ImageManagerStatic as Image;
 
@@ -90,7 +91,7 @@ class JobProcessor {
 
         foreach ($photos as $photo) {
             try {
-                $filePath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
+                $filePath = PathHelper::getPhotoPath($photo->file_name, 'temp');
 
                 if (!file_exists($filePath)) {
                     Yii::warning("Plik {$filePath} nie istnieje, pomijam synchronizację zdjęcia ID {$photo->id}");
@@ -164,7 +165,7 @@ class JobProcessor {
 
         foreach ($photos as $photo) {
             try {
-                $filePath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
+                $filePath = PathHelper::getPhotoPath($photo->file_name, 'temp');
 
                 if (!file_exists($filePath) && !empty($photo->s3_path)) {
                     if (Yii::$app->has('s3')) {
@@ -173,10 +174,7 @@ class JobProcessor {
                         $s3Settings = $s3->getSettings();
 
                         try {
-                            $tempDir = Yii::getAlias('@webroot/uploads/temp');
-                            if (!is_dir($tempDir)) {
-                                FileHelper::createDirectory($tempDir, 0777, true);
-                            }
+                            PathHelper::ensureDirectoryExists('temp');
 
                             $s3->getObject([
                                 'Bucket' => $s3Settings['bucket'],
@@ -198,16 +196,13 @@ class JobProcessor {
                     continue;
                 }
 
+                PathHelper::ensureDirectoryExists('thumbnails');
+
                 foreach ($thumbnailSizes as $size) {
-                    $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $photo->file_name);
+                    $thumbnailPath = PathHelper::getThumbnailPath($size->name, $photo->file_name);
 
                     if (isset($params['partial']) && $params['partial'] && file_exists($thumbnailPath)) {
                         continue;
-                    }
-
-                    $thumbnailDir = Yii::getAlias('@webroot/uploads/thumbnails');
-                    if (!is_dir($thumbnailDir)) {
-                        FileHelper::createDirectory($thumbnailDir, 0777, true);
                     }
 
                     $thumbnailImage = Image::make($filePath);
@@ -269,7 +264,7 @@ class JobProcessor {
             throw new \Exception("Brak konfiguracji dostawcy AI lub klucza API");
         }
 
-        $filePath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
+        $filePath = PathHelper::getPhotoPath($photo->file_name, 'temp');
 
         if (!file_exists($filePath) && !empty($photo->s3_path)) {
             if (Yii::$app->has('s3')) {
@@ -278,10 +273,7 @@ class JobProcessor {
                 $s3Settings = $s3->getSettings();
 
                 try {
-                    $tempDir = Yii::getAlias('@webroot/uploads/temp');
-                    if (!is_dir($tempDir)) {
-                        FileHelper::createDirectory($tempDir, 0777, true);
-                    }
+                    PathHelper::ensureDirectoryExists('temp');
 
                     $s3->getObject([
                         'Bucket' => $s3Settings['bucket'],
@@ -338,7 +330,7 @@ class JobProcessor {
             $photo->save();
         }
 
-        if (!empty($photo->s3_path) && !file_exists(Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name))) {
+        if (!empty($photo->s3_path) && !file_exists(PathHelper::getPhotoPath($photo->file_name, 'temp'))) {
             @unlink($filePath);
         }
 
@@ -422,24 +414,8 @@ class JobProcessor {
             throw new \Exception($errorMsg);
         }
 
-        $tempDir = Yii::getAlias('@webroot/uploads/temp');
-        if (!is_dir($tempDir)) {
-            try {
-                FileHelper::createDirectory($tempDir, 0777, true);
-                Yii::info("Utworzono katalog tymczasowy: {$tempDir}");
-            } catch (\Exception $e) {
-                $errorMsg = "Nie można utworzyć katalogu tymczasowego: " . $e->getMessage();
-                Yii::error($errorMsg);
-                $results['error'] = $errorMsg;
-
-                if ($job) {
-                    $job->results = json_encode($results, JSON_PRETTY_PRINT);
-                    $job->save();
-                }
-
-                throw new \Exception($errorMsg);
-            }
-        }
+        // Upewnij się, że katalogi docelowe istnieją
+        PathHelper::ensureDirectoryExists('temp');
 
         $options = [
             'only' => ['*.jpg', '*.jpeg', '*.png', '*.gif'],
@@ -484,24 +460,7 @@ class JobProcessor {
         $skipped = 0;
         $errors = 0;
 
-        $thumbnailDir = Yii::getAlias('@webroot/uploads/thumbnails');
-        if (!is_dir($thumbnailDir)) {
-            try {
-                FileHelper::createDirectory($thumbnailDir, 0777, true);
-                Yii::info("Utworzono katalog miniatur: {$thumbnailDir}");
-            } catch (\Exception $e) {
-                $errorMsg = "Nie można utworzyć katalogu miniatur: " . $e->getMessage();
-                Yii::error($errorMsg);
-                $results['error'] = $errorMsg;
-
-                if ($job) {
-                    $job->results = json_encode($results, JSON_PRETTY_PRINT);
-                    $job->save();
-                }
-
-                throw new \Exception($errorMsg);
-            }
-        }
+        PathHelper::ensureDirectoryExists('thumbnails');
 
         foreach ($files as $filePath) {
             Yii::info("Przetwarzam plik: {$filePath}");
@@ -524,8 +483,19 @@ class JobProcessor {
                     continue;
                 }
 
-                $fileName = Yii::$app->security->generateRandomString(16) . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
-                $destPath = Yii::getAlias('@webroot/uploads/temp/' . $fileName);
+                // Generuj nazwę pliku z oryginalną nazwą i hashem
+                $preserveNames = $this->getSettingValue('upload.preserve_original_names', '1');
+                
+                if ($preserveNames == '1') {
+                    $originalName = pathinfo($filePath, PATHINFO_FILENAME);
+                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                    $hash = substr(Yii::$app->security->generateRandomString(12), 0, 8);
+                    $fileName = $originalName . '_' . $hash . '.' . $extension;
+                } else {
+                    $fileName = Yii::$app->security->generateRandomString(16) . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
+                }
+
+                $destPath = PathHelper::getPhotoPath($fileName, 'temp');
                 $fileInfo['new_filename'] = $fileName;
                 $fileInfo['destination'] = $destPath;
 
@@ -555,7 +525,6 @@ class JobProcessor {
                 $photo->created_at = time();
                 $photo->updated_at = time();
                 $photo->created_by = 1;
-                // search_code will be generated automatically in beforeSave()
 
                 if (!$photo->save()) {
                     throw new \Exception("Błąd zapisywania informacji o zdjęciu: " . json_encode($photo->errors));
@@ -569,7 +538,7 @@ class JobProcessor {
                 $fileInfo['thumbnails'] = [];
 
                 foreach ($thumbnailSizes as $size) {
-                    $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $fileName);
+                    $thumbnailPath = PathHelper::getThumbnailPath($size->name, $fileName);
                     $thumbnailImage = Image::make($destPath);
 
                     if ($size->crop) {
@@ -691,7 +660,7 @@ class JobProcessor {
             $watermarkImage = $this->getSettingValue('watermark.image', '');
 
             if (!empty($watermarkImage)) {
-                $watermarkPath = Yii::getAlias('@webroot/uploads/watermark/' . $watermarkImage);
+                $watermarkPath = PathHelper::getUploadPath('watermark') . '/' . $watermarkImage;
 
                 if (file_exists($watermarkPath)) {
                     $watermark = Image::make($watermarkPath);

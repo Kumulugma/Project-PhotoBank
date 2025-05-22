@@ -5,6 +5,7 @@ namespace common\models;
 use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
+use common\helpers\PathHelper;
 
 /**
  * This is the model class for table "photo".
@@ -27,26 +28,23 @@ use yii\db\ActiveRecord;
  * @property int $updated_at
  * @property int $created_by
  */
-class Photo extends ActiveRecord 
-{
+class Photo extends ActiveRecord {
+
     const STATUS_QUEUE = 0;
     const STATUS_ACTIVE = 1;
     const STATUS_DELETED = 2;
 
-    public static function tableName()
-    {
+    public static function tableName() {
         return '{{%photo}}';
     }
 
-    public function behaviors()
-    {
+    public function behaviors() {
         return [
             TimestampBehavior::class,
         ];
     }
 
-    public function rules()
-    {
+    public function rules() {
         return [
             [['title', 'file_name', 'file_size', 'mime_type', 'created_by'], 'required'],
             [['description', 's3_path', 'exif_data'], 'string'],
@@ -60,13 +58,12 @@ class Photo extends ActiveRecord
             [['status'], 'default', 'value' => self::STATUS_QUEUE],
             [['status'], 'in', 'range' => [self::STATUS_QUEUE, self::STATUS_ACTIVE, self::STATUS_DELETED]],
             [['is_public'], 'default', 'value' => 0],
-            [['is_public'], 'boolean'],
+            [['is_public'], 'integer', 'min' => 0, 'max' => 1],
             [['created_by'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['created_by' => 'id']],
         ];
     }
 
-    public function attributeLabels()
-    {
+    public function attributeLabels() {
         return [
             'id' => 'ID',
             'title' => 'Tytuł',
@@ -88,75 +85,65 @@ class Photo extends ActiveRecord
         ];
     }
 
-    public function beforeSave($insert)
-    {
+    public function beforeSave($insert) {
         if ($insert && empty($this->search_code)) {
             $this->search_code = $this->generateSearchCode();
         }
         return parent::beforeSave($insert);
     }
 
-    public function generateSearchCode()
-    {
+    public function generateSearchCode() {
         $characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         $charactersLength = strlen($characters);
         $maxAttempts = 100;
         $attempts = 0;
-        
+
         do {
             $code = '';
             for ($i = 0; $i < 12; $i++) {
                 $code .= $characters[mt_rand(0, $charactersLength - 1)];
             }
             $attempts++;
-            
+
             if ($attempts > $maxAttempts) {
                 throw new \Exception('Cannot generate unique search code after ' . $maxAttempts . ' attempts');
             }
-            
         } while (self::find()->where(['search_code' => $code])->exists());
-        
+
         return $code;
     }
 
-    public static function findBySearchCode($code)
-    {
+    public static function findBySearchCode($code) {
         if (empty($code)) {
             return null;
         }
-        
+
         return self::findOne(['search_code' => strtoupper(trim($code))]);
     }
 
-    public function getTags()
-    {
+    public function getTags() {
         return $this->hasMany(Tag::class, ['id' => 'tag_id'])
-            ->viaTable('{{%photo_tag}}', ['photo_id' => 'id']);
+                        ->viaTable('{{%photo_tag}}', ['photo_id' => 'id']);
     }
 
-    public function getCategories()
-    {
+    public function getCategories() {
         return $this->hasMany(Category::class, ['id' => 'category_id'])
-            ->viaTable('{{%photo_category}}', ['photo_id' => 'id']);
+                        ->viaTable('{{%photo_category}}', ['photo_id' => 'id']);
     }
 
-    public function getPhotoTags()
-    {
+    public function getPhotoTags() {
         return $this->hasMany(PhotoTag::class, ['photo_id' => 'id']);
     }
 
-    public function getPhotoCategories()
-    {
+    public function getPhotoCategories() {
         return $this->hasMany(PhotoCategory::class, ['photo_id' => 'id']);
     }
 
-    public function getCreatedBy()
-    {
+    public function getCreatedBy() {
         return $this->hasOne(User::class, ['id' => 'created_by']);
     }
 
-    public function getStatusName()
-    {
+    public function getStatusName() {
         $statusMap = [
             self::STATUS_QUEUE => 'W poczekalni',
             self::STATUS_ACTIVE => 'Aktywne',
@@ -166,40 +153,46 @@ class Photo extends ActiveRecord
         return $statusMap[$this->status] ?? 'Nieznany';
     }
 
-    public function getThumbnails()
-    {
+    public function getThumbnails() {
         $thumbnails = [];
         $thumbnailSizes = ThumbnailSize::find()->all();
 
         foreach ($thumbnailSizes as $size) {
-            $thumbnails[$size->name] = Yii::getAlias('@web/uploads/thumbnails/' . $size->name . '_' . $this->file_name);
+            $thumbnails[$size->name] = PathHelper::getThumbnailUrl($size->name, $this->file_name);
         }
 
         return $thumbnails;
     }
 
-    public function hasStatus($status)
-    {
+    public function getOriginalName() {
+        // Usuń hash z nazwy pliku, jeśli istnieje
+        $fileName = pathinfo($this->file_name, PATHINFO_FILENAME);
+
+        // Sprawdź czy nazwa zawiera hash (format: nazwa_hash)
+        if (preg_match('/^(.+)_[A-Za-z0-9]{8}$/', $fileName, $matches)) {
+            return $matches[1];
+        }
+
+        return $fileName;
+    }
+
+    public function hasStatus($status) {
         return $this->status === $status;
     }
 
-    public function isInQueue()
-    {
+    public function isInQueue() {
         return $this->hasStatus(self::STATUS_QUEUE);
     }
 
-    public function isActive()
-    {
+    public function isActive() {
         return $this->hasStatus(self::STATUS_ACTIVE);
     }
 
-    public function isDeleted()
-    {
+    public function isDeleted() {
         return $this->hasStatus(self::STATUS_DELETED);
     }
 
-    public function isPublic()
-    {
+    public function isPublic() {
         return (bool) $this->is_public;
     }
 
@@ -207,45 +200,42 @@ class Photo extends ActiveRecord
      * Pobiera wszystkie unikalne serie z bazy danych
      * @return array
      */
-    public static function getAllSeries()
-    {
+    public static function getAllSeries() {
         return self::find()
-            ->select('series')
-            ->where(['is not', 'series', null])
-            ->andWhere(['!=', 'series', ''])
-            ->distinct()
-            ->orderBy('series ASC')
-            ->column();
+                        ->select('series')
+                        ->where(['is not', 'series', null])
+                        ->andWhere(['!=', 'series', ''])
+                        ->distinct()
+                        ->orderBy('series ASC')
+                        ->column();
     }
 
     /**
      * Sprawdza czy zdjęcie ma przypisaną serię
      * @return bool
      */
-    public function hasSeries()
-    {
+    public function hasSeries() {
         return !empty($this->series);
     }
 
     /**
      * Odczytuje i zapisuje dane EXIF ze zdjęcia
      */
-    public function extractAndSaveExif()
-    {
-        $filePath = Yii::getAlias('@webroot/uploads/temp/' . $this->file_name);
-        
+    public function extractAndSaveExif() {
+        $filePath = PathHelper::getPhotoPath($this->file_name, 'temp');
+
         if (!file_exists($filePath)) {
             return false;
         }
-        
+
         if (!function_exists('exif_read_data')) {
             Yii::warning('EXIF extension is not installed');
             return false;
         }
-        
+
         try {
             $exifData = exif_read_data($filePath, 0, true);
-            
+
             if ($exifData !== false) {
                 $this->exif_data = json_encode($exifData, JSON_UNESCAPED_UNICODE);
                 return $this->save(false, ['exif_data']);
@@ -253,34 +243,32 @@ class Photo extends ActiveRecord
         } catch (\Exception $e) {
             Yii::error('Error reading EXIF data: ' . $e->getMessage());
         }
-        
+
         return false;
     }
 
     /**
      * Pobiera dane EXIF jako tablicę
      */
-    public function getExifArray()
-    {
+    public function getExifArray() {
         if (empty($this->exif_data)) {
             return [];
         }
-        
+
         return json_decode($this->exif_data, true) ?: [];
     }
 
     /**
      * Pobiera sformatowane dane EXIF do wyświetlenia
      */
-    public function getFormattedExif()
-    {
+    public function getFormattedExif() {
         $exif = $this->getExifArray();
         if (empty($exif)) {
             return [];
         }
-        
+
         $formatted = [];
-        
+
         // Prawa autorskie - PRIORYTET
         if (Settings::getSetting('gallery.exif_show_copyright', '1') == '1') {
             if (isset($exif['IFD0']['Copyright'])) {
@@ -296,7 +284,7 @@ class Photo extends ActiveRecord
                 }
             }
         }
-        
+
         // Dodatkowe informacje o autorskich
         if (Settings::getSetting('gallery.exif_show_author_info', '1') == '1') {
             if (isset($exif['IFD0']['ImageDescription'])) {
@@ -309,7 +297,7 @@ class Photo extends ActiveRecord
                 $formatted['Nazwa dokumentu'] = $exif['IFD0']['DocumentName'];
             }
         }
-        
+
         // Aparat i obiektyw
         if (Settings::getSetting('gallery.exif_show_camera', '1') == '1') {
             if (isset($exif['IFD0']['Make'])) {
@@ -319,7 +307,7 @@ class Photo extends ActiveRecord
                 $formatted['Model aparatu'] = $exif['IFD0']['Model'];
             }
         }
-        
+
         if (Settings::getSetting('gallery.exif_show_lens', '1') == '1') {
             if (isset($exif['EXIF']['LensModel'])) {
                 $formatted['Model obiektywu'] = $exif['EXIF']['LensModel'];
@@ -328,7 +316,7 @@ class Photo extends ActiveRecord
                 $formatted['Marka obiektywu'] = $exif['EXIF']['LensMake'];
             }
         }
-        
+
         // Ustawienia ekspozycji
         if (Settings::getSetting('gallery.exif_show_exposure', '1') == '1') {
             if (isset($exif['EXIF']['ISOSpeedRatings'])) {
@@ -351,7 +339,7 @@ class Photo extends ActiveRecord
                 $formatted['Ogniskowa'] = number_format($focalLength, 0) . 'mm';
             }
         }
-        
+
         // Data i czas
         if (Settings::getSetting('gallery.exif_show_datetime', '1') == '1') {
             if (isset($exif['EXIF']['DateTimeOriginal'])) {
@@ -360,7 +348,7 @@ class Photo extends ActiveRecord
                 $formatted['Data modyfikacji'] = date('d.m.Y H:i:s', strtotime($exif['IFD0']['DateTime']));
             }
         }
-        
+
         // Flash
         if (Settings::getSetting('gallery.exif_show_flash', '1') == '1') {
             if (isset($exif['EXIF']['Flash'])) {
@@ -369,14 +357,14 @@ class Photo extends ActiveRecord
                 $formatted['Flesz'] = $flashText;
             }
         }
-        
+
         // Wymiary oryginalne
         if (Settings::getSetting('gallery.exif_show_dimensions', '1') == '1') {
             if (isset($exif['EXIF']['ExifImageWidth']) && isset($exif['EXIF']['ExifImageLength'])) {
                 $formatted['Wymiary EXIF'] = $exif['EXIF']['ExifImageWidth'] . ' × ' . $exif['EXIF']['ExifImageLength'] . ' px';
             }
         }
-        
+
         // GPS
         if (Settings::getSetting('gallery.exif_show_gps', '0') == '1') {
             if (isset($exif['GPS']['GPSLatitude']) && isset($exif['GPS']['GPSLongitude'])) {
@@ -385,14 +373,14 @@ class Photo extends ActiveRecord
                 $formatted['Lokalizacja GPS'] = number_format($lat, 6) . ', ' . number_format($lon, 6);
             }
         }
-        
+
         // Oprogramowanie
         if (Settings::getSetting('gallery.exif_show_software', '0') == '1') {
             if (isset($exif['IFD0']['Software'])) {
                 $formatted['Oprogramowanie'] = $exif['IFD0']['Software'];
             }
         }
-        
+
         // Zaawansowane dane techniczne
         if (Settings::getSetting('gallery.exif_show_technical', '0') == '1') {
             if (isset($exif['EXIF']['WhiteBalance'])) {
@@ -419,49 +407,47 @@ class Photo extends ActiveRecord
                 $formatted['Tryb ekspozycji'] = $exposureModes[$exif['EXIF']['ExposureMode']] ?? 'Nieznany';
             }
         }
-        
+
         return $formatted;
     }
 
     /**
      * Pobiera dane praw autorskich z EXIF
      */
-    public function getCopyrightInfo()
-    {
+    public function getCopyrightInfo() {
         $exif = $this->getExifArray();
         if (empty($exif)) {
             return [];
         }
-        
+
         $copyright = [];
-        
+
         if (isset($exif['IFD0']['Copyright'])) {
             $copyright['copyright'] = $exif['IFD0']['Copyright'];
         }
-        
+
         if (isset($exif['IFD0']['Artist'])) {
             $copyright['artist'] = $exif['IFD0']['Artist'];
         }
-        
+
         if (isset($exif['EXIF']['UserComment'])) {
             $userComment = $this->cleanUserComment($exif['EXIF']['UserComment']);
             if (!empty($userComment)) {
                 $copyright['user_comment'] = $userComment;
             }
         }
-        
+
         if (isset($exif['IFD0']['ImageDescription'])) {
             $copyright['description'] = $exif['IFD0']['ImageDescription'];
         }
-        
+
         return $copyright;
     }
 
     /**
      * Sprawdza czy zdjęcie ma informacje o prawach autorskich
      */
-    public function hasCopyrightInfo()
-    {
+    public function hasCopyrightInfo() {
         $copyrightInfo = $this->getCopyrightInfo();
         return !empty($copyrightInfo);
     }
@@ -469,49 +455,46 @@ class Photo extends ActiveRecord
     /**
      * Parsuje ułamek EXIF do liczby dziesiętnej
      */
-    private function parseExifFraction($fraction)
-    {
+    private function parseExifFraction($fraction) {
         if (is_numeric($fraction)) {
             return (float) $fraction;
         }
-        
+
         if (strpos($fraction, '/') !== false) {
             $parts = explode('/', $fraction);
             if (count($parts) == 2 && $parts[1] != 0) {
                 return (float) $parts[0] / (float) $parts[1];
             }
         }
-        
+
         return 0;
     }
 
     /**
      * Konwertuje współrzędne GPS na format dziesiętny
      */
-    private function getGpsCoordinate($coordinate, $hemisphere)
-    {
+    private function getGpsCoordinate($coordinate, $hemisphere) {
         if (!is_array($coordinate) || count($coordinate) < 3) {
             return 0;
         }
-        
+
         $degrees = $this->parseExifFraction($coordinate[0]);
         $minutes = $this->parseExifFraction($coordinate[1]);
         $seconds = $this->parseExifFraction($coordinate[2]);
-        
+
         $decimal = $degrees + ($minutes / 60) + ($seconds / 3600);
-        
+
         if ($hemisphere == 'S' || $hemisphere == 'W') {
             $decimal *= -1;
         }
-        
+
         return $decimal;
     }
 
     /**
      * Opisuje ustawienia flesza
      */
-    private function getFlashDescription($flashValue)
-    {
+    private function getFlashDescription($flashValue) {
         $flashDescriptions = [
             0 => 'Flesz nie został użyty',
             1 => 'Flesz został użyty',
@@ -536,28 +519,28 @@ class Photo extends ActiveRecord
             93 => 'Flesz został użyty, automatyczny, redukcja czerwonych oczu, brak światła zwrotnego',
             95 => 'Flesz został użyty, automatyczny, redukcja czerwonych oczu, światło zwrotne wykryte'
         ];
-        
+
         return $flashDescriptions[$flashValue] ?? 'Nieznane ustawienie flesza (' . $flashValue . ')';
     }
 
     /**
      * Czyści komentarz użytkownika z niepotrzebnych znaków kontrolnych
      */
-    private function cleanUserComment($userComment)
-    {
+    private function cleanUserComment($userComment) {
         if (empty($userComment)) {
             return '';
         }
-        
+
         // Usuń znaki kontrolne i prefiks UNICODE
         $cleaned = preg_replace('/^(UNICODE\x00|ASCII\x00\x00\x00)/', '', $userComment);
         $cleaned = trim($cleaned, "\x00\x20\t\n\r\0\x0B");
-        
+
         // Sprawdź czy to czytelny tekst
         if (mb_check_encoding($cleaned, 'UTF-8')) {
             return $cleaned;
         }
-        
+
         return '';
     }
+
 }
