@@ -45,18 +45,29 @@ $statusOptions = [
                     <label class="form-label">Szybkie wyszukiwanie po kodzie</label>
                     <div class="input-group">
                         <input type="text" id="quick-search-code" class="form-control" 
-                               placeholder="Wpisz 12-cyfrowy kod..." maxlength="12"
-                               style="text-transform: uppercase;">
+                               placeholder="Wpisz kod zdjęcia..." maxlength="12"
+                               style="text-transform: uppercase;" autocomplete="off">
                         <button class="btn btn-primary" type="button" id="quick-search-btn">
                             <i class="fas fa-search"></i> Znajdź
                         </button>
                     </div>
+                    <div id="search-status" class="form-text mt-1"></div>
                 </div>
-                <div class="col-md-8">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Każde zdjęcie ma unikalny 12-cyfrowy kod. Wpisz kod aby szybko znaleźć konkretne zdjęcie.
-                    </small>
+                <div class="col-md-4">
+                    <div class="small text-muted">
+                        <strong>Wskazówki:</strong><br>
+                        • Wpisz pełny 12-znakowy kod aby przejść do zdjęcia<br>
+                        • Wpisz część kodu aby filtrować listę<br>
+                        • Kody zawierają tylko cyfry i wielkie litery
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-info alert-sm mb-0 py-2">
+                        <small>
+                            <i class="fas fa-info-circle me-1"></i>
+                            Każde zdjęcie ma unikalny kod. Znajdziesz go w szczegółach zdjęcia.
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -233,13 +244,12 @@ $statusOptions = [
     <?php Pjax::end(); ?>
 </div>
 
-<!-- Pozostałe modale bez zmian... -->
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Szybkie wyszukiwanie po kodzie
     const quickSearchInput = document.getElementById('quick-search-code');
     const quickSearchBtn = document.getElementById('quick-search-btn');
+    const searchStatus = document.getElementById('search-status');
     
     if (quickSearchInput && quickSearchBtn) {
         // Automatyczne wielkie litery
@@ -247,32 +257,89 @@ document.addEventListener('DOMContentLoaded', function() {
             this.value = this.value.toUpperCase();
         });
         
-        // Wyszukiwanie po kliknięciu przycisku
-        quickSearchBtn.addEventListener('click', function() {
+        // Funkcja wyszukiwania
+        function performSearch() {
             const code = quickSearchInput.value.trim();
             if (code.length > 0) {
-                // Ustaw wartość w filtrze tabeli i odśwież
-                const filterInput = document.querySelector('input[name="PhotoSearch[search_code]"]');
-                if (filterInput) {
-                    filterInput.value = code;
-                    // Wyślij formularz filtrowania
-                    const form = filterInput.closest('form');
-                    if (form) {
-                        form.submit();
-                    }
+                // Jeśli kod ma 12 znaków, spróbuj znaleźć konkretne zdjęcie
+                if (code.length === 12) {
+                    searchStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Szukam zdjęcia...';
+                    searchStatus.className = 'form-text mt-1 text-primary';
+                    
+                    // Sprawdź czy zdjęcie o tym kodzie istnieje
+                    window.location.href = '/photos/find-by-code?code=' + encodeURIComponent(code);
+                } else {
+                    // Dla niepełnych kodów użyj filtra tabeli
+                    filterByCode(code);
                 }
             }
-        });
+        }
+        
+        // Funkcja filtrowania tabeli
+        function filterByCode(code) {
+            searchStatus.innerHTML = '<i class="fas fa-filter"></i> Filtruję wyniki...';
+            searchStatus.className = 'form-text mt-1 text-info';
+            
+            const filterInput = document.querySelector('input[name="PhotoSearch[search_code]"]');
+            if (filterInput) {
+                filterInput.value = code;
+                
+                // Wyczyść inne filtry dla lepszych wyników wyszukiwania po kodzie
+                const titleFilter = document.querySelector('input[name="PhotoSearch[title]"]');
+                if (titleFilter) titleFilter.value = '';
+                
+                // Wyślij formularz filtrowania
+                const form = filterInput.closest('form');
+                if (form) {
+                    form.submit();
+                } else {
+                    // Jeśli nie ma formularza, odśwież stronę z parametrem
+                    const currentUrl = new URL(window.location);
+                    currentUrl.searchParams.set('PhotoSearch[search_code]', code);
+                    window.location.href = currentUrl.toString();
+                }
+            }
+        }
+        
+        // Wyszukiwanie po kliknięciu przycisku
+        quickSearchBtn.addEventListener('click', performSearch);
         
         // Wyszukiwanie po naciśnięciu Enter
         quickSearchInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                quickSearchBtn.click();
+                e.preventDefault();
+                performSearch();
+            }
+        });
+        
+        // Dodaj wskazówkę wizualną
+        quickSearchInput.addEventListener('keyup', function() {
+            const code = this.value.trim();
+            if (code.length === 12) {
+                this.classList.add('border-success');
+                this.classList.remove('border-warning');
+                quickSearchBtn.innerHTML = '<i class="fas fa-eye"></i> Zobacz';
+                quickSearchBtn.className = 'btn btn-success';
+                searchStatus.innerHTML = '<i class="fas fa-check-circle"></i> Kod kompletny - kliknij aby przejść do zdjęcia';
+                searchStatus.className = 'form-text mt-1 text-success';
+            } else if (code.length > 0) {
+                this.classList.add('border-warning');
+                this.classList.remove('border-success');
+                quickSearchBtn.innerHTML = '<i class="fas fa-search"></i> Filtruj';
+                quickSearchBtn.className = 'btn btn-warning';
+                searchStatus.innerHTML = '<i class="fas fa-info-circle"></i> Kod niekompletny - będzie użyty jako filtr';
+                searchStatus.className = 'form-text mt-1 text-warning';
+            } else {
+                this.classList.remove('border-success', 'border-warning');
+                quickSearchBtn.innerHTML = '<i class="fas fa-search"></i> Znajdź';
+                quickSearchBtn.className = 'btn btn-primary';
+                searchStatus.innerHTML = '';
+                searchStatus.className = 'form-text mt-1';
             }
         });
     }
 
-    // Pozostały kod JavaScript bez zmian...
+    // Batch operations - obsługa zaznaczania zdjęć
     const checkboxes = document.querySelectorAll('input[name="selection[]"]');
     const batchButtons = document.querySelectorAll('.batch-action-btn');
     const selectAll = document.querySelector('input[name="selection_all"]');
@@ -296,3 +363,37 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<style>
+.alert-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+#quick-search-code.border-success {
+    border-color: #198754 !important;
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+#quick-search-code.border-warning {
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.badge {
+    font-size: 0.85em;
+}
+
+.img-thumbnail {
+    transition: transform 0.2s ease;
+}
+
+.img-thumbnail:hover {
+    transform: scale(1.1);
+}
+</style>

@@ -59,20 +59,51 @@ class PhotosController extends Controller {
     }
 
     /**
-     * Finds photo by search code and redirects to view
-     * @param string $code
-     * @return mixed
-     */
-    public function actionFindByCode($code) {
+ * Finds photo by search code and redirects to view
+ * @param string $code
+ * @return mixed
+ */
+public function actionFindByCode($code = null) 
+{
+    // Jeśli to żądanie AJAX, zwróć odpowiedź JSON
+    if (Yii::$app->request->isAjax) {
+        Yii::$app->response->format = Response::FORMAT_JSON;
+        
+        if (empty($code)) {
+            return ['success' => false, 'message' => 'Nie podano kodu'];
+        }
+        
         $photo = Photo::findBySearchCode($code);
         
         if (!$photo) {
-            Yii::$app->session->setFlash('error', 'Nie znaleziono zdjęcia o kodzie: ' . $code);
-            return $this->redirect(['index']);
+            return ['success' => false, 'message' => 'Nie znaleziono zdjęcia o kodzie: ' . $code];
         }
         
-        return $this->redirect(['view', 'id' => $photo->id]);
+        return [
+            'success' => true, 
+            'redirect' => Yii::$app->urlManager->createUrl(['photos/view', 'id' => $photo->id])
+        ];
     }
+    
+    // Dla zwykłych żądań HTTP
+    if (empty($code)) {
+        $code = Yii::$app->request->get('code');
+    }
+    
+    if (empty($code)) {
+        Yii::$app->session->setFlash('error', 'Nie podano kodu wyszukiwania');
+        return $this->redirect(['index']);
+    }
+    
+    $photo = Photo::findBySearchCode($code);
+    
+    if (!$photo) {
+        Yii::$app->session->setFlash('error', 'Nie znaleziono zdjęcia o kodzie: ' . $code);
+        return $this->redirect(['index']);
+    }
+    
+    return $this->redirect(['view', 'id' => $photo->id]);
+}
 
     /**
      * Lists all active photos.
