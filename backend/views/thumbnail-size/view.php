@@ -17,11 +17,9 @@ $this->params['breadcrumbs'][] = $this->title;
             <?= Html::a('<i class="fas fa-edit me-2"></i>Edytuj', ['update', 'id' => $model->id], [
                 'class' => 'btn btn-primary'
             ]) ?>
-            <?= Html::a('<i class="fas fa-sync me-2"></i>Regeneruj', ['regenerate'], [
-                'class' => 'btn btn-warning',
-                'data-toggle' => 'modal',
-                'data-target' => '#regenerateModal',
-            ]) ?>
+            <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#regenerateModal">
+                <i class="fas fa-sync me-2"></i>Regeneruj
+            </button>
             <?= Html::a('<i class="fas fa-trash me-2"></i>Usuń', ['delete', 'id' => $model->id], [
                 'class' => 'btn btn-danger',
                 'data-confirm' => 'Czy na pewno usunąć ten rozmiar? Wszystkie miniatury tego rozmiaru zostaną utracone.',
@@ -222,6 +220,7 @@ $this->params['breadcrumbs'][] = $this->title;
             </div>
             <?php $form = \yii\bootstrap5\ActiveForm::begin([
                 'action' => ['regenerate'],
+                'method' => 'post',
             ]); ?>
             <div class="modal-body">
                 <input type="hidden" name="size_id" value="<?= $model->id ?>">
@@ -255,6 +254,7 @@ $this->params['breadcrumbs'][] = $this->title;
             </div>
             <?php $form = \yii\bootstrap5\ActiveForm::begin([
                 'action' => ['regenerate'],
+                'method' => 'post',
             ]); ?>
             <div class="modal-body">
                 <input type="hidden" name="size_id" value="<?= $model->id ?>">

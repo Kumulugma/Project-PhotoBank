@@ -181,7 +181,7 @@ class ThumbnailSizeController extends Controller
             $params['partial'] = true;
         }
         
-        $job->params = json_encode($params);
+        $job->data = json_encode($params);
         $job->status = QueuedJob::STATUS_PENDING;
         $job->created_at = time();
         $job->updated_at = time();

@@ -11,6 +11,7 @@ use yii\db\ActiveRecord;
  * @property integer $id
  * @property string $type
  * @property string $data
+ * @property string $params  // Alias dla data
  * @property integer $status
  * @property string $error
  * @property integer $created_at
@@ -53,7 +54,7 @@ class QueuedJob extends ActiveRecord
     {
         return [
             [['type'], 'required'],
-            [['data', 'error', 'error_message', 'results'], 'string'],
+            [['data', 'params', 'error', 'error_message', 'results'], 'string'],
             [['status', 'attempts', 'created_at', 'updated_at', 'started_at', 'finished_at'], 'integer'],
             [['type'], 'string', 'max' => 255],
             [['status'], 'default', 'value' => self::STATUS_PENDING],
@@ -70,6 +71,7 @@ class QueuedJob extends ActiveRecord
             'id' => 'ID',
             'type' => 'Typ zadania',
             'data' => 'Dane',
+            'params' => 'Parametry',
             'status' => 'Status',
             'error' => 'Błąd',
             'attempts' => 'Próby',
@@ -83,17 +85,32 @@ class QueuedJob extends ActiveRecord
     }
     
     /**
- * {@inheritdoc}
- */
-public function attributes()
-{
-    // Jawne zdefiniowanie wszystkich atrybutów modelu
-    return [
-        'id', 'type', 'data', 'status', 'error', 
-        'created_at', 'updated_at', 'started_at', 'finished_at',
-        'attempts', 'error_message', 'results'
-    ];
-}
+     * {@inheritdoc}
+     */
+    public function attributes()
+    {
+        return [
+            'id', 'type', 'data', 'params', 'status', 'error', 
+            'created_at', 'updated_at', 'started_at', 'finished_at',
+            'attempts', 'error_message', 'results'
+        ];
+    }
+
+    /**
+     * Getter dla params - alias dla data
+     */
+    public function getParams()
+    {
+        return $this->data;
+    }
+    
+    /**
+     * Setter dla params - zapisuje do data
+     */
+    public function setParams($value)
+    {
+        $this->data = $value;
+    }
 
     /**
      * Gets decoded data
@@ -105,24 +122,33 @@ public function attributes()
         return json_decode($this->data, true) ?: [];
     }
     
-/**
- * Gets decoded results
- * 
- * @return mixed Decoded results
- */
-public function getDecodedResults()
-{
-    try {
-        // Sprawdź, czy właściwość istnieje i nie jest pusta
-        if (!$this->hasAttribute('results') || $this->results === null) {
+    /**
+     * Gets decoded params (alias for getDecodedData)
+     * 
+     * @return mixed Decoded params
+     */
+    public function getDecodedParams()
+    {
+        return $this->getDecodedData();
+    }
+    
+    /**
+     * Gets decoded results
+     * 
+     * @return mixed Decoded results
+     */
+    public function getDecodedResults()
+    {
+        try {
+            if (!$this->hasAttribute('results') || $this->results === null) {
+                return [];
+            }
+            return json_decode($this->results, true) ?: [];
+        } catch (\Exception $e) {
+            Yii::warning('Błąd pobierania wyników: ' . $e->getMessage());
             return [];
         }
-        return json_decode($this->results, true) ?: [];
-    } catch (\Exception $e) {
-        Yii::warning('Błąd pobierania wyników: ' . $e->getMessage());
-        return [];
     }
-}
     
     /**
      * Gets formatted status name
@@ -286,20 +312,20 @@ public function getDecodedResults()
     }
     
     /**
- * Alias for finished_at to maintain compatibility
- * @return int|null
- */
-public function getCompleted_at()
-{
-    return $this->finished_at;
-}
+     * Alias for finished_at to maintain compatibility
+     * @return int|null
+     */
+    public function getCompleted_at()
+    {
+        return $this->finished_at;
+    }
 
-/**
- * Alias for setting finished_at through completed_at
- * @param int $value
- */
-public function setCompleted_at($value)
-{
-    $this->finished_at = $value;
-}
+    /**
+     * Alias for setting finished_at through completed_at
+     * @param int $value
+     */
+    public function setCompleted_at($value)
+    {
+        $this->finished_at = $value;
+    }
 }

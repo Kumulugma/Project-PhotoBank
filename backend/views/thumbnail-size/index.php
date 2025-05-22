@@ -22,8 +22,8 @@ $this->params['breadcrumbs'][] = $this->title;
                 <?= Html::a('Create Thumbnail Size', ['create'], ['class' => 'btn btn-success']) ?>
                 <?= Html::a('Regenerate All Thumbnails', '#', [
                     'class' => 'btn btn-warning',
-                    'data-toggle' => 'modal',
-                    'data-target' => '#regenerateModal',
+                    'data-bs-toggle' => 'modal',
+                    'data-bs-target' => '#regenerateModal',
                 ]) ?>
             </p>
 
@@ -72,7 +72,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         'template' => '{view} {update} {delete}',
                         'buttons' => [
                             'delete' => function ($url, $model, $key) {
-                                return Html::a('<span class="glyphicon glyphicon-trash"></span>', $url, [
+                                return Html::a('<span class="fas fa-trash"></span>', $url, [
                                     'title' => Yii::t('app', 'Delete'),
                                     'data-confirm' => Yii::t('app', 'Are you sure you want to delete this thumbnail size? All thumbnails of this size will be lost.'),
                                     'data-method' => 'post',
@@ -87,11 +87,11 @@ $this->params['breadcrumbs'][] = $this->title;
         </div>
 
         <div class="col-md-4">
-            <div class="panel panel-info">
-                <div class="panel-heading">
-                    <h3 class="panel-title">About Thumbnails</h3>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">About Thumbnails</h5>
                 </div>
-                <div class="panel-body">
+                <div class="card-body">
                     <p>Thumbnails are smaller versions of original photos used for:</p>
                     <ul>
                         <li>Gallery previews</li>
@@ -118,11 +118,11 @@ $this->params['breadcrumbs'][] = $this->title;
                 </div>
             </div>
             
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">Thumbnail Storage</h3>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">Thumbnail Storage</h5>
                 </div>
-                <div class="panel-body">
+                <div class="card-body">
                     <p>Thumbnails are stored locally on the server for faster access, even when original photos are stored in S3.</p>
                     <p>When you regenerate thumbnails:</p>
                     <ul>
@@ -143,44 +143,37 @@ $this->params['breadcrumbs'][] = $this->title;
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <h4 class="modal-title" id="regenerateModalLabel">Regenerate Thumbnails</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <?php $form = \yii\bootstrap5\ActiveForm::begin([
+                'id' => 'regenerate-form',
+                'action' => ['regenerate'],
+                'options' => ['class' => 'form-horizontal'],
+            ]); ?>
             <div class="modal-body">
-                <?php $form = \yii\widgets\ActiveForm::begin([
-                    'id' => 'regenerate-form',
-                    'action' => ['regenerate'],
-                    'options' => ['class' => 'form-horizontal'],
-                ]); ?>
-                
-                <div class="form-group">
-                    <label class="control-label col-sm-4">Photo ID (optional):</label>
-                    <div class="col-sm-8">
-                        <input type="number" class="form-control" name="photo_id" placeholder="Leave empty to regenerate all">
-                        <div class="help-block">Enter a specific photo ID or leave empty to regenerate all photos</div>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label">Photo ID (optional):</label>
+                    <input type="number" class="form-control" name="photo_id" placeholder="Leave empty to regenerate all">
+                    <div class="form-text">Enter a specific photo ID or leave empty to regenerate all photos</div>
                 </div>
                 
                 <div class="alert alert-warning">
                     <p><strong>Warning:</strong> This operation can be resource-intensive and may take a long time for large galleries.</p>
                     <p>The process will run in the background. You can check the status in the job queue.</p>
                 </div>
-                
-                <?php \yii\widgets\ActiveForm::end(); ?>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="regenerate-submit">Regenerate Thumbnails</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-warning">Regenerate Thumbnails</button>
             </div>
+            <?php \yii\bootstrap5\ActiveForm::end(); ?>
         </div>
     </div>
 </div>
 
 <?php
 $this->registerJs("
-    // Handle regenerate form submission
-    $('#regenerate-submit').on('click', function() {
-        $('#regenerate-form').submit();
-    });
+    // Modal już nie potrzebuje dodatkowego JavaScript - Bootstrap 5 obsługuje to automatycznie
 ");
 ?>

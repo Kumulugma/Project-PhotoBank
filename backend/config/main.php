@@ -1,9 +1,10 @@
 <?php
+
 $params = array_merge(
-    require __DIR__ . '/../../common/config/params.php',
-    require __DIR__ . '/../../common/config/params-local.php',
-    require __DIR__ . '/params.php',
-    require __DIR__ . '/params-local.php'
+        require __DIR__ . '/../../common/config/params.php',
+        require __DIR__ . '/../../common/config/params-local.php',
+        require __DIR__ . '/params.php',
+        require __DIR__ . '/params-local.php'
 );
 
 return [
@@ -55,11 +56,15 @@ return [
                 'users' => 'users/index',
                 'settings' => 'settings/index',
                 's3' => 's3/index',
-                'thumbnails' => 'thumbnails/index',
+                's3/<action>' => 's3/<action>',
+                'thumbnails' => 'thumbnail-size/index',
+                'thumbnails/<action>' => 'thumbnail-size/<action>',
+                'thumbnails/<action>/<id:\d+>' => 'thumbnail-size/<action>',
                 'watermark' => 'watermark/index',
+                'watermark/<action>' => 'watermark/<action>',
                 'ai' => 'ai/index',
-                'ai/<action>' => 'ai/<action>', // Dodaj tę regułę
-                'ai/<action>/<id:\d+>' => 'ai/<action>', // Dodaj tę regułę dla akcji z ID
+                'ai/<action>' => 'ai/<action>',
+                'ai/<action>/<id:\d+>' => 'ai/<action>',
                 'queue' => 'queue/index',
             ],
         ],
@@ -85,11 +90,11 @@ return [
                     if (Yii::$app->user->isGuest) {
                         return false;
                     }
-                    
+
                     if (Yii::$app->authManager) {
                         return Yii::$app->user->can('admin');
                     }
-                    
+
                     return true;
                 }
             ],
