@@ -222,6 +222,54 @@ $statusOptions = [
                 </div>
             </div>
             
+            <!-- Copyright Info (if exists) -->
+            <?php $copyrightInfo = $model->getCopyrightInfo(); ?>
+            <?php if (!empty($copyrightInfo)): ?>
+            <div class="card mb-4 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-copyright me-2"></i>Prawa autorskie
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless">
+                            <?php if (isset($copyrightInfo['copyright'])): ?>
+                            <tr>
+                                <td class="fw-bold text-danger" style="width: 40%;">Copyright:</td>
+                                <td class="fw-bold"><?= Html::encode($copyrightInfo['copyright']) ?></td>
+                            </tr>
+                            <?php endif; ?>
+                            <?php if (isset($copyrightInfo['artist'])): ?>
+                            <tr>
+                                <td class="fw-bold text-danger">Autor:</td>
+                                <td class="fw-bold"><?= Html::encode($copyrightInfo['artist']) ?></td>
+                            </tr>
+                            <?php endif; ?>
+                            <?php if (isset($copyrightInfo['description'])): ?>
+                            <tr>
+                                <td class="fw-bold text-muted">Opis:</td>
+                                <td><?= Html::encode($copyrightInfo['description']) ?></td>
+                            </tr>
+                            <?php endif; ?>
+                            <?php if (isset($copyrightInfo['user_comment'])): ?>
+                            <tr>
+                                <td class="fw-bold text-muted">Komentarz:</td>
+                                <td><?= Html::encode($copyrightInfo['user_comment']) ?></td>
+                            </tr>
+                            <?php endif; ?>
+                        </table>
+                    </div>
+                    
+                    <div class="alert alert-danger mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Uwaga:</strong> To zdjęcie zawiera informacje o prawach autorskich. 
+                        Należy przestrzegać praw właściciela przed jakimkolwiek użyciem.
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+            
             <!-- Categories -->
             <div class="card mb-4">
                 <div class="card-header">
@@ -265,6 +313,44 @@ $statusOptions = [
                     <?php endif; ?>
                 </div>
             </div>
+            
+            <!-- Other EXIF Data -->
+            <?php $exifData = $model->getFormattedExif(); ?>
+            <?php if (!empty($exifData)): ?>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-camera me-2"></i>Dane techniczne EXIF
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless">
+                            <?php foreach ($exifData as $key => $value): ?>
+                                <?php 
+                                // Pomiń dane praw autorskich - są już wyświetlone wyżej
+                                if (in_array($key, ['Prawa autorskie', 'Autor', 'Komentarz autora', 'Opis obrazu', 'Unikatowy ID obrazu', 'Nazwa dokumentu'])) {
+                                    continue;
+                                }
+                                ?>
+                            <tr>
+                                <td class="fw-bold text-muted" style="width: 40%;"><?= Html::encode($key) ?></td>
+                                <td><?= Html::encode($value) ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Wyświetlane dane można konfigurować w 
+                            <?= Html::a('ustawieniach galerii', ['/settings/index'], ['class' => 'text-decoration-none']) ?>
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
             
             <!-- Available Thumbnails -->
             <div class="card">
@@ -411,5 +497,20 @@ function showToast(message, type = 'info') {
 
 .img-fluid:hover {
     transform: scale(1.02);
+}
+
+/* Wyróżnienie sekcji praw autorskich */
+.border-danger {
+    border-color: #dc3545 !important;
+    border-width: 2px !important;
+}
+
+.card .bg-danger {
+    background-color: #dc3545 !important;
+}
+
+/* Toast notifications */
+.position-fixed {
+    position: fixed !important;
 }
 </style>

@@ -214,6 +214,36 @@ $statusOptions = [
                 },
                 'filter' => false,
             ],
+                        [
+                'label' => 'Copyright',
+                'format' => 'raw',
+                'value' => function ($model) {
+                    if ($model->hasCopyrightInfo()) {
+                        $copyrightInfo = $model->getCopyrightInfo();
+                        $tooltip = '';
+                        if (isset($copyrightInfo['copyright'])) {
+                            $tooltip .= 'Copyright: ' . Html::encode($copyrightInfo['copyright']) . "\n";
+                        }
+                        if (isset($copyrightInfo['artist'])) {
+                            $tooltip .= 'Autor: ' . Html::encode($copyrightInfo['artist']);
+                        }
+                        
+                        return '<span class="badge bg-danger" title="' . Html::encode($tooltip) . '">
+                                    <i class="fas fa-copyright me-1"></i>©
+                                </span>';
+                    }
+                    return '<span class="text-muted">-</span>';
+                },
+                'filter' => Html::activeDropDownList($searchModel, 'has_copyright', [
+                    1 => 'Z prawami autorskimi',
+                    0 => 'Bez praw autorskich'
+                ], [
+                    'class' => 'form-select',
+                    'prompt' => 'Wszystkie'
+                ]),
+                'headerOptions' => ['style' => 'width: 80px;'],
+                'contentOptions' => ['class' => 'text-center'],
+            ],
             [
                 'attribute' => 'created_at',
                 'format' => 'raw',

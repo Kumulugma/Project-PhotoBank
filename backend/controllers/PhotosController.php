@@ -241,6 +241,8 @@ public function actionFindByCode($code = null)
                 'message' => 'Error saving photo data: ' . json_encode($photo->errors),
             ];
         }
+        
+        $photo->extractAndSaveExif();
 
         // Generate thumbnails
         $thumbnailSizes = ThumbnailSize::find()->all();
@@ -408,6 +410,8 @@ public function actionFindByCode($code = null)
                     'message' => 'Error saving photo data: ' . json_encode($photo->errors),
                 ];
             }
+            
+            $photo->extractAndSaveExif();
 
             // Generate thumbnails
             $thumbnailSizes = ThumbnailSize::find()->all();

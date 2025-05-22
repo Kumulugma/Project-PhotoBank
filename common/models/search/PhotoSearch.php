@@ -10,11 +10,12 @@ use common\models\Photo;
 class PhotoSearch extends Photo
 {
     public $search_code;
+    public $has_copyright; // Nowe pole
 
     public function rules()
     {
         return [
-            [['id', 'file_size', 'status', 'is_public', 'width', 'height', 'created_at', 'updated_at', 'created_by'], 'integer'],
+            [['id', 'file_size', 'status', 'is_public', 'width', 'height', 'created_at', 'updated_at', 'created_by', 'has_copyright'], 'integer'],
             [['title', 'description', 'series', 'file_name', 'mime_type', 's3_path', 'search_code'], 'safe'],
         ];
     }
@@ -28,6 +29,7 @@ class PhotoSearch extends Photo
     {
         return array_merge(parent::attributeLabels(), [
             'search_code' => 'Kod wyszukiwania',
+            'has_copyright' => 'Prawa autorskie',
         ]);
     }
 
@@ -69,6 +71,31 @@ class PhotoSearch extends Photo
             'height' => $this->height,
             'created_by' => $this->created_by,
         ]);
+
+        // Filtrowanie po prawach autorskich
+        if ($this->has_copyright !== null && $this->has_copyright !== '') {
+            if ($this->has_copyright == 1) {
+                // Zdjęcia z prawami autorskimi
+                $query->andWhere(['is not', 'exif_data', null])
+                      ->andWhere(['!=', 'exif_data', ''])
+                      ->andWhere(['or',
+                          ['like', 'exif_data', '"Copyright"'],
+                          ['like', 'exif_data', '"Artist"'],
+                          ['like', 'exif_data', '"ImageDescription"'],
+                      ]);
+            } else {
+                // Zdjęcia bez praw autorskich
+                $query->andWhere(['or',
+                    ['exif_data' => null],
+                    ['exif_data' => ''],
+                    ['and',
+                        ['not like', 'exif_data', '"Copyright"'],
+                        ['not like', 'exif_data', '"Artist"'],
+                        ['not like', 'exif_data', '"ImageDescription"'],
+                    ]
+                ]);
+            }
+        }
 
         // Filtrowanie po serii
         $query->andFilterWhere(['like', 'series', $this->series]);
