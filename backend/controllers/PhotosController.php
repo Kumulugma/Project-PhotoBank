@@ -23,7 +23,6 @@ use Intervention\Image\ImageManagerStatic as Image;
 use common\models\QueuedJob;
 use common\helpers\PathHelper;
 
-
 /**
  * PhotosController handles photo management operations
  */
@@ -154,7 +153,7 @@ class PhotosController extends Controller {
 
         foreach ($thumbnailSizes as $size) {
             $thumbnail = PathHelper::getAvailableThumbnail($size->name, $model->file_name);
-            
+
             if ($thumbnail) {
                 $thumbnails[$size->name] = $thumbnail['url'];
             } else {
@@ -408,7 +407,7 @@ class PhotosController extends Controller {
             $photo->width = $width;
             $photo->height = $height;
             $photo->status = Photo::STATUS_QUEUE;
-            $photo->is_public = false;
+            $photo->is_public = 0;
             $photo->created_at = time();
             $photo->updated_at = time();
             $photo->created_by = Yii::$app->user->id;
@@ -602,7 +601,7 @@ class PhotosController extends Controller {
 
                     // Update visibility if provided
                     if ($isPublic !== '') {
-                        $model->is_public = (bool) $isPublic;
+                        $model->is_public = (int) $isPublic;
                     }
 
                     // Save model changes
@@ -958,7 +957,7 @@ class PhotosController extends Controller {
 
                     // Set as public if option selected
                     if ($autoPublish) {
-                        $model->is_public = true;
+                        $model->is_public = 1;
                     }
 
                     if ($model->save()) {
@@ -1036,6 +1035,12 @@ class PhotosController extends Controller {
         // Additional options
         $recursive = (bool) Yii::$app->request->post('recursive', true);
         $deleteOriginals = (bool) Yii::$app->request->post('delete_originals', false);
+        $runNow = (bool) Yii::$app->request->post('run_now', false);
+
+        // Debug: Loguj parametry
+        Yii::info("Import FTP - Katalog: $directory, Rekursywnie: " . ($recursive ? 'tak' : 'nie') .
+                ", Usuń oryginały: " . ($deleteOriginals ? 'tak' : 'nie') .
+                ", Uruchom teraz: " . ($runNow ? 'tak' : 'nie'));
 
         // Create background job for processing
         $job = new QueuedJob();
@@ -1052,36 +1057,40 @@ class PhotosController extends Controller {
         $job->updated_at = time();
 
         if ($job->save()) {
-            Yii::$app->session->setFlash('success', 'Photo import job from directory ' . $directory . ' has been added to queue. Photos will appear in queue shortly.');
+            Yii::info('Utworzono zadanie importu ID: ' . $job->id);
 
-            // Optionally: run job immediately
-            if (Yii::$app->request->post('run_now', false)) {
+            if ($runNow) {
                 try {
+                    Yii::info('Rozpoczynam natychmiastowe przetwarzanie zadania ID: ' . $job->id);
+
                     $jobProcessor = new \common\components\JobProcessor();
                     $job->markAsStarted();
 
                     if ($jobProcessor->processJob($job)) {
                         $job->markAsFinished();
-                        Yii::$app->session->setFlash('success', 'Photo import completed successfully. ' .
-                                (isset($job->results) ? 'Details available in job view.' : ''));
+                        Yii::$app->session->setFlash('success', 'Import zdjęć zakończony pomyślnie. Sprawdź szczegóły w widoku zadania.');
                     } else {
-                        $job->markAsFailed('Error during import job processing');
-                        Yii::$app->session->setFlash('error', 'Error occurred during photo import. ' .
-                                (isset($job->results) ? 'Details available in job view.' : ''));
+                        $job->markAsFailed('Błąd podczas przetwarzania zadania importu');
+                        Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu zdjęć. Sprawdź szczegóły w widoku zadania.');
                     }
 
                     return $this->redirect(['queue/view', 'id' => $job->id]);
                 } catch (\Exception $e) {
+                    Yii::error('Błąd podczas importu: ' . $e->getMessage());
                     $job->markAsFailed($e->getMessage());
-                    Yii::$app->session->setFlash('error', 'Error occurred during photo import: ' . $e->getMessage());
+                    Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu: ' . $e->getMessage());
                     return $this->redirect(['queue/view', 'id' => $job->id]);
                 }
+            } else {
+                Yii::$app->session->setFlash('success', 'Zadanie importu zostało dodane do kolejki. Zdjęcia pojawią się w poczekalni po przetworzeniu.');
+                return $this->redirect(['queue/index']);
             }
         } else {
-            Yii::$app->session->setFlash('error', 'Failed to create import job: ' . json_encode($job->errors));
+            $errorMsg = 'Nie udało się utworzyć zadania importu: ' . json_encode($job->errors);
+            Yii::error($errorMsg);
+            Yii::$app->session->setFlash('error', $errorMsg);
+            return $this->redirect(['import']);
         }
-
-        return $this->redirect(['queue/index']);
     }
 
     /**

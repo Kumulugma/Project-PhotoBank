@@ -380,245 +380,316 @@ class JobProcessor {
             'recursive' => isset($params['recursive']) && $params['recursive'] ? 'tak' : 'nie',
             'processed' => [],
             'skipped' => [],
-            'errors' => []
+            'errors' => [],
+            'files_found' => 0,
+            'imported' => 0,
+            'skipped_count' => 0,
+            'error_count' => 0
         ];
 
-        Yii::info("Rozpoczynam import zdjęć z katalogu: {$params['directory']}, rekursywnie: " . (isset($params['recursive']) && $params['recursive'] ? 'tak' : 'nie'));
+        Yii::info("=== ROZPOCZYNAM IMPORT ZDJĘĆ ===");
+        Yii::info("Katalog: {$params['directory']}");
+        Yii::info("Rekursywnie: " . (isset($params['recursive']) && $params['recursive'] ? 'tak' : 'nie'));
+        Yii::info("Usuń oryginały: " . (isset($params['delete_originals']) && $params['delete_originals'] ? 'tak' : 'nie'));
 
         if (empty($params['directory'])) {
             $errorMsg = "Nie podano katalogu do importu";
             Yii::error($errorMsg);
             $results['error'] = $errorMsg;
-
             if ($job) {
                 $job->results = json_encode($results, JSON_PRETTY_PRINT);
                 $job->save();
             }
-
             throw new \Exception($errorMsg);
         }
 
-        $directory = Yii::getAlias('@webroot/' . $params['directory']);
-        $recursive = isset($params['recursive']) ? (bool) $params['recursive'] : false;
+        // Znajdź katalog - sprawdź różne możliwe ścieżki
+        $directory = null;
+        $possiblePaths = [
+            Yii::getAlias('@webroot/' . $params['directory']),
+            Yii::getAlias('@app/../' . $params['directory']),
+            $params['directory'], // bezpośrednia ścieżka
+            Yii::getAlias('@webroot') . '/' . $params['directory']
+        ];
 
-        if (!is_dir($directory)) {
-            $errorMsg = "Katalog {$directory} nie istnieje";
+        foreach ($possiblePaths as $path) {
+            Yii::info("Sprawdzam ścieżkę: $path");
+            if (is_dir($path) && is_readable($path)) {
+                $directory = $path;
+                Yii::info("✓ Użyję katalogu: $directory");
+                break;
+            } else {
+                Yii::info("✗ Katalog niedostępny: $path");
+            }
+        }
+
+        if (!$directory) {
+            $errorMsg = "Katalog nie istnieje lub nie jest dostępny. Sprawdzono: " . implode(', ', $possiblePaths);
             Yii::error($errorMsg);
             $results['error'] = $errorMsg;
-
             if ($job) {
                 $job->results = json_encode($results, JSON_PRETTY_PRINT);
                 $job->save();
             }
-
             throw new \Exception($errorMsg);
         }
 
-        // Upewnij się, że katalogi docelowe istnieją
-        PathHelper::ensureDirectoryExists('temp');
+        $recursive = isset($params['recursive']) ? (bool) $params['recursive'] : false;
 
+        // Upewnij się, że katalogi docelowe istnieją
+        if (!PathHelper::ensureDirectoryExists('temp')) {
+            throw new \Exception('Nie można utworzyć katalogu temp');
+        }
+        if (!PathHelper::ensureDirectoryExists('thumbnails')) {
+            throw new \Exception('Nie można utworzyć katalogu thumbnails');
+        }
+
+        // Znajdź wszystkie pliki graficzne
         $options = [
-            'only' => ['*.jpg', '*.jpeg', '*.png', '*.gif'],
+            'only' => ['*.jpg', '*.jpeg', '*.png', '*.gif', '*.JPG', '*.JPEG', '*.PNG', '*.GIF'],
             'recursive' => $recursive,
         ];
 
         try {
             $files = FileHelper::findFiles($directory, $options);
-            Yii::info("Znaleziono " . count($files) . " plików do importu");
             $results['files_found'] = count($files);
+            Yii::info("Znaleziono " . count($files) . " plików do importu");
 
-            foreach ($files as $index => $file) {
-                Yii::info("Plik {$index}: {$file}");
+            // Debug: pokaż pierwsze 3 pliki
+            for ($i = 0; $i < min(3, count($files)); $i++) {
+                Yii::info("Plik {$i}: {$files[$i]}");
             }
         } catch (\Exception $e) {
             $errorMsg = "Błąd podczas wyszukiwania plików: " . $e->getMessage();
             Yii::error($errorMsg);
             $results['error'] = $errorMsg;
-
             if ($job) {
                 $job->results = json_encode($results, JSON_PRETTY_PRINT);
                 $job->save();
             }
-
             throw new \Exception($errorMsg);
         }
 
         if (empty($files)) {
-            $warnMsg = "Nie znaleziono plików do importu w katalogu {$directory}";
+            $warnMsg = "Nie znaleziono plików graficznych w katalogu {$directory}";
             Yii::warning($warnMsg);
             $results['warning'] = $warnMsg;
-
             if ($job) {
                 $job->results = json_encode($results, JSON_PRETTY_PRINT);
                 $job->save();
             }
-
-            return true;
+            return true; // nie jest to błąd krytyczny
         }
 
-        $imported = 0;
-        $skipped = 0;
-        $errors = 0;
-
-        PathHelper::ensureDirectoryExists('thumbnails');
-
-        foreach ($files as $filePath) {
-            Yii::info("Przetwarzam plik: {$filePath}");
+        // Przetwórz każdy plik
+        foreach ($files as $index => $filePath) {
             $fileInfo = [
+                'index' => $index + 1,
                 'source' => $filePath,
                 'filename' => basename($filePath),
                 'time' => date('Y-m-d H:i:s')
             ];
 
+            Yii::info("=== PRZETWARZAM PLIK {$fileInfo['index']}/{$results['files_found']}: {$fileInfo['filename']} ===");
+
             try {
+                // 1. Sprawdź czy plik istnieje i jest dostępny
+                if (!file_exists($filePath)) {
+                    throw new \Exception("Plik nie istnieje");
+                }
+
+                if (!is_readable($filePath)) {
+                    throw new \Exception("Brak uprawnień do odczytu pliku");
+                }
+
+                $fileSize = filesize($filePath);
+                if ($fileSize === false || $fileSize === 0) {
+                    throw new \Exception("Nie można odczytać rozmiaru pliku lub plik jest pusty");
+                }
+
+                // 2. Sprawdź typ MIME
                 $mimeType = FileHelper::getMimeType($filePath);
                 $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
                 $fileInfo['mime_type'] = $mimeType;
+                $fileInfo['file_size'] = $fileSize;
 
                 if (!in_array($mimeType, $allowedTypes)) {
-                    Yii::warning("Pominięto plik {$filePath} - nieprawidłowy typ MIME: {$mimeType}");
+                    Yii::warning("Pominięto plik - nieprawidłowy typ MIME: {$mimeType}");
                     $fileInfo['reason'] = "Nieprawidłowy typ MIME: {$mimeType}";
                     $results['skipped'][] = $fileInfo;
-                    $skipped++;
+                    $results['skipped_count']++;
                     continue;
                 }
 
-                // Generuj nazwę pliku z oryginalną nazwą i hashem
+                Yii::info("✓ Plik prawidłowy - MIME: {$mimeType}, rozmiar: " . Yii::$app->formatter->asShortSize($fileSize));
+
+                // 3. Generuj nazwę pliku docelowego
                 $preserveNames = $this->getSettingValue('upload.preserve_original_names', '1');
-                
+
                 if ($preserveNames == '1') {
                     $originalName = pathinfo($filePath, PATHINFO_FILENAME);
-                    $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+                    $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
                     $hash = substr(Yii::$app->security->generateRandomString(12), 0, 8);
                     $fileName = $originalName . '_' . $hash . '.' . $extension;
                 } else {
-                    $fileName = Yii::$app->security->generateRandomString(16) . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
+                    $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                    $fileName = Yii::$app->security->generateRandomString(16) . '.' . $extension;
                 }
 
                 $destPath = PathHelper::getPhotoPath($fileName, 'temp');
                 $fileInfo['new_filename'] = $fileName;
                 $fileInfo['destination'] = $destPath;
 
+                Yii::info("✓ Nazwa docelowa: {$fileName}");
+
+                // 4. Skopiuj plik
                 if (!copy($filePath, $destPath)) {
-                    throw new \Exception("Nie można skopiować pliku {$filePath} do {$destPath}");
+                    throw new \Exception("Nie można skopiować pliku do {$destPath}");
                 }
 
-                Yii::info("Plik skopiowany do: {$destPath}");
-                Yii::info("Plik docelowy istnieje: " . (file_exists($destPath) ? 'tak' : 'nie'));
-                Yii::info("Rozmiar pliku docelowego: " . filesize($destPath) . " bajtów");
+                // Sprawdź czy kopia jest prawidłowa
+                if (!file_exists($destPath)) {
+                    throw new \Exception("Skopiowany plik nie istnieje");
+                }
 
-                $image = Image::make($destPath);
-                $width = $image->width();
-                $height = $image->height();
-                $fileInfo['width'] = $width;
-                $fileInfo['height'] = $height;
+                $copiedSize = filesize($destPath);
+                if ($copiedSize !== $fileSize) {
+                    unlink($destPath);
+                    throw new \Exception("Rozmiar skopiowanego pliku ({$copiedSize}) różni się od oryginału ({$fileSize})");
+                }
 
+                Yii::info("✓ Plik skopiowany pomyślnie");
+
+                // 5. Odczytaj wymiary obrazu
+                try {
+                    $image = Image::make($destPath);
+                    $width = $image->width();
+                    $height = $image->height();
+                    $fileInfo['width'] = $width;
+                    $fileInfo['height'] = $height;
+                    Yii::info("✓ Wymiary: {$width}x{$height}px");
+                } catch (\Exception $e) {
+                    unlink($destPath);
+                    throw new \Exception("Nie można odczytać wymiarów obrazu: " . $e->getMessage());
+                }
+
+                // 6. Utwórz rekord w bazie danych
                 $photo = new Photo();
                 $photo->title = pathinfo($filePath, PATHINFO_FILENAME);
                 $photo->file_name = $fileName;
-                $photo->file_size = filesize($destPath);
+                $photo->file_size = $fileSize;
                 $photo->mime_type = $mimeType;
                 $photo->width = $width;
                 $photo->height = $height;
-                $photo->status = Photo::STATUS_QUEUE;
-                $photo->is_public = false;
+                $photo->status = Photo::STATUS_QUEUE; // WAŻNE!
+                $photo->is_public = 0;
                 $photo->created_at = time();
                 $photo->updated_at = time();
-                $photo->created_by = 1;
+                $photo->created_by = isset($params['created_by']) ? $params['created_by'] : 1;
 
                 if (!$photo->save()) {
-                    throw new \Exception("Błąd zapisywania informacji o zdjęciu: " . json_encode($photo->errors));
+                    unlink($destPath);
+                    throw new \Exception("Błąd zapisywania do bazy: " . json_encode($photo->errors));
                 }
 
                 $fileInfo['photo_id'] = $photo->id;
                 $fileInfo['search_code'] = $photo->search_code;
-                Yii::info("Utworzono rekord zdjęcia ID: {$photo->id} z kodem: {$photo->search_code}");
+                Yii::info("✓ Utworzono rekord zdjęcia ID: {$photo->id}, kod: {$photo->search_code}");
 
+                // 7. Wyodrębnij dane EXIF (opcjonalnie)
+                try {
+                    $photo->extractAndSaveExif();
+                    Yii::info("✓ Wyodrębniono dane EXIF");
+                } catch (\Exception $e) {
+                    Yii::warning("Nie udało się wyodrębnić EXIF: " . $e->getMessage());
+                }
+
+                // 8. Wygeneruj miniatury
+                $thumbnailsGenerated = 0;
                 $thumbnailSizes = ThumbnailSize::find()->all();
                 $fileInfo['thumbnails'] = [];
 
                 foreach ($thumbnailSizes as $size) {
-                    $thumbnailPath = PathHelper::getThumbnailPath($size->name, $fileName);
-                    $thumbnailImage = Image::make($destPath);
+                    try {
+                        $thumbnailPath = PathHelper::getThumbnailPath($size->name, $fileName);
+                        $thumbnailImage = Image::make($destPath);
 
-                    if ($size->crop) {
-                        $thumbnailImage->fit($size->width, $size->height);
-                    } else {
-                        $thumbnailImage->resize($size->width, $size->height, function ($constraint) {
-                            $constraint->aspectRatio();
-                            $constraint->upsize();
-                        });
+                        if ($size->crop) {
+                            $thumbnailImage->fit($size->width, $size->height);
+                        } else {
+                            $thumbnailImage->resize($size->width, $size->height, function ($constraint) {
+                                $constraint->aspectRatio();
+                                $constraint->upsize();
+                            });
+                        }
+
+                        if ($size->watermark) {
+                            $thumbnailImage = $this->addWatermark($thumbnailImage);
+                        }
+
+                        $thumbnailImage->save($thumbnailPath);
+                        $fileInfo['thumbnails'][] = [
+                            'size' => $size->name,
+                            'path' => $thumbnailPath,
+                            'width' => $size->width,
+                            'height' => $size->height
+                        ];
+                        $thumbnailsGenerated++;
+                    } catch (\Exception $e) {
+                        Yii::warning("Błąd generowania miniatury {$size->name}: " . $e->getMessage());
+                        $fileInfo['thumbnails'][] = [
+                            'size' => $size->name,
+                            'error' => $e->getMessage()
+                        ];
                     }
-
-                    if ($size->watermark) {
-                        $thumbnailImage = $this->addWatermark($thumbnailImage);
-                    }
-
-                    $thumbnailImage->save($thumbnailPath);
-                    $fileInfo['thumbnails'][] = [
-                        'size' => $size->name,
-                        'path' => $thumbnailPath
-                    ];
                 }
 
-                Yii::info("Wygenerowano miniatury dla zdjęcia ID: {$photo->id}");
+                Yii::info("✓ Wygenerowano {$thumbnailsGenerated} miniatur");
 
-                $imported++;
+                // 9. Usuń plik źródłowy jeśli wymagane
+                if (isset($params['delete_originals']) && $params['delete_originals']) {
+                    if (unlink($filePath)) {
+                        Yii::info("✓ Usunięto plik źródłowy");
+                        $fileInfo['original_deleted'] = true;
+                    } else {
+                        Yii::warning("Nie udało się usunąć pliku źródłowego");
+                        $fileInfo['original_deleted'] = false;
+                        $fileInfo['delete_error'] = "Nie udało się usunąć pliku";
+                    }
+                }
+
+                // 10. Oznacz jako pomyślnie zaimportowany
+                $results['imported']++;
                 $results['processed'][] = $fileInfo;
 
-                if (isset($params['delete_originals']) && $params['delete_originals']) {
-                    Yii::info("Próba usunięcia pliku źródłowego: {$filePath}");
-                    Yii::info("Parametr delete_originals: " . var_export($params['delete_originals'], true));
+                Yii::info("✓ Plik {$fileInfo['filename']} zaimportowany pomyślnie jako ID {$photo->id}");
 
-                    if (file_exists($filePath)) {
-                        Yii::info("Plik istnieje");
-                        if (is_writable($filePath)) {
-                            Yii::info("Plik ma uprawnienia do zapisu");
-
-                            $result = unlink($filePath);
-                            if ($result) {
-                                Yii::info("Pomyślnie usunięto plik: {$filePath}");
-                                $fileInfo['original_deleted'] = true;
-                            } else {
-                                Yii::error("Nie udało się usunąć pliku: {$filePath}");
-                                $fileInfo['original_deleted'] = false;
-                                $fileInfo['delete_error'] = "Funkcja unlink() nie powiodła się";
-                            }
-                        } else {
-                            Yii::error("Brak uprawnień do usunięcia pliku: {$filePath}");
-                            $fileInfo['original_deleted'] = false;
-                            $fileInfo['delete_error'] = "Brak uprawnień do pliku";
-                        }
-                    } else {
-                        Yii::error("Plik nie istnieje: {$filePath}");
-                        $fileInfo['original_deleted'] = false;
-                        $fileInfo['delete_error'] = "Plik nie istnieje";
-                    }
-                }
-
-                if ($job && ($imported % 5 === 0)) {
-                    $results['imported'] = $imported;
-                    $results['skipped'] = $skipped;
-                    $results['errors'] = $errors;
+                // Aktualizuj wyniki w bazie co 5 plików
+                if ($job && ($results['imported'] % 5 === 0)) {
                     $job->results = json_encode($results, JSON_PRETTY_PRINT);
                     $job->save();
+                    Yii::info("Zapisano postęp: {$results['imported']} z {$results['files_found']}");
                 }
             } catch (\Exception $e) {
-                $errorMsg = "Błąd importu pliku {$filePath}: " . $e->getMessage();
+                $errorMsg = "Błąd importu pliku {$fileInfo['filename']}: " . $e->getMessage();
                 Yii::error($errorMsg);
                 $fileInfo['error'] = $e->getMessage();
                 $results['errors'][] = $fileInfo;
-                $errors++;
+                $results['error_count']++;
+
+                // Wyczyść pliki w przypadku błędu
+                if (isset($destPath) && file_exists($destPath)) {
+                    unlink($destPath);
+                }
             }
         }
 
+        // Finalizuj wyniki
         $results['completed_at'] = date('Y-m-d H:i:s');
-        $results['imported'] = $imported;
-        $results['skipped'] = $skipped;
-        $results['errors'] = $errors;
-        $results['summary'] = "Zaimportowano: {$imported}, pominięto: {$skipped}, błędy: {$errors}";
+        $results['summary'] = "Zaimportowano: {$results['imported']}, pominięto: {$results['skipped_count']}, błędy: {$results['error_count']}";
 
-        Yii::info("Import zakończony. {$results['summary']}");
+        Yii::info("=== IMPORT ZAKOŃCZONY ===");
+        Yii::info($results['summary']);
 
         if ($job) {
             $job->results = json_encode($results, JSON_PRETTY_PRINT);
@@ -628,11 +699,18 @@ class JobProcessor {
         return true;
     }
 
+    /**
+     * Dodaje znak wodny do obrazu
+     * 
+     * @param \Intervention\Image\Image $image
+     * @return \Intervention\Image\Image
+     */
     protected function addWatermark($image) {
         $watermarkType = $this->getSettingValue('watermark.type', 'text');
         $watermarkPosition = $this->getSettingValue('watermark.position', 'bottom-right');
         $watermarkOpacity = (float) $this->getSettingValue('watermark.opacity', 0.5);
 
+        // Position mapping
         $positionMap = [
             'top-left' => 'top-left',
             'top-right' => 'top-right',
@@ -644,10 +722,11 @@ class JobProcessor {
         $position = $positionMap[$watermarkPosition] ?? 'bottom-right';
 
         if ($watermarkType === 'text') {
+            // Text watermark
             $watermarkText = $this->getSettingValue('watermark.text', '');
 
             if (!empty($watermarkText)) {
-                $fontSize = min($image->width(), $image->height()) / 20;
+                $fontSize = min($image->width(), $image->height()) / 20; // Scale font size
 
                 $image->text($watermarkText, $image->width() - 20, $image->height() - 20, function ($font) use ($fontSize, $watermarkOpacity) {
                     $font->size($fontSize);
@@ -657,6 +736,7 @@ class JobProcessor {
                 });
             }
         } elseif ($watermarkType === 'image') {
+            // Image watermark
             $watermarkImage = $this->getSettingValue('watermark.image', '');
 
             if (!empty($watermarkImage)) {
@@ -665,8 +745,9 @@ class JobProcessor {
                 if (file_exists($watermarkPath)) {
                     $watermark = Image::make($watermarkPath);
 
-                    $maxWidth = $image->width() / 4;
-                    $maxHeight = $image->height() / 4;
+                    // Scale watermark
+                    $maxWidth = $image->width() / 4; // Max 25% of image width
+                    $maxHeight = $image->height() / 4; // Max 25% of image height
 
                     if ($watermark->width() > $maxWidth || $watermark->height() > $maxHeight) {
                         $watermark->resize($maxWidth, $maxHeight, function ($constraint) {
@@ -675,7 +756,10 @@ class JobProcessor {
                         });
                     }
 
+                    // Add opacity
                     $watermark->opacity($watermarkOpacity * 100);
+
+                    // Insert watermark
                     $image->insert($watermark, $position);
                 }
             }
@@ -727,4 +811,5 @@ class JobProcessor {
         $setting = Settings::findOne(['key' => $key]);
         return $setting ? $setting->value : $default;
     }
+
 }

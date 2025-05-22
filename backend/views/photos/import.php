@@ -15,25 +15,45 @@ $this->params['breadcrumbs'][] = $this->title;
 $importDirectory = Settings::findOne(['key' => 'upload.import_directory']);
 $defaultDirectory = $importDirectory ? $importDirectory->value : 'uploads/import';
 
-// Sprawdź, czy katalog importu istnieje i ma pliki
-$fullPath = Yii::getAlias('@webroot/' . $defaultDirectory);
-$directoryExists = is_dir($fullPath);
-$directoryReadable = $directoryExists && is_readable($fullPath);
+// DEBUG: Sprawdź różne możliwe ścieżki
+$possiblePaths = [
+    Yii::getAlias('@webroot/' . $defaultDirectory),
+    Yii::getAlias('@app/../' . $defaultDirectory),
+    $defaultDirectory,
+    Yii::getAlias('@webroot') . '/' . $defaultDirectory
+];
+
+$directoryExists = false;
+$directoryReadable = false;
+$actualPath = '';
 $fileCount = 0;
 $imageCount = 0;
 
-if ($directoryReadable) {
-    $allFiles = new \FilesystemIterator($fullPath, \FilesystemIterator::SKIP_DOTS);
-    $fileCount = iterator_count($allFiles);
-    
-    // Zlicz pliki graficzne
-    $imageExtensions = ['jpg', 'jpeg', 'png', 'gif'];
-    $imageCount = 0;
-    $directory = new \DirectoryIterator($fullPath);
-    foreach ($directory as $file) {
-        if ($file->isFile() && in_array(strtolower($file->getExtension()), $imageExtensions)) {
-            $imageCount++;
+foreach ($possiblePaths as $path) {
+    if (is_dir($path)) {
+        $directoryExists = true;
+        $directoryReadable = is_readable($path);
+        $actualPath = $path;
+        
+        if ($directoryReadable) {
+            try {
+                $allFiles = new \FilesystemIterator($path, \FilesystemIterator::SKIP_DOTS);
+                $fileCount = iterator_count($allFiles);
+                
+                // Zlicz pliki graficzne (z uwzględnieniem wielkich liter)
+                $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'JPG', 'JPEG', 'PNG', 'GIF'];
+                $directory = new \DirectoryIterator($path);
+                foreach ($directory as $file) {
+                    if ($file->isFile() && in_array($file->getExtension(), $imageExtensions)) {
+                        $imageCount++;
+                    }
+                }
+            } catch (\Exception $e) {
+                // Błąd podczas odczytu - prawdopodobnie brak uprawnień
+                $directoryReadable = false;
+            }
         }
+        break;
     }
 }
 
@@ -61,6 +81,42 @@ $thumbsDirWritable = $thumbsDirExists && is_writable($thumbsDirPath);
         </div>
     </div>
 
+    <!-- DEBUG: Informacje o ścieżkach -->
+    <div class="card mb-4 border-info">
+        <div class="card-header bg-info text-white">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-bug me-2"></i>Informacje diagnostyczne
+            </h5>
+        </div>
+        <div class="card-body">
+            <h6>Sprawdzane ścieżki:</h6>
+            <ul class="list-group list-group-flush">
+                <?php foreach ($possiblePaths as $path): ?>
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <code><?= Html::encode($path) ?></code>
+                    <?php if (is_dir($path)): ?>
+                        <span class="badge bg-success">Istnieje</span>
+                    <?php else: ?>
+                        <span class="badge bg-danger">Nie istnieje</span>
+                    <?php endif; ?>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+            
+            <?php if ($directoryExists): ?>
+            <div class="mt-3">
+                <strong>Aktywna ścieżka:</strong> <code><?= Html::encode($actualPath) ?></code><br>
+                <strong>Uprawnienia:</strong> 
+                <?php if ($directoryReadable): ?>
+                    <span class="badge bg-success">Odczyt OK</span>
+                <?php else: ?>
+                    <span class="badge bg-danger">Brak uprawnień</span>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
     <div class="row">
         <!-- Formularz importu -->
         <div class="col-md-6">
@@ -82,22 +138,32 @@ $thumbsDirWritable = $thumbsDirExists && is_writable($thumbsDirPath);
                         <div class="input-group">
                             <span class="input-group-text"><i class="fas fa-folder-open"></i></span>
                             <input type="text" class="form-control" value="<?= Html::encode($defaultDirectory) ?>" readonly>
-                            <?php if ($directoryReadable): ?>
+                            <?php if ($directoryExists && $directoryReadable): ?>
                                 <span class="input-group-text bg-success text-white" title="Katalog jest dostępny i odczytywalny"><i class="fas fa-check"></i></span>
                             <?php else: ?>
                                 <span class="input-group-text bg-danger text-white" title="Katalog nie istnieje lub brak uprawnień do odczytu"><i class="fas fa-times"></i></span>
                             <?php endif; ?>
                         </div>
                         <div class="form-text">
-                            <?php if ($directoryReadable): ?>
-                                <span class="text-success">Katalog dostępny. Zawiera <?= $fileCount ?> plików, w tym <?= $imageCount ?> obrazów.</span>
+                            <?php if ($directoryExists && $directoryReadable): ?>
+                                <span class="text-success">
+                                    <i class="fas fa-check-circle"></i> 
+                                    Katalog dostępny: <code><?= Html::encode($actualPath) ?></code><br>
+                                    Zawiera <?= $fileCount ?> plików, w tym <?= $imageCount ?> obrazów.
+                                </span>
+                            <?php elseif ($directoryExists): ?>
+                                <span class="text-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Katalog istnieje ale brak uprawnień: <code><?= Html::encode($actualPath) ?></code><br>
+                                    Zmień uprawnienia: <code>chmod 755 <?= Html::encode($actualPath) ?></code>
+                                </span>
                             <?php else: ?>
                                 <span class="text-danger">
-                                    <?php if (!$directoryExists): ?>
-                                        Katalog nie istnieje. Utwórz katalog <?= $fullPath ?>.
-                                    <?php else: ?>
-                                        Brak uprawnień do odczytu katalogu. Zmień uprawnienia: chmod 755 <?= $fullPath ?>
-                                    <?php endif; ?>
+                                    <i class="fas fa-times-circle"></i>
+                                    Katalog nie istnieje. Utwórz jeden z katalogów:<br>
+                                    <?php foreach ($possiblePaths as $path): ?>
+                                        <code><?= Html::encode($path) ?></code><br>
+                                    <?php endforeach; ?>
                                 </span>
                             <?php endif; ?>
                         </div>
@@ -183,7 +249,7 @@ $thumbsDirWritable = $thumbsDirExists && is_writable($thumbsDirPath);
                     <div class="mt-4">
                         <?= Html::submitButton('<i class="fas fa-file-import me-2"></i>Rozpocznij import', [
                             'class' => 'btn btn-primary',
-                            'disabled' => !$directoryReadable || !$tempDirWritable || !$thumbsDirWritable || $imageCount === 0,
+                            'disabled' => !($directoryExists && $directoryReadable) || !$tempDirWritable || !$thumbsDirWritable || $imageCount === 0,
                             'data' => [
                                 'confirm' => 'Czy na pewno chcesz rozpocząć import zdjęć z wybranego katalogu?',
                             ],
@@ -244,6 +310,13 @@ $thumbsDirWritable = $thumbsDirExists && is_writable($thumbsDirPath);
                             </div>
                         </div>
                     </div>
+                    
+                    <?php if ($directoryExists && $directoryReadable && $imageCount > 0): ?>
+                    <div class="alert alert-success mt-3">
+                        <h6><i class="fas fa-images me-2"></i>Znalezione pliki</h6>
+                        <p class="mb-0">W katalogu <code><?= Html::encode($actualPath) ?></code> znaleziono <strong><?= $imageCount ?></strong> plików graficznych gotowych do importu.</p>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
             

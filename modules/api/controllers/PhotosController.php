@@ -65,7 +65,7 @@ class PhotosController extends Controller
         $photo->width = $imageInfo['width'];
         $photo->height = $imageInfo['height'];
         $photo->status = Photo::STATUS_QUEUE; // W poczekalni
-        $photo->is_public = false;
+        $photo->is_public = 0;
         $photo->created_at = time();
         $photo->updated_at = time();
         $photo->created_by = Yii::$app->user->id;
