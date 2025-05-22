@@ -12,6 +12,7 @@ use yii\db\ActiveRecord;
  * @property int $id
  * @property string $title
  * @property string|null $description
+ * @property string|null $series
  * @property string $file_name
  * @property int $file_size
  * @property string $mime_type
@@ -27,21 +28,15 @@ use yii\db\ActiveRecord;
  */
 class Photo extends ActiveRecord 
 {
-    const STATUS_QUEUE = 0;    // Zdjęcie w poczekalni
-    const STATUS_ACTIVE = 1;   // Zdjęcie aktywne
-    const STATUS_DELETED = 2;  // Zdjęcie usunięte
+    const STATUS_QUEUE = 0;
+    const STATUS_ACTIVE = 1;
+    const STATUS_DELETED = 2;
 
-    /**
-     * {@inheritdoc}
-     */
     public static function tableName()
     {
         return '{{%photo}}';
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function behaviors()
     {
         return [
@@ -49,14 +44,13 @@ class Photo extends ActiveRecord
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function rules()
     {
         return [
             [['title', 'file_name', 'file_size', 'mime_type', 'created_by'], 'required'],
             [['description', 's3_path'], 'string'],
+            [['series'], 'string', 'max' => 50],
+            [['series'], 'trim'],
             [['file_size', 'status', 'is_public', 'width', 'height', 'created_at', 'updated_at', 'created_by'], 'integer'],
             [['title', 'file_name', 'mime_type'], 'string', 'max' => 255],
             [['search_code'], 'string', 'max' => 12],
@@ -70,15 +64,13 @@ class Photo extends ActiveRecord
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function attributeLabels()
     {
         return [
             'id' => 'ID',
             'title' => 'Tytuł',
             'description' => 'Opis',
+            'series' => 'Seria',
             'file_name' => 'Nazwa pliku',
             'file_size' => 'Rozmiar pliku',
             'mime_type' => 'Typ MIME',
@@ -94,9 +86,6 @@ class Photo extends ActiveRecord
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function beforeSave($insert)
     {
         if ($insert && empty($this->search_code)) {
@@ -105,12 +94,6 @@ class Photo extends ActiveRecord
         return parent::beforeSave($insert);
     }
 
-    /**
-     * Generuje unikalny 12-cyfrowy kod wyszukiwania
-     * 
-     * @return string
-     * @throws \Exception
-     */
     public function generateSearchCode()
     {
         $characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -134,12 +117,6 @@ class Photo extends ActiveRecord
         return $code;
     }
 
-    /**
-     * Znajduje zdjęcie po kodzie wyszukiwania
-     * 
-     * @param string $code
-     * @return Photo|null
-     */
     public static function findBySearchCode($code)
     {
         if (empty($code)) {
@@ -149,63 +126,33 @@ class Photo extends ActiveRecord
         return self::findOne(['search_code' => strtoupper(trim($code))]);
     }
 
-    /**
-     * Gets query for all tags assigned to photo
-     * 
-     * @return \yii\db\ActiveQuery
-     */
     public function getTags()
     {
         return $this->hasMany(Tag::class, ['id' => 'tag_id'])
             ->viaTable('{{%photo_tag}}', ['photo_id' => 'id']);
     }
 
-    /**
-     * Gets query for all categories assigned to photo
-     * 
-     * @return \yii\db\ActiveQuery
-     */
     public function getCategories()
     {
         return $this->hasMany(Category::class, ['id' => 'category_id'])
             ->viaTable('{{%photo_category}}', ['photo_id' => 'id']);
     }
 
-    /**
-     * Gets query for all photo-tag relations
-     * 
-     * @return \yii\db\ActiveQuery
-     */
     public function getPhotoTags()
     {
         return $this->hasMany(PhotoTag::class, ['photo_id' => 'id']);
     }
 
-    /**
-     * Gets query for all photo-category relations
-     * 
-     * @return \yii\db\ActiveQuery
-     */
     public function getPhotoCategories()
     {
         return $this->hasMany(PhotoCategory::class, ['photo_id' => 'id']);
     }
 
-    /**
-     * Gets user who created the photo
-     * 
-     * @return \yii\db\ActiveQuery
-     */
     public function getCreatedBy()
     {
         return $this->hasOne(User::class, ['id' => 'created_by']);
     }
 
-    /**
-     * Gets formatted status name
-     * 
-     * @return string
-     */
     public function getStatusName()
     {
         $statusMap = [
@@ -217,11 +164,6 @@ class Photo extends ActiveRecord
         return $statusMap[$this->status] ?? 'Nieznany';
     }
 
-    /**
-     * Gets available thumbnail URLs for this photo
-     * 
-     * @return array
-     */
     public function getThumbnails()
     {
         $thumbnails = [];
@@ -234,54 +176,52 @@ class Photo extends ActiveRecord
         return $thumbnails;
     }
 
-    /**
-     * Checks if photo has specific status
-     * 
-     * @param int $status
-     * @return bool
-     */
     public function hasStatus($status)
     {
         return $this->status === $status;
     }
 
-    /**
-     * Checks if photo is in queue
-     * 
-     * @return bool
-     */
     public function isInQueue()
     {
         return $this->hasStatus(self::STATUS_QUEUE);
     }
 
-    /**
-     * Checks if photo is active
-     * 
-     * @return bool
-     */
     public function isActive()
     {
         return $this->hasStatus(self::STATUS_ACTIVE);
     }
 
-    /**
-     * Checks if photo is deleted
-     * 
-     * @return bool
-     */
     public function isDeleted()
     {
         return $this->hasStatus(self::STATUS_DELETED);
     }
 
-    /**
-     * Checks if photo is public
-     * 
-     * @return bool
-     */
     public function isPublic()
     {
         return (bool) $this->is_public;
+    }
+
+    /**
+     * Pobiera wszystkie unikalne serie z bazy danych
+     * @return array
+     */
+    public static function getAllSeries()
+    {
+        return self::find()
+            ->select('series')
+            ->where(['is not', 'series', null])
+            ->andWhere(['!=', 'series', ''])
+            ->distinct()
+            ->orderBy('series ASC')
+            ->column();
+    }
+
+    /**
+     * Sprawdza czy zdjęcie ma przypisaną serię
+     * @return bool
+     */
+    public function hasSeries()
+    {
+        return !empty($this->series);
     }
 }

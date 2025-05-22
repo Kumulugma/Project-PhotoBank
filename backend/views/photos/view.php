@@ -106,6 +106,17 @@ $statusOptions = [
                                 'value' => $model->description ?: 'Brak opisu',
                             ],
                             [
+                                'attribute' => 'series',
+                                'label' => 'Seria',
+                                'format' => 'raw',
+                                'value' => function($model) {
+                                    if (empty($model->series)) {
+                                        return '<span class="text-muted">Nie przypisano</span>';
+                                    }
+                                    return '<span class="badge bg-info fs-6"><i class="fas fa-layer-group me-1"></i>' . Html::encode($model->series) . '</span>';
+                                },
+                            ],
+                            [
                                 'attribute' => 'file_name',
                                 'label' => 'Nazwa pliku',
                                 'format' => 'text',
