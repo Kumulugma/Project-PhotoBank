@@ -169,15 +169,10 @@ Html::activeCheckbox($model, 'is_public', [
                 </div>
                 <div class="card-body text-center">
 <?php
-// Get thumbnail URL (medium size)
-$thumbnailSize = \common\models\ThumbnailSize::findOne(['name' => 'medium']);
-if (!$thumbnailSize) {
-    $thumbnailSize = \common\models\ThumbnailSize::find()->one();
-}
+$previewUrl = $model->getPreviewThumbnail();
 
-if ($thumbnailSize) {
-    $thumbnailUrl = Yii::getAlias('@web/uploads/thumbnails/' . $thumbnailSize->name . '_' . $model->file_name);
-    echo Html::img($thumbnailUrl, [
+if ($previewUrl) {
+    echo Html::img($previewUrl, [
         'class' => 'img-fluid rounded shadow',
         'alt' => $model->title,
         'style' => 'max-height: 300px;'
@@ -186,6 +181,11 @@ if ($thumbnailSize) {
     echo '<div class="text-center p-4">';
     echo '<i class="fas fa-image fa-4x text-muted mb-3"></i>';
     echo '<p class="text-muted">Podgląd niedostępny</p>';
+    if (\common\helpers\PathHelper::isFrontendMode()) {
+        echo '<small class="text-info">Tryb frontend - sprawdź ścieżki do miniatur</small>';
+    } else {
+        echo '<small class="text-warning">Miniatury nie zostały wygenerowane</small>';
+    }
     echo '</div>';
 }
 ?>

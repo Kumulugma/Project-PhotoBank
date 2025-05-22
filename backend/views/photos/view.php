@@ -203,20 +203,24 @@ $statusOptions = [
                     </h5>
                 </div>
                 <div class="card-body text-center">
-                    <?php if (isset($thumbnails['medium'])): ?>
-                        <img src="<?= $thumbnails['medium'] ?>" alt="<?= Html::encode($model->title) ?>" 
+                    <?php $previewUrl = $model->getPreviewThumbnail(); ?>
+                    
+                    <?php if ($previewUrl): ?>
+                        <img src="<?= $previewUrl ?>" alt="<?= Html::encode($model->title) ?>" 
                              class="img-fluid rounded shadow-sm" 
-                             style="max-height: 300px; cursor: pointer;"
-                             data-bs-toggle="modal" data-bs-target="#imageModal">
-                    <?php elseif (isset($thumbnails['small'])): ?>
-                        <img src="<?= $thumbnails['small'] ?>" alt="<?= Html::encode($model->title) ?>" 
-                             class="img-fluid rounded shadow-sm"
                              style="max-height: 300px; cursor: pointer;"
                              data-bs-toggle="modal" data-bs-target="#imageModal">
                     <?php else: ?>
                         <div class="text-muted p-5">
                             <i class="fas fa-image fa-4x mb-3"></i>
                             <p>Podgląd niedostępny</p>
+                            <small class="text-info">
+                                <?php if (\common\helpers\PathHelper::isFrontendMode()): ?>
+                                    Tryb frontend - sprawdź ścieżki do miniatur
+                                <?php else: ?>
+                                    Miniatury nie zostały wygenerowane
+                                <?php endif; ?>
+                            </small>
                         </div>
                     <?php endif; ?>
                 </div>

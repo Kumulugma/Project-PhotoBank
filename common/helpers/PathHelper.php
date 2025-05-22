@@ -138,7 +138,7 @@ class PathHelper
     }
     
     /**
-     * Pobiera URL do miniatury
+     * Pobiera URL do miniatury - POPRAWIONE dla frontend mode
      * @param string $sizeName
      * @param string $fileName
      * @return string
@@ -146,6 +146,70 @@ class PathHelper
     public static function getThumbnailUrl($sizeName, $fileName)
     {
         return self::getUploadUrl('thumbnails') . '/' . $sizeName . '_' . $fileName;
+    }
+    
+    /**
+     * Sprawdza czy miniatura istnieje - dla backend sprawdza również frontend
+     * @param string $sizeName
+     * @param string $fileName
+     * @return bool
+     */
+    public static function thumbnailExists($sizeName, $fileName)
+    {
+        $localPath = self::getThumbnailPath($sizeName, $fileName);
+        
+        if (file_exists($localPath)) {
+            return true;
+        }
+        
+        // Jeśli jesteśmy w trybie frontendowym i lokalnie nie ma, sprawdź frontend
+        $frontendMode = Settings::getSetting('upload.frontend_mode', false);
+        if ($frontendMode) {
+            $frontendPath = Settings::getSetting('upload.frontend_path', '');
+            if (!empty($frontendPath)) {
+                $frontendThumbnailPath = $frontendPath . '/uploads/thumbnails/' . $sizeName . '_' . $fileName;
+                return file_exists($frontendThumbnailPath);
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Pobiera dostępną miniaturę - sprawdza lokalne i frontend ścieżki
+     * @param string $sizeName
+     * @param string $fileName
+     * @return array|null ['path' => string, 'url' => string] lub null jeśli nie ma
+     */
+    public static function getAvailableThumbnail($sizeName, $fileName)
+    {
+        $frontendMode = Settings::getSetting('upload.frontend_mode', false);
+        
+        if ($frontendMode) {
+            $frontendPath = Settings::getSetting('upload.frontend_path', '');
+            $frontendUrl = Settings::getSetting('upload.frontend_url', '');
+            
+            if (!empty($frontendPath) && !empty($frontendUrl)) {
+                $frontendThumbnailPath = $frontendPath . '/uploads/thumbnails/' . $sizeName . '_' . $fileName;
+                if (file_exists($frontendThumbnailPath)) {
+                    return [
+                        'path' => $frontendThumbnailPath,
+                        'url' => $frontendUrl . '/uploads/thumbnails/' . $sizeName . '_' . $fileName
+                    ];
+                }
+            }
+        }
+        
+        // Sprawdź lokalną ścieżkę
+        $localPath = self::getThumbnailPath($sizeName, $fileName);
+        if (file_exists($localPath)) {
+            return [
+                'path' => $localPath,
+                'url' => self::getUploadUrl('thumbnails') . '/' . $sizeName . '_' . $fileName
+            ];
+        }
+        
+        return null;
     }
     
     /**
@@ -177,7 +241,7 @@ class PathHelper
     }
     
     /**
-     * Usuwa wszystkie miniatury dla danego pliku
+     * Usuwa wszystkie miniatury dla danego pliku - zarówno lokalne jak i frontend
      * @param string $fileName
      * @return int Liczba usuniętych miniatur
      */
@@ -187,9 +251,22 @@ class PathHelper
         $thumbnailSizes = \common\models\ThumbnailSize::find()->all();
         
         foreach ($thumbnailSizes as $size) {
+            // Usuń lokalną miniaturę
             $thumbnailPath = self::getThumbnailPath($size->name, $fileName);
             if (file_exists($thumbnailPath) && unlink($thumbnailPath)) {
                 $deleted++;
+            }
+            
+            // Usuń miniaturę z frontendu jeśli jest w trybie frontendowym
+            $frontendMode = Settings::getSetting('upload.frontend_mode', false);
+            if ($frontendMode) {
+                $frontendPath = Settings::getSetting('upload.frontend_path', '');
+                if (!empty($frontendPath)) {
+                    $frontendThumbnailPath = $frontendPath . '/uploads/thumbnails/' . $size->name . '_' . $fileName;
+                    if (file_exists($frontendThumbnailPath) && unlink($frontendThumbnailPath)) {
+                        $deleted++;
+                    }
+                }
             }
         }
         

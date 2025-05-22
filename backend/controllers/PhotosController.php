@@ -148,13 +148,19 @@ class PhotosController extends Controller {
     public function actionView($id) {
         $model = $this->findModel($id);
 
-        // Get available thumbnail sizes
+        // Get available thumbnail sizes using PathHelper
         $thumbnailSizes = ThumbnailSize::find()->all();
         $thumbnails = [];
 
         foreach ($thumbnailSizes as $size) {
-            $thumbnailUrl = Yii::getAlias('@web/uploads/thumbnails/' . $size->name . '_' . $model->file_name);
-            $thumbnails[$size->name] = $thumbnailUrl;
+            $thumbnail = PathHelper::getAvailableThumbnail($size->name, $model->file_name);
+            
+            if ($thumbnail) {
+                $thumbnails[$size->name] = $thumbnail['url'];
+            } else {
+                // Wygeneruj URL nawet jeśli plik nie istnieje (dla spójności)
+                $thumbnails[$size->name] = PathHelper::getThumbnailUrl($size->name, $model->file_name);
+            }
         }
 
         // Get associated tags and categories

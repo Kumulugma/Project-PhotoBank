@@ -153,12 +153,26 @@ class Photo extends ActiveRecord {
         return $statusMap[$this->status] ?? 'Nieznany';
     }
 
+    /**
+     * Pobiera dostępne miniatury z uwzględnieniem frontend mode
+     * 
+     * @return array
+     */
     public function getThumbnails() {
         $thumbnails = [];
         $thumbnailSizes = ThumbnailSize::find()->all();
 
         foreach ($thumbnailSizes as $size) {
-            $thumbnails[$size->name] = PathHelper::getThumbnailUrl($size->name, $this->file_name);
+            // Użyj PathHelper do sprawdzenia dostępności miniatur
+            $thumbnail = PathHelper::getAvailableThumbnail($size->name, $this->file_name);
+            
+            if ($thumbnail) {
+                $thumbnails[$size->name] = $thumbnail['url'];
+            } else {
+                // Jeśli miniatura nie istnieje, wygeneruj standardowy URL
+                // (może być przydatne do debugowania)
+                $thumbnails[$size->name] = PathHelper::getThumbnailUrl($size->name, $this->file_name);
+            }
         }
 
         return $thumbnails;
@@ -543,4 +557,58 @@ class Photo extends ActiveRecord {
         return '';
     }
 
+    /**
+     * Pobiera URL do konkretnej miniatury
+     * 
+     * @param string $sizeName Nazwa rozmiaru (np. 'small', 'medium', 'large')
+     * @return string|null URL do miniatury lub null jeśli nie istnieje
+     */
+    public function getThumbnailUrl($sizeName) {
+        $thumbnail = PathHelper::getAvailableThumbnail($sizeName, $this->file_name);
+        return $thumbnail ? $thumbnail['url'] : null;
+    }
+    
+    /**
+     * Sprawdza czy miniatura istnieje
+     * 
+     * @param string $sizeName Nazwa rozmiaru
+     * @return bool
+     */
+    public function hasThumbnail($sizeName) {
+        return PathHelper::thumbnailExists($sizeName, $this->file_name);
+    }
+    
+    /**
+     * Pobiera pierwszą dostępną miniaturę z listy preferencji
+     * 
+     * @param array $preferredSizes Lista preferowanych rozmiarów w kolejności
+     * @return string|null URL do miniatury lub null jeśli żadna nie istnieje
+     */
+    public function getPreferredThumbnail($preferredSizes = ['medium', 'large', 'small']) {
+        foreach ($preferredSizes as $size) {
+            $thumbnail = PathHelper::getAvailableThumbnail($size, $this->file_name);
+            if ($thumbnail) {
+                return $thumbnail['url'];
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Pobiera miniaturę do podglądu (preferuje medium, potem small)
+     * 
+     * @return string|null
+     */
+    public function getPreviewThumbnail() {
+        return $this->getPreferredThumbnail(['medium', 'small', 'large']);
+    }
+    
+    /**
+     * Pobiera małą miniaturę do listy (preferuje small, potem medium)
+     * 
+     * @return string|null
+     */
+    public function getListThumbnail() {
+        return $this->getPreferredThumbnail(['small', 'medium']);
+    }
 }

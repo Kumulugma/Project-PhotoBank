@@ -90,23 +90,26 @@ Html::a('<i class="fas fa-file-import me-2"></i>Import zdjęć', ['import'], [
                     'contentOptions' => ['class' => 'fw-bold'],
                 ],
                 [
-                    'label' => 'Miniatura',
-                    'format' => 'raw',
-                    'value' => function ($model) {
-                        $thumbnailSize = \common\models\ThumbnailSize::findOne(['name' => 'small']);
-                        if ($thumbnailSize) {
-                            $thumbnailUrl = Yii::getAlias('@web/uploads/thumbnails/' . $thumbnailSize->name . '_' . $model->file_name);
-                            return Html::img($thumbnailUrl, [
-                                        'class' => 'img-thumbnail',
-                                        'style' => 'max-width: 80px; max-height: 80px; object-fit: cover;',
-                                        'alt' => $model->title,
-                            ]);
-                        }
-                        return '<span class="text-muted">Brak</span>';
-                    },
-                    'filter' => false,
-                    'headerOptions' => ['style' => 'width: 100px;'],
-                ],
+                'label' => 'Miniatura',
+                'format' => 'raw',
+                'value' => function ($model) {
+                    $thumbnailUrl = $model->getListThumbnail();
+                    
+                    if ($thumbnailUrl) {
+                        return Html::img($thumbnailUrl, [
+                                    'class' => 'img-thumbnail',
+                                    'style' => 'max-width: 80px; max-height: 80px; object-fit: cover;',
+                                    'alt' => $model->title,
+                        ]);
+                    } else {
+                        return '<div class="text-center p-2" style="width: 80px; height: 80px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-image text-muted"></i>
+                                </div>';
+                    }
+                },
+                'filter' => false,
+                'headerOptions' => ['style' => 'width: 100px;'],
+            ],
                 [
                     'attribute' => 'title',
                     'format' => 'raw',

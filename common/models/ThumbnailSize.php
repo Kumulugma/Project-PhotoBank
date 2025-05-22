@@ -88,4 +88,24 @@ class ThumbnailSize extends ActiveRecord {
         return PathHelper::getThumbnailUrl($this->name, $fileName);
     }
 
+    /**
+     * Gets available thumbnail for a given photo file name (checks if exists)
+     * 
+     * @param string $fileName Photo file name
+     * @return array|null ['path' => string, 'url' => string] or null if not found
+     */
+    public function getAvailableThumbnail($fileName) {
+        return PathHelper::getAvailableThumbnail($this->name, $fileName);
+    }
+    
+    /**
+     * Checks if thumbnail exists for a given photo file name
+     * 
+     * @param string $fileName Photo file name
+     * @return bool
+     */
+    public function thumbnailExists($fileName) {
+        return PathHelper::thumbnailExists($this->name, $fileName);
+    }
+    
 }
