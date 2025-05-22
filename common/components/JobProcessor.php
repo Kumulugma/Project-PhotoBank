@@ -12,33 +12,21 @@ use common\models\Settings;
 use yii\helpers\FileHelper;
 use Intervention\Image\ImageManagerStatic as Image;
 
-/**
- * JobProcessor obsługuje przetwarzanie zadań w kolejce.
- */
 class JobProcessor {
 
-    /**
-     * Przetwarza zadanie z kolejki.
-     *
-     * @param QueuedJob $job Zadanie do przetworzenia
-     * @return bool Czy przetwarzanie się powiodło
-     */
     public function processJob($job) {
         if (!$job) {
             return false;
         }
 
-        // Dekoduj parametry zadania
         $params = json_decode($job->data, true) ?: [];
 
-        // Inicjalizuj wyniki zadania
         $results = [
             'started_at' => date('Y-m-d H:i:s'),
             'job_type' => $job->type,
             'job_id' => $job->id
         ];
 
-        // Przetwarzaj różne typy zadań
         try {
             switch ($job->type) {
                 case 's3_sync':
@@ -73,14 +61,7 @@ class JobProcessor {
         }
     }
 
-    /**
-     * Synchronizuje zdjęcia z magazynem S3.
-     *
-     * @param array $params Parametry zadania
-     * @return bool Czy synchronizacja się powiodła
-     */
     protected function syncWithS3($params) {
-        // Sprawdź czy S3 jest skonfigurowane
         if (!Yii::$app->has('s3')) {
             throw new \Exception("Komponent S3 nie jest skonfigurowany");
         }
@@ -89,13 +70,11 @@ class JobProcessor {
         $s3 = Yii::$app->get('s3');
         $s3Settings = $s3->getSettings();
 
-        // Sprawdź czy S3 jest poprawnie skonfigurowane
         if (empty($s3Settings['bucket']) || empty($s3Settings['region']) ||
                 empty($s3Settings['access_key']) || empty($s3Settings['secret_key'])) {
             throw new \Exception("S3 nie jest poprawnie skonfigurowane");
         }
 
-        // Pobierz zdjęcia do synchronizacji
         $photos = Photo::find()
                 ->where(['status' => Photo::STATUS_ACTIVE])
                 ->andWhere(['s3_path' => null])
@@ -118,10 +97,8 @@ class JobProcessor {
                     continue;
                 }
 
-                // Generuj ścieżkę na S3
                 $s3Key = $s3Settings['directory'] . '/' . date('Y/m/d', $photo->created_at) . '/' . $photo->file_name;
 
-                // Wrzuć plik na S3
                 $s3->putObject([
                     'Bucket' => $s3Settings['bucket'],
                     'Key' => $s3Key,
@@ -129,7 +106,6 @@ class JobProcessor {
                     'ContentType' => $photo->mime_type
                 ]);
 
-                // Aktualizuj ścieżkę S3 w modelu
                 $photo->s3_path = $s3Key;
                 $photo->updated_at = time();
 
@@ -137,7 +113,6 @@ class JobProcessor {
                     throw new \Exception("Błąd aktualizacji modelu: " . json_encode($photo->errors));
                 }
 
-                // Usuń lokalny plik jeśli potrzeba
                 if (isset($params['delete_local']) && $params['delete_local']) {
                     @unlink($filePath);
                 }
@@ -154,22 +129,13 @@ class JobProcessor {
         return true;
     }
 
-    /**
-     * Regeneruje miniatury zdjęć.
-     *
-     * @param array $params Parametry zadania
-     * @return bool Czy regeneracja się powiodła
-     */
     protected function regenerateThumbnails($params) {
-        // Przygotuj warunki zapytania
         $query = Photo::find()->where(['!=', 'status', Photo::STATUS_DELETED]);
 
-        // Filtruj po konkretnym zdjęciu jeśli podano
         if (isset($params['photo_id']) && $params['photo_id']) {
             $query->andWhere(['id' => $params['photo_id']]);
         }
 
-        // Pobierz rozmiary miniatur
         $thumbnailSizes = [];
         if (isset($params['size_id']) && $params['size_id']) {
             $size = ThumbnailSize::findOne($params['size_id']);
@@ -186,7 +152,6 @@ class JobProcessor {
             throw new \Exception("Nie znaleziono żadnych rozmiarów miniatur");
         }
 
-        // Pobierz zdjęcia
         $photos = $query->all();
 
         if (empty($photos)) {
@@ -201,7 +166,6 @@ class JobProcessor {
             try {
                 $filePath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
 
-                // Jeśli brak pliku lokalnie, spróbuj pobrać z S3
                 if (!file_exists($filePath) && !empty($photo->s3_path)) {
                     if (Yii::$app->has('s3')) {
                         /** @var \common\components\S3Component $s3 */
@@ -209,13 +173,11 @@ class JobProcessor {
                         $s3Settings = $s3->getSettings();
 
                         try {
-                            // Utwórz tymczasowy katalog jeśli nie istnieje
                             $tempDir = Yii::getAlias('@webroot/uploads/temp');
                             if (!is_dir($tempDir)) {
                                 FileHelper::createDirectory($tempDir, 0777, true);
                             }
 
-                            // Pobierz plik z S3
                             $s3->getObject([
                                 'Bucket' => $s3Settings['bucket'],
                                 'Key' => $photo->s3_path,
@@ -236,22 +198,18 @@ class JobProcessor {
                     continue;
                 }
 
-                // Generuj miniatury dla każdego rozmiaru
                 foreach ($thumbnailSizes as $size) {
                     $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $photo->file_name);
 
-                    // Jeśli tryb częściowy i miniatura już istnieje, pomiń
                     if (isset($params['partial']) && $params['partial'] && file_exists($thumbnailPath)) {
                         continue;
                     }
 
-                    // Utwórz katalog miniatur jeśli nie istnieje
                     $thumbnailDir = Yii::getAlias('@webroot/uploads/thumbnails');
                     if (!is_dir($thumbnailDir)) {
                         FileHelper::createDirectory($thumbnailDir, 0777, true);
                     }
 
-                    // Utwórz miniaturę
                     $thumbnailImage = Image::make($filePath);
 
                     if ($size->crop) {
@@ -271,7 +229,6 @@ class JobProcessor {
                     $regeneratedCount++;
                 }
 
-                // Usuń tymczasowy plik pobrany z S3 jeśli był
                 if (!empty($photo->s3_path) && isset($params['delete_temp']) && $params['delete_temp']) {
                     @unlink($filePath);
                 }
@@ -286,14 +243,7 @@ class JobProcessor {
         return true;
     }
 
-    /**
-     * Analizuje pojedyncze zdjęcie za pomocą AI.
-     *
-     * @param array $params Parametry zadania
-     * @return bool Czy analiza się powiodła
-     */
     protected function analyzePhoto($params) {
-        // Sprawdź czy podano ID zdjęcia
         if (empty($params['photo_id'])) {
             throw new \Exception("Nie podano ID zdjęcia do analizy");
         }
@@ -302,13 +252,11 @@ class JobProcessor {
         $analyzeTags = isset($params['analyze_tags']) ? (bool) $params['analyze_tags'] : true;
         $analyzeDescription = isset($params['analyze_description']) ? (bool) $params['analyze_description'] : true;
 
-        // Pobierz zdjęcie
         $photo = Photo::findOne($photoId);
         if (!$photo) {
             throw new \Exception("Nie znaleziono zdjęcia o ID {$photoId}");
         }
 
-        // Sprawdź czy AI jest włączone i skonfigurowane
         $aiEnabled = (bool) $this->getSettingValue('ai.enabled', false);
         if (!$aiEnabled) {
             throw new \Exception("Integracja AI jest wyłączona");
@@ -321,10 +269,8 @@ class JobProcessor {
             throw new \Exception("Brak konfiguracji dostawcy AI lub klucza API");
         }
 
-        // Pobierz ścieżkę do zdjęcia
         $filePath = Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name);
 
-        // Jeśli brak pliku lokalnie, spróbuj pobrać z S3
         if (!file_exists($filePath) && !empty($photo->s3_path)) {
             if (Yii::$app->has('s3')) {
                 /** @var \common\components\S3Component $s3 */
@@ -332,13 +278,11 @@ class JobProcessor {
                 $s3Settings = $s3->getSettings();
 
                 try {
-                    // Utwórz tymczasowy katalog jeśli nie istnieje
                     $tempDir = Yii::getAlias('@webroot/uploads/temp');
                     if (!is_dir($tempDir)) {
                         FileHelper::createDirectory($tempDir, 0777, true);
                     }
 
-                    // Pobierz plik z S3
                     $s3->getObject([
                         'Bucket' => $s3Settings['bucket'],
                         'Key' => $photo->s3_path,
@@ -356,14 +300,10 @@ class JobProcessor {
             throw new \Exception("Plik {$filePath} nie istnieje");
         }
 
-        // Symulacja wyników analizy AI
         $results = [];
 
-        // W rzeczywistości tutaj byłoby wywołanie odpowiedniego API AI
         switch ($aiProvider) {
             case 'aws':
-                // Tutaj byłoby wywołanie AWS Rekognition
-                // Przykładowe wyniki:
                 $results = [
                     'tags' => ['nature', 'landscape', 'sky', 'outdoor'],
                     'description' => 'A beautiful outdoor landscape with a clear blue sky.'
@@ -371,8 +311,6 @@ class JobProcessor {
                 break;
 
             case 'google':
-                // Tutaj byłoby wywołanie Google Vision API
-                // Przykładowe wyniki:
                 $results = [
                     'tags' => ['landscape', 'sky', 'nature', 'outdoor', 'cloud'],
                     'description' => 'Outdoor landscape with blue sky and clouds.'
@@ -380,8 +318,6 @@ class JobProcessor {
                 break;
 
             case 'openai':
-                // Tutaj byłoby wywołanie OpenAI API
-                // Przykładowe wyniki:
                 $results = [
                     'tags' => ['nature', 'landscape', 'mountains', 'sky', 'outdoor', 'scenic'],
                     'description' => 'A serene landscape showing mountains against a blue sky, with natural elements creating a peaceful outdoor scene.'
@@ -392,7 +328,6 @@ class JobProcessor {
                 throw new \Exception("Nieobsługiwany dostawca AI: {$aiProvider}");
         }
 
-        // Przetwórz wyniki analizy
         if ($analyzeTags && !empty($results['tags'])) {
             $this->applyTags($photo, $results['tags']);
         }
@@ -403,7 +338,6 @@ class JobProcessor {
             $photo->save();
         }
 
-        // Usuń tymczasowy plik pobrany z S3 jeśli był
         if (!empty($photo->s3_path) && !file_exists(Yii::getAlias('@webroot/uploads/temp/' . $photo->file_name))) {
             @unlink($filePath);
         }
@@ -411,14 +345,7 @@ class JobProcessor {
         return true;
     }
 
-    /**
-     * Analizuje wiele zdjęć za pomocą AI.
-     *
-     * @param array $params Parametry zadania
-     * @return bool Czy analiza się powiodła
-     */
     protected function analyzeBatch($params) {
-        // Sprawdź czy podano ID zdjęć
         if (empty($params['photo_ids']) || !is_array($params['photo_ids'])) {
             throw new \Exception("Nie podano ID zdjęć do analizy");
         }
@@ -427,7 +354,6 @@ class JobProcessor {
         $analyzeTags = isset($params['analyze_tags']) ? (bool) $params['analyze_tags'] : true;
         $analyzeDescription = isset($params['analyze_description']) ? (bool) $params['analyze_description'] : true;
 
-        // Analizuj każde zdjęcie
         $successCount = 0;
         $errorCount = 0;
 
@@ -455,15 +381,7 @@ class JobProcessor {
         return true;
     }
 
-    /**
-     * Importuje zdjęcia z określonego katalogu.
-     *
-     * @param array $params Parametry zadania
-     * @param QueuedJob $job Obiekt zadania
-     * @return bool Czy import się powiódł
-     */
     protected function importPhotos($params, $job = null) {
-        // Inicjalizuj wyniki zadania
         $results = [
             'started_at' => date('Y-m-d H:i:s'),
             'directory' => $params['directory'] ?? 'nie określono',
@@ -473,10 +391,8 @@ class JobProcessor {
             'errors' => []
         ];
 
-        // Loguj start zadania
         Yii::info("Rozpoczynam import zdjęć z katalogu: {$params['directory']}, rekursywnie: " . (isset($params['recursive']) && $params['recursive'] ? 'tak' : 'nie'));
 
-        // Sprawdź parametry
         if (empty($params['directory'])) {
             $errorMsg = "Nie podano katalogu do importu";
             Yii::error($errorMsg);
@@ -493,7 +409,6 @@ class JobProcessor {
         $directory = Yii::getAlias('@webroot/' . $params['directory']);
         $recursive = isset($params['recursive']) ? (bool) $params['recursive'] : false;
 
-        // Sprawdź czy katalog istnieje
         if (!is_dir($directory)) {
             $errorMsg = "Katalog {$directory} nie istnieje";
             Yii::error($errorMsg);
@@ -507,7 +422,6 @@ class JobProcessor {
             throw new \Exception($errorMsg);
         }
 
-        // Utwórz katalog tymczasowy jeśli nie istnieje
         $tempDir = Yii::getAlias('@webroot/uploads/temp');
         if (!is_dir($tempDir)) {
             try {
@@ -527,7 +441,6 @@ class JobProcessor {
             }
         }
 
-        // Pobierz listę plików
         $options = [
             'only' => ['*.jpg', '*.jpeg', '*.png', '*.gif'],
             'recursive' => $recursive,
@@ -538,7 +451,6 @@ class JobProcessor {
             Yii::info("Znaleziono " . count($files) . " plików do importu");
             $results['files_found'] = count($files);
 
-            // Log lista plików (tylko dla debugowania)
             foreach ($files as $index => $file) {
                 Yii::info("Plik {$index}: {$file}");
             }
@@ -555,7 +467,6 @@ class JobProcessor {
             throw new \Exception($errorMsg);
         }
 
-        // Sprawdź czy znaleziono pliki
         if (empty($files)) {
             $warnMsg = "Nie znaleziono plików do importu w katalogu {$directory}";
             Yii::warning($warnMsg);
@@ -566,15 +477,13 @@ class JobProcessor {
                 $job->save();
             }
 
-            return true; // Sukces, ale bez plików
+            return true;
         }
 
-        // Inicjalizuj liczniki
         $imported = 0;
         $skipped = 0;
         $errors = 0;
 
-        // Utwórz katalog miniatur jeśli nie istnieje
         $thumbnailDir = Yii::getAlias('@webroot/uploads/thumbnails');
         if (!is_dir($thumbnailDir)) {
             try {
@@ -594,7 +503,6 @@ class JobProcessor {
             }
         }
 
-        // Przetwórz każdy plik
         foreach ($files as $filePath) {
             Yii::info("Przetwarzam plik: {$filePath}");
             $fileInfo = [
@@ -604,7 +512,6 @@ class JobProcessor {
             ];
 
             try {
-                // Sprawdź czy plik jest obrazem
                 $mimeType = FileHelper::getMimeType($filePath);
                 $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
                 $fileInfo['mime_type'] = $mimeType;
@@ -617,13 +524,11 @@ class JobProcessor {
                     continue;
                 }
 
-                // Generuj unikalną nazwę pliku
                 $fileName = Yii::$app->security->generateRandomString(16) . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
                 $destPath = Yii::getAlias('@webroot/uploads/temp/' . $fileName);
                 $fileInfo['new_filename'] = $fileName;
                 $fileInfo['destination'] = $destPath;
 
-                // Skopiuj plik do katalogu tymczasowego
                 if (!copy($filePath, $destPath)) {
                     throw new \Exception("Nie można skopiować pliku {$filePath} do {$destPath}");
                 }
@@ -632,35 +537,34 @@ class JobProcessor {
                 Yii::info("Plik docelowy istnieje: " . (file_exists($destPath) ? 'tak' : 'nie'));
                 Yii::info("Rozmiar pliku docelowego: " . filesize($destPath) . " bajtów");
 
-                // Odczytaj wymiary obrazu
                 $image = Image::make($destPath);
                 $width = $image->width();
                 $height = $image->height();
                 $fileInfo['width'] = $width;
                 $fileInfo['height'] = $height;
 
-                // Utwórz rekord w bazie danych
                 $photo = new Photo();
-                $photo->title = pathinfo($filePath, PATHINFO_FILENAME); // Tytuł to nazwa pliku
+                $photo->title = pathinfo($filePath, PATHINFO_FILENAME);
                 $photo->file_name = $fileName;
                 $photo->file_size = filesize($destPath);
                 $photo->mime_type = $mimeType;
                 $photo->width = $width;
                 $photo->height = $height;
-                $photo->status = Photo::STATUS_QUEUE; // W kolejce
+                $photo->status = Photo::STATUS_QUEUE;
                 $photo->is_public = false;
                 $photo->created_at = time();
                 $photo->updated_at = time();
-                $photo->created_by = 1; // ID administratora lub innego użytkownika systemowego
+                $photo->created_by = 1;
+                // search_code will be generated automatically in beforeSave()
 
                 if (!$photo->save()) {
                     throw new \Exception("Błąd zapisywania informacji o zdjęciu: " . json_encode($photo->errors));
                 }
 
                 $fileInfo['photo_id'] = $photo->id;
-                Yii::info("Utworzono rekord zdjęcia ID: {$photo->id}");
+                $fileInfo['search_code'] = $photo->search_code;
+                Yii::info("Utworzono rekord zdjęcia ID: {$photo->id} z kodem: {$photo->search_code}");
 
-                // Generuj miniatury
                 $thumbnailSizes = ThumbnailSize::find()->all();
                 $fileInfo['thumbnails'] = [];
 
@@ -693,18 +597,15 @@ class JobProcessor {
                 $imported++;
                 $results['processed'][] = $fileInfo;
 
-                // Opcjonalnie - usuń oryginalny plik po imporcie
                 if (isset($params['delete_originals']) && $params['delete_originals']) {
                     Yii::info("Próba usunięcia pliku źródłowego: {$filePath}");
                     Yii::info("Parametr delete_originals: " . var_export($params['delete_originals'], true));
 
-                    // Sprawdź, czy plik istnieje i jest dostępny do zapisu
                     if (file_exists($filePath)) {
                         Yii::info("Plik istnieje");
                         if (is_writable($filePath)) {
                             Yii::info("Plik ma uprawnienia do zapisu");
 
-                            // Próba usunięcia pliku
                             $result = unlink($filePath);
                             if ($result) {
                                 Yii::info("Pomyślnie usunięto plik: {$filePath}");
@@ -726,7 +627,6 @@ class JobProcessor {
                     }
                 }
 
-                // Aktualizuj wyniki zadania co 5 przetworzonych plików
                 if ($job && ($imported % 5 === 0)) {
                     $results['imported'] = $imported;
                     $results['skipped'] = $skipped;
@@ -743,7 +643,6 @@ class JobProcessor {
             }
         }
 
-// Podsumowanie importu
         $results['completed_at'] = date('Y-m-d H:i:s');
         $results['imported'] = $imported;
         $results['skipped'] = $skipped;
@@ -752,7 +651,6 @@ class JobProcessor {
 
         Yii::info("Import zakończony. {$results['summary']}");
 
-// Zapisz wyniki do zadania
         if ($job) {
             $job->results = json_encode($results, JSON_PRETTY_PRINT);
             $job->save();
@@ -761,19 +659,11 @@ class JobProcessor {
         return true;
     }
 
-    /**
-     * Dodaje znaki wodne do obrazu.
-     *
-     * @param \Intervention\Image\Image $image Obraz do modyfikacji
-     * @return \Intervention\Image\Image Zmodyfikowany obraz
-     */
     protected function addWatermark($image) {
-        // Get watermark settings
         $watermarkType = $this->getSettingValue('watermark.type', 'text');
         $watermarkPosition = $this->getSettingValue('watermark.position', 'bottom-right');
         $watermarkOpacity = (float) $this->getSettingValue('watermark.opacity', 0.5);
 
-        // Position mapping
         $positionMap = [
             'top-left' => 'top-left',
             'top-right' => 'top-right',
@@ -785,11 +675,10 @@ class JobProcessor {
         $position = $positionMap[$watermarkPosition] ?? 'bottom-right';
 
         if ($watermarkType === 'text') {
-            // Text watermark
             $watermarkText = $this->getSettingValue('watermark.text', '');
 
             if (!empty($watermarkText)) {
-                $fontSize = min($image->width(), $image->height()) / 20; // Scale font size
+                $fontSize = min($image->width(), $image->height()) / 20;
 
                 $image->text($watermarkText, $image->width() - 20, $image->height() - 20, function ($font) use ($fontSize, $watermarkOpacity) {
                     $font->size($fontSize);
@@ -799,7 +688,6 @@ class JobProcessor {
                 });
             }
         } elseif ($watermarkType === 'image') {
-            // Image watermark
             $watermarkImage = $this->getSettingValue('watermark.image', '');
 
             if (!empty($watermarkImage)) {
@@ -808,9 +696,8 @@ class JobProcessor {
                 if (file_exists($watermarkPath)) {
                     $watermark = Image::make($watermarkPath);
 
-                    // Scale watermark
-                    $maxWidth = $image->width() / 4; // Max 25% of image width
-                    $maxHeight = $image->height() / 4; // Max 25% of image height
+                    $maxWidth = $image->width() / 4;
+                    $maxHeight = $image->height() / 4;
 
                     if ($watermark->width() > $maxWidth || $watermark->height() > $maxHeight) {
                         $watermark->resize($maxWidth, $maxHeight, function ($constraint) {
@@ -819,10 +706,7 @@ class JobProcessor {
                         });
                     }
 
-                    // Add opacity
                     $watermark->opacity($watermarkOpacity * 100);
-
-                    // Insert watermark
                     $image->insert($watermark, $position);
                 }
             }
@@ -831,20 +715,12 @@ class JobProcessor {
         return $image;
     }
 
-    /**
-     * Dodaje tagi do zdjęcia na podstawie wyników analizy AI.
-     *
-     * @param Photo $photo Zdjęcie
-     * @param array $tagNames Nazwy tagów
-     * @return void
-     */
     protected function applyTags($photo, $tagNames) {
         if (empty($tagNames) || empty($photo)) {
             return;
         }
 
         foreach ($tagNames as $tagName) {
-            // Szukaj istniejącego tagu lub utwórz nowy
             $tag = Tag::findOne(['name' => $tagName]);
 
             if (!$tag) {
@@ -860,17 +736,14 @@ class JobProcessor {
                 }
             }
 
-            // Sprawdź czy relacja już istnieje
             $existingRelation = PhotoTag::findOne(['photo_id' => $photo->id, 'tag_id' => $tag->id]);
 
             if (!$existingRelation) {
-                // Utwórz nową relację
                 $photoTag = new PhotoTag();
                 $photoTag->photo_id = $photo->id;
                 $photoTag->tag_id = $tag->id;
 
                 if ($photoTag->save()) {
-                    // Zaktualizuj licznik częstotliwości tagu
                     $tag->frequency += 1;
                     $tag->updated_at = time();
                     $tag->save();
@@ -881,16 +754,8 @@ class JobProcessor {
         }
     }
 
-    /**
-     * Pobiera wartość ustawienia z tabeli settings.
-     *
-     * @param string $key Klucz ustawienia
-     * @param mixed $default Domyślna wartość
-     * @return mixed Wartość ustawienia lub domyślna wartość
-     */
     protected function getSettingValue($key, $default = null) {
         $setting = Settings::findOne(['key' => $key]);
         return $setting ? $setting->value : $default;
     }
-
 }

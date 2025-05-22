@@ -4,17 +4,10 @@ use yii\helpers\Html;
 use yii\helpers\Url;
 use yii\widgets\DetailView;
 
-/* @var $this yii\web\View */
-/* @var $model common\models\Photo */
-/* @var $thumbnails array */
-/* @var $tags array */
-/* @var $categories array */
-
 $this->title = $model->title;
 $this->params['breadcrumbs'][] = ['label' => 'Zdjęcia', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 
-// Status options
 $statusOptions = [
     \common\models\Photo::STATUS_QUEUE => 'W kolejce',
     \common\models\Photo::STATUS_ACTIVE => 'Aktywne',
@@ -28,6 +21,21 @@ $statusOptions = [
             <?= Html::a('<i class="fas fa-list me-2"></i>Lista zdjęć', ['index'], [
                 'class' => 'btn btn-outline-secondary'
             ]) ?>
+        </div>
+    </div>
+
+    <!-- Search Code Display -->
+    <div class="alert alert-info mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <strong><i class="fas fa-search me-2"></i>Kod wyszukiwania:</strong>
+                <code class="fs-5 ms-2"><?= Html::encode($model->search_code) ?></code>
+            </div>
+            <div class="col-md-6 text-end">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="copySearchCode()">
+                    <i class="fas fa-copy me-1"></i>Kopiuj kod
+                </button>
+            </div>
         </div>
     </div>
 
@@ -79,6 +87,12 @@ $statusOptions = [
                             [
                                 'attribute' => 'id',
                                 'label' => 'ID',
+                            ],
+                            [
+                                'attribute' => 'search_code',
+                                'label' => 'Kod wyszukiwania',
+                                'format' => 'raw',
+                                'value' => '<code class="badge bg-secondary fs-6">' . Html::encode($model->search_code) . '</code>',
                             ],
                             [
                                 'attribute' => 'title',
@@ -288,6 +302,73 @@ $statusOptions = [
         </div>
     </div>
 </div>
+
+<script>
+function copySearchCode() {
+    const searchCode = '<?= Html::encode($model->search_code) ?>';
+    
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(searchCode).then(function() {
+            // Show success message
+            showToast('Kod został skopiowany do schowka!', 'success');
+        }, function(err) {
+            // Fallback for older browsers
+            fallbackCopyTextToClipboard(searchCode);
+        });
+    } else {
+        fallbackCopyTextToClipboard(searchCode);
+    }
+}
+
+function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showToast('Kod został skopiowany do schowka!', 'success');
+        } else {
+            showToast('Nie udało się skopiować kodu', 'error');
+        }
+    } catch (err) {
+        showToast('Nie udało się skopiować kodu', 'error');
+    }
+
+    document.body.removeChild(textArea);
+}
+
+function showToast(message, type = 'info') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+}
+</script>
 
 <style>
 .detail-view th {
