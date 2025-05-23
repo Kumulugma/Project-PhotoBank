@@ -4,6 +4,7 @@ namespace common\models;
 use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
+use common\behaviors\AuditBehavior;
 
 /**
  * Settings model
@@ -32,6 +33,13 @@ class Settings extends ActiveRecord
     {
         return [
             TimestampBehavior::class,
+            'audit' => [
+                'class' => AuditBehavior::class,
+                'skipAttributes' => ['updated_at', 'created_at'],
+                'logCreate' => true,
+                'logUpdate' => true,
+                'logDelete' => true,
+            ]
         ];
     }
 

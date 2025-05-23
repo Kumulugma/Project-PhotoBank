@@ -6,6 +6,7 @@ use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
 use common\helpers\PathHelper;
+use common\behaviors\AuditBehavior;
 
 /**
  * ThumbnailSize model
@@ -34,6 +35,13 @@ class ThumbnailSize extends ActiveRecord {
     public function behaviors() {
         return [
             TimestampBehavior::class,
+            'audit' => [
+                'class' => AuditBehavior::class,
+                'skipAttributes' => ['updated_at', 'created_at'],
+                'logCreate' => true,
+                'logUpdate' => true,
+                'logDelete' => true,
+            ]
         ];
     }
 

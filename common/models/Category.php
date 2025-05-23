@@ -5,6 +5,7 @@ use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
 use yii\helpers\Inflector;
+use common\behaviors\AuditBehavior;
 
 /**
  * Category model
@@ -33,6 +34,13 @@ class Category extends ActiveRecord
     {
         return [
             TimestampBehavior::class,
+            'audit' => [
+                'class' => AuditBehavior::class,
+                'skipAttributes' => ['updated_at', 'created_at'],
+                'logCreate' => true,
+                'logUpdate' => true,
+                'logDelete' => true,
+            ]
         ];
     }
 

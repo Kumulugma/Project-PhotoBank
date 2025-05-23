@@ -4,6 +4,7 @@ namespace common\models;
 use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
+use common\behaviors\AuditBehavior;
 
 /**
  * QueuedJob model for background tasks
@@ -44,9 +45,15 @@ class QueuedJob extends ActiveRecord
     {
         return [
             TimestampBehavior::class,
+            'audit' => [
+                'class' => AuditBehavior::class,
+                'skipAttributes' => ['updated_at', 'created_at', 'started_at', 'finished_at', 'attempts'], // często się zmieniają
+                'logCreate' => true,
+                'logUpdate' => false, // zadania często się aktualizują
+                'logDelete' => true,
+            ]
         ];
     }
-
     /**
      * {@inheritdoc}
      */

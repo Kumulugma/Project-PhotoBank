@@ -7,15 +7,13 @@ use yii\web\Controller;
 use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
 use common\models\LoginForm;
+use common\models\AuditLog;
 
 /**
- * Site controller for backend
+ * Site controller for backend with audit logging
  */
 class SiteController extends Controller
 {
-    /**
-     * {@inheritdoc}
-     */
     public function behaviors()
     {
         return [
@@ -42,9 +40,6 @@ class SiteController extends Controller
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function actions()
     {
         return [
@@ -54,24 +49,16 @@ class SiteController extends Controller
         ];
     }
 
-    /**
-     * Displays homepage.
-     *
-     * @return string
-     */
     public function actionIndex()
     {
-        // Redirect to dashboard if user is logged in
         return $this->actionDashboard();
     }
 
-    /**
-     * Displays the dashboard page.
-     *
-     * @return string
-     */
     public function actionDashboard()
     {
+        // Loguj dostęp do dashboardu
+        AuditLog::logSystemEvent('Przeglądanie głównego dashboardu', AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS);
+        
         $totalPhotos = \common\models\Photo::find()
             ->where(['status' => \common\models\Photo::STATUS_ACTIVE])
             ->count();
@@ -83,19 +70,29 @@ class SiteController extends Controller
         $totalCategories = \common\models\Category::find()->count();
         $totalTags = \common\models\Tag::find()->count();
         
+        // Statystyki dziennika zdarzeń
+        $auditStats = [
+            'total_events' => AuditLog::find()->count(),
+            'today_events' => AuditLog::find()->where(['>=', 'created_at', strtotime('today')])->count(),
+            'errors_today' => AuditLog::find()
+                ->where(['severity' => AuditLog::SEVERITY_ERROR])
+                ->andWhere(['>=', 'created_at', strtotime('today')])
+                ->count(),
+            'warnings_today' => AuditLog::find()
+                ->where(['severity' => AuditLog::SEVERITY_WARNING])
+                ->andWhere(['>=', 'created_at', strtotime('today')])
+                ->count(),
+        ];
+        
         return $this->render('dashboard', [
             'totalPhotos' => $totalPhotos,
             'queuedPhotos' => $queuedPhotos,
             'totalCategories' => $totalCategories,
             'totalTags' => $totalTags,
+            'auditStats' => $auditStats,
         ]);
     }
 
-    /**
-     * Login action.
-     *
-     * @return string|\yii\web\Response
-     */
     public function actionLogin()
     {
         if (!Yii::$app->user->isGuest) {
@@ -106,7 +103,19 @@ class SiteController extends Controller
         if ($model->load(Yii::$app->request->post()) && $model->login()) {
             // Check if user has admin role
             if (!Yii::$app->user->can('admin')) {
+                $user = Yii::$app->user->identity;
                 Yii::$app->user->logout();
+                
+                // Loguj odmowę dostępu
+                AuditLog::log(AuditLog::ACTION_ACCESS, 
+                    "Odmowa dostępu do panelu administratora dla użytkownika: {$user->username}", 
+                    [
+                        'severity' => AuditLog::SEVERITY_WARNING,
+                        'model_class' => get_class($user),
+                        'model_id' => $user->id
+                    ]
+                );
+                
                 Yii::$app->session->setFlash('error', 'You do not have permission to access the admin panel.');
                 return $this->goHome();
             }
@@ -121,13 +130,15 @@ class SiteController extends Controller
         ]);
     }
 
-    /**
-     * Logout action.
-     *
-     * @return \yii\web\Response
-     */
     public function actionLogout()
     {
+        $user = Yii::$app->user->identity;
+        
+        if ($user) {
+            // Loguj wylogowanie
+            AuditLog::logLogout($user);
+        }
+        
         Yii::$app->user->logout();
 
         return $this->goHome();

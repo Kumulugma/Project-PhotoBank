@@ -4,6 +4,7 @@ namespace common\models;
 use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
+use common\behaviors\AuditBehavior;
 
 /**
  * Tag model
@@ -31,6 +32,13 @@ class Tag extends ActiveRecord
     {
         return [
             TimestampBehavior::class,
+            'audit' => [
+                'class' => AuditBehavior::class,
+                'skipAttributes' => ['updated_at', 'created_at', 'frequency'], // frequency często się zmienia
+                'logCreate' => true,
+                'logUpdate' => true,
+                'logDelete' => true,
+            ]
         ];
     }
 

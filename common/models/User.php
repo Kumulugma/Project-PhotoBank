@@ -6,6 +6,7 @@ use yii\base\NotSupportedException;
 use yii\behaviors\TimestampBehavior;
 use yii\db\ActiveRecord;
 use yii\web\IdentityInterface;
+use common\behaviors\AuditBehavior;
 
 /**
  * User model
@@ -46,6 +47,13 @@ class User extends ActiveRecord implements IdentityInterface
     {
         return [
             TimestampBehavior::class,
+            'audit' => [
+                'class' => AuditBehavior::class,
+                'skipAttributes' => ['updated_at', 'created_at', 'password_hash', 'auth_key', 'last_login_at', 'password_reset_token'],
+                'logCreate' => true,
+                'logUpdate' => true,
+                'logDelete' => false, // nie loguj usuwania, bo to soft delete
+            ]
         ];
     }
 

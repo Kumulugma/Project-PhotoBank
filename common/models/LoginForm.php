@@ -5,7 +5,7 @@ use Yii;
 use yii\base\Model;
 
 /**
- * Login form with Polish error messages
+ * Login form with Polish error messages and audit logging
  */
 class LoginForm extends Model
 {
@@ -15,24 +15,15 @@ class LoginForm extends Model
 
     private $_user;
 
-    /**
-     * {@inheritdoc}
-     */
     public function rules()
     {
         return [
-            // username and password are both required
             [['username', 'password'], 'required', 'message' => '{attribute} nie może być puste.'],
-            // rememberMe must be a boolean value
             ['rememberMe', 'boolean'],
-            // password is validated by validatePassword()
             ['password', 'validatePassword'],
         ];
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function attributeLabels()
     {
         return [
@@ -42,37 +33,37 @@ class LoginForm extends Model
         ];
     }
 
-    /**
-     * Validates the password.
-     * This method serves as the inline validation for password.
-     *
-     * @param string $attribute the attribute currently being validated
-     * @param array $params the additional name-value pairs given in the rule
-     */
     public function validatePassword($attribute, $params)
     {
         if (!$this->hasErrors()) {
             $user = $this->getUser();
             if (!$user || !$user->validatePassword($this->password)) {
+                // Loguj nieudaną próbę logowania
+                if ($user) {
+                    AuditLog::logLogin($user, false);
+                } else {
+                    AuditLog::log(AuditLog::ACTION_LOGIN, 
+                        "Nieudana próba logowania dla nieistniejącego użytkownika: {$this->username}", 
+                        ['severity' => AuditLog::SEVERITY_WARNING]
+                    );
+                }
+                
                 $this->addError($attribute, 'Nieprawidłowa nazwa użytkownika lub hasło.');
             }
         }
     }
 
-    /**
-     * Logs in a user using the provided username and password.
-     *
-     * @return bool whether the user is logged in successfully
-     */
     public function login()
     {
         if ($this->validate()) {
             $user = $this->getUser();
             $result = Yii::$app->user->login($user, $this->rememberMe ? 3600 * 24 * 30 : 0);
             
-            // Aktualizuj czas ostatniego logowania
             if ($result) {
                 $user->updateLastLogin();
+                
+                // Loguj udane logowanie
+                AuditLog::logLogin($user, true);
             }
             
             return $result;
@@ -81,11 +72,6 @@ class LoginForm extends Model
         return false;
     }
 
-    /**
-     * Finds user by [[username]]
-     *
-     * @return User|null
-     */
     protected function getUser()
     {
         if ($this->_user === null) {
@@ -95,9 +81,6 @@ class LoginForm extends Model
         return $this->_user;
     }
 
-    /**
-     * Custom error messages for better Polish translations
-     */
     public function generateAttributeLabel($name)
     {
         $labels = $this->attributeLabels();

@@ -11,6 +11,7 @@ use common\models\PhotoTag;
 use common\models\PhotoCategory;
 use common\models\ThumbnailSize;
 use common\models\Settings;
+use common\models\AuditLog;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
@@ -24,7 +25,7 @@ use common\models\QueuedJob;
 use common\helpers\PathHelper;
 
 /**
- * PhotosController handles photo management operations
+ * PhotosController handles photo management operations with audit logging
  */
 class PhotosController extends Controller {
 
@@ -65,6 +66,12 @@ class PhotosController extends Controller {
      * @return mixed
      */
     public function actionFindByCode($code = null) {
+        // Loguj próbę wyszukiwania po kodzie
+        if (!empty($code)) {
+            AuditLog::logSystemEvent("Wyszukiwanie zdjęcia po kodzie: {$code}", 
+                AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS);
+        }
+
         // Jeśli to żądanie AJAX, zwróć odpowiedź JSON
         if (Yii::$app->request->isAjax) {
             Yii::$app->response->format = Response::FORMAT_JSON;
@@ -76,8 +83,13 @@ class PhotosController extends Controller {
             $photo = Photo::findBySearchCode($code);
 
             if (!$photo) {
+                AuditLog::logSystemEvent("Nie znaleziono zdjęcia o kodzie: {$code}", 
+                    AuditLog::SEVERITY_WARNING, AuditLog::ACTION_ACCESS);
                 return ['success' => false, 'message' => 'Nie znaleziono zdjęcia o kodzie: ' . $code];
             }
+
+            AuditLog::logSystemEvent("Znaleziono zdjęcie ID {$photo->id} po kodzie: {$code}", 
+                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_ACCESS);
 
             return [
                 'success' => true,
@@ -111,6 +123,8 @@ class PhotosController extends Controller {
      * @return mixed
      */
     public function actionIndex() {
+        AuditLog::logSystemEvent('Przeglądanie listy zdjęć', AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS);
+        
         $searchModel = new PhotoSearch();
         $searchModel->status = Photo::STATUS_ACTIVE;
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
@@ -127,6 +141,8 @@ class PhotosController extends Controller {
      * @return mixed
      */
     public function actionQueue() {
+        AuditLog::logSystemEvent('Przeglądanie poczekalni zdjęć', AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS);
+        
         $searchModel = new PhotoSearch();
         $searchModel->status = Photo::STATUS_QUEUE;
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
@@ -146,6 +162,13 @@ class PhotosController extends Controller {
      */
     public function actionView($id) {
         $model = $this->findModel($id);
+
+        // Loguj podgląd zdjęcia
+        AuditLog::logSystemEvent("Podgląd zdjęcia: {$model->title} (kod: {$model->search_code})", 
+            AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS, [
+                'model_class' => get_class($model),
+                'model_id' => $model->id
+            ]);
 
         // Get available thumbnail sizes using PathHelper
         $thumbnailSizes = ThumbnailSize::find()->all();
@@ -180,6 +203,7 @@ class PhotosController extends Controller {
      * @return mixed
      */
     public function actionUpload() {
+        AuditLog::logSystemEvent('Otwarcie formularza przesyłania zdjęć', AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS);
         return $this->render('upload');
     }
 
@@ -193,6 +217,7 @@ class PhotosController extends Controller {
 
         $uploadedFile = UploadedFile::getInstanceByName('file');
         if (!$uploadedFile) {
+            AuditLog::logSystemEvent('Błąd przesyłania - brak pliku', AuditLog::SEVERITY_ERROR, AuditLog::ACTION_UPLOAD);
             return [
                 'success' => false,
                 'message' => 'No file was uploaded',
@@ -202,6 +227,7 @@ class PhotosController extends Controller {
         // Validate MIME type
         $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
         if (!in_array($uploadedFile->type, $allowedTypes)) {
+            AuditLog::logFileUpload($uploadedFile->name, $uploadedFile->size, false);
             return [
                 'success' => false,
                 'message' => 'Invalid file type. Only JPG, PNG and GIF are allowed.',
@@ -220,190 +246,25 @@ class PhotosController extends Controller {
 
         // Save file
         if (!$uploadedFile->saveAs($filePath)) {
+            AuditLog::logFileUpload($uploadedFile->name, $uploadedFile->size, false);
             return [
                 'success' => false,
                 'message' => 'Error saving file',
             ];
         }
 
-        // Read image dimensions and metadata
-        $image = Image::make($filePath);
-        $width = $image->width();
-        $height = $image->height();
-
-        // Create database record
-        $photo = new Photo();
-        $photo->title = $originalName; // Use original name as title
-        $photo->file_name = $fileName;
-        $photo->file_size = $uploadedFile->size;
-        $photo->mime_type = $uploadedFile->type;
-        $photo->width = $width;
-        $photo->height = $height;
-        $photo->status = Photo::STATUS_QUEUE;
-        $photo->is_public = 0;
-        $photo->created_at = time();
-        $photo->updated_at = time();
-        $photo->created_by = Yii::$app->user->id;
-
-        if (!$photo->save()) {
-            unlink($filePath);
-            return [
-                'success' => false,
-                'message' => 'Error saving photo data: ' . json_encode($photo->errors),
-            ];
-        }
-
-        $photo->extractAndSaveExif();
-
-        // Generate thumbnails using PathHelper
-        PathHelper::ensureDirectoryExists('thumbnails');
-        $thumbnailSizes = ThumbnailSize::find()->all();
-        $thumbnails = [];
-
-        foreach ($thumbnailSizes as $size) {
-            $thumbnailPath = PathHelper::getThumbnailPath($size->name, $fileName);
-            $thumbnailImage = Image::make($filePath);
-
-            if ($size->crop) {
-                $thumbnailImage->fit($size->width, $size->height);
-            } else {
-                $thumbnailImage->resize($size->width, $size->height, function ($constraint) {
-                    $constraint->aspectRatio();
-                    $constraint->upsize();
-                });
-            }
-
-            if ($size->watermark) {
-                $this->addWatermark($thumbnailImage);
-            }
-
-            $thumbnailImage->save($thumbnailPath);
-            $thumbnails[$size->name] = PathHelper::getThumbnailUrl($size->name, $fileName);
-        }
-
-        return [
-            'success' => true,
-            'photo' => [
-                'id' => $photo->id,
-                'title' => $photo->title,
-                'file_name' => $photo->file_name,
-                'search_code' => $photo->search_code,
-                'width' => $photo->width,
-                'height' => $photo->height,
-                'thumbnails' => $thumbnails
-            ]
-        ];
-    }
-
-    /**
-     * Handles chunked file upload via AJAX.
-     *
-     * @return mixed
-     */
-    public function actionUploadChunk() {
-        Yii::$app->response->format = Response::FORMAT_JSON;
-
-        // Uploaded chunk
-        $uploadedChunk = UploadedFile::getInstanceByName('file');
-        if (!$uploadedChunk) {
-            return [
-                'success' => false,
-                'message' => 'No file chunk was uploaded',
-            ];
-        }
-
-        // Chunked upload parameters
-        $chunkNumber = (int) Yii::$app->request->post('chunk', 0);
-        $totalChunks = (int) Yii::$app->request->post('chunks', 0);
-        $originalFileName = Yii::$app->request->post('name', '');
-
-        // Generate unique upload session ID
-        $uploadId = md5($originalFileName . Yii::$app->user->id . date('Ymd'));
-        $chunkDir = Yii::getAlias('@webroot/uploads/chunks/' . $uploadId);
-
-        // Create directory for chunks if it doesn't exist
-        if (!file_exists($chunkDir)) {
-            FileHelper::createDirectory($chunkDir, 0777, true);
-        }
-
-        // Save chunk
-        $chunkPath = $chunkDir . '/' . $chunkNumber;
-        if (!$uploadedChunk->saveAs($chunkPath)) {
-            return [
-                'success' => false,
-                'message' => 'Error saving file chunk',
-            ];
-        }
-
-        // Check if this is the last chunk
-        $isCompleted = ($chunkNumber == $totalChunks - 1);
-
-        if ($isCompleted) {
-            // Combine chunks into one file
-            $fileName = Yii::$app->security->generateRandomString(16) . '.' . pathinfo($originalFileName, PATHINFO_EXTENSION);
-            $filePath = Yii::getAlias('@webroot/uploads/temp/' . $fileName);
-
-            $out = fopen($filePath, "wb");
-            if (!$out) {
-                return [
-                    'success' => false,
-                    'message' => 'Cannot create target file',
-                ];
-            }
-
-            // Combine chunks
-            for ($i = 0; $i < $totalChunks; $i++) {
-                $chunkPath = $chunkDir . '/' . $i;
-                if (!file_exists($chunkPath)) {
-                    fclose($out);
-                    unlink($filePath);
-                    return [
-                        'success' => false,
-                        'message' => 'Missing file chunk: ' . $i,
-                    ];
-                }
-
-                $in = fopen($chunkPath, "rb");
-                if (!$in) {
-                    fclose($out);
-                    unlink($filePath);
-                    return [
-                        'success' => false,
-                        'message' => 'Cannot read file chunk: ' . $i,
-                    ];
-                }
-
-                while ($buff = fread($in, 4096)) {
-                    fwrite($out, $buff);
-                }
-
-                fclose($in);
-                unlink($chunkPath); // Delete chunk after processing
-            }
-
-            fclose($out);
-            rmdir($chunkDir); // Delete chunks directory
-            // Validate MIME type
-            $mimeType = FileHelper::getMimeType($filePath);
-            $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-            if (!in_array($mimeType, $allowedTypes)) {
-                unlink($filePath);
-                return [
-                    'success' => false,
-                    'message' => 'Invalid file type. Only JPG, PNG and GIF are allowed.',
-                ];
-            }
-
-            // Create record in database and thumbnails - similar to actionUploadAjax
+        try {
+            // Read image dimensions and metadata
             $image = Image::make($filePath);
             $width = $image->width();
             $height = $image->height();
 
+            // Create database record
             $photo = new Photo();
-            $photo->title = pathinfo($originalFileName, PATHINFO_FILENAME);
+            $photo->title = $originalName; // Use original name as title
             $photo->file_name = $fileName;
-            $photo->file_size = filesize($filePath);
-            $photo->mime_type = $mimeType;
+            $photo->file_size = $uploadedFile->size;
+            $photo->mime_type = $uploadedFile->type;
             $photo->width = $width;
             $photo->height = $height;
             $photo->status = Photo::STATUS_QUEUE;
@@ -411,46 +272,58 @@ class PhotosController extends Controller {
             $photo->created_at = time();
             $photo->updated_at = time();
             $photo->created_by = Yii::$app->user->id;
-            // search_code will be generated automatically in beforeSave()
 
             if (!$photo->save()) {
                 unlink($filePath);
+                AuditLog::logFileUpload($uploadedFile->name, $uploadedFile->size, false);
                 return [
                     'success' => false,
                     'message' => 'Error saving photo data: ' . json_encode($photo->errors),
                 ];
             }
 
+            // Loguj pomyślne przesłanie
+            AuditLog::logFileUpload($uploadedFile->name, $uploadedFile->size, true);
+            AuditLog::logModelAction($photo, AuditLog::ACTION_CREATE);
+
             $photo->extractAndSaveExif();
 
-            // Generate thumbnails
+            // Generate thumbnails using PathHelper
+            PathHelper::ensureDirectoryExists('thumbnails');
             $thumbnailSizes = ThumbnailSize::find()->all();
             $thumbnails = [];
 
             foreach ($thumbnailSizes as $size) {
-                $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $fileName);
-                $thumbnailImage = Image::make($filePath);
+                try {
+                    $thumbnailPath = PathHelper::getThumbnailPath($size->name, $fileName);
+                    $thumbnailImage = Image::make($filePath);
 
-                if ($size->crop) {
-                    $thumbnailImage->fit($size->width, $size->height);
-                } else {
-                    $thumbnailImage->resize($size->width, $size->height, function ($constraint) {
-                        $constraint->aspectRatio();
-                        $constraint->upsize();
-                    });
+                    if ($size->crop) {
+                        $thumbnailImage->fit($size->width, $size->height);
+                    } else {
+                        $thumbnailImage->resize($size->width, $size->height, function ($constraint) {
+                            $constraint->aspectRatio();
+                            $constraint->upsize();
+                        });
+                    }
+
+                    if ($size->watermark) {
+                        $this->addWatermark($thumbnailImage);
+                    }
+
+                    $thumbnailImage->save($thumbnailPath);
+                    $thumbnails[$size->name] = PathHelper::getThumbnailUrl($size->name, $fileName);
+                } catch (\Exception $e) {
+                    AuditLog::logSystemEvent("Błąd generowania miniatury {$size->name} dla {$fileName}: " . $e->getMessage(), 
+                        AuditLog::SEVERITY_WARNING, AuditLog::ACTION_UPLOAD);
                 }
-
-                if ($size->watermark) {
-                    $this->addWatermark($thumbnailImage);
-                }
-
-                $thumbnailImage->save($thumbnailPath);
-                $thumbnails[$size->name] = Yii::getAlias('@web/uploads/thumbnails/' . $size->name . '_' . $fileName);
             }
+
+            AuditLog::logSystemEvent("Wygenerowano miniatury dla zdjęcia: {$photo->search_code}", 
+                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_UPLOAD);
 
             return [
                 'success' => true,
-                'completed' => true,
                 'photo' => [
                     'id' => $photo->id,
                     'title' => $photo->title,
@@ -461,13 +334,16 @@ class PhotosController extends Controller {
                     'thumbnails' => $thumbnails
                 ]
             ];
-        } else {
-            // If this is not the last chunk, return progress info
+        } catch (\Exception $e) {
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
+            AuditLog::logSystemEvent("Błąd przetwarzania przesłanego pliku {$uploadedFile->name}: " . $e->getMessage(), 
+                AuditLog::SEVERITY_ERROR, AuditLog::ACTION_UPLOAD);
+            
             return [
-                'success' => true,
-                'completed' => false,
-                'chunk' => $chunkNumber,
-                'chunks' => $totalChunks
+                'success' => false,
+                'message' => 'Error processing uploaded file: ' . $e->getMessage(),
             ];
         }
     }
@@ -481,6 +357,7 @@ class PhotosController extends Controller {
      */
     public function actionUpdate($id) {
         $model = $this->findModel($id);
+        $oldAttributes = $model->attributes; // Zapisz stare wartości
 
         // Get all tags and categories for dropdown
         $allTags = Tag::find()->orderBy(['name' => SORT_ASC])->all();
@@ -502,8 +379,12 @@ class PhotosController extends Controller {
                     throw new \Exception('Error saving photo: ' . json_encode($model->errors));
                 }
 
+                // Loguj aktualizację zdjęcia
+                AuditLog::logModelAction($model, AuditLog::ACTION_UPDATE, $oldAttributes);
+
                 // Update tags
                 PhotoTag::deleteAll(['photo_id' => $id]);
+                $addedTags = [];
                 foreach ($newTags as $tagId) {
                     // Handle new tags (string IDs that are not numeric)
                     if (!is_numeric($tagId)) {
@@ -516,6 +397,7 @@ class PhotosController extends Controller {
 
                         if ($tag->save()) {
                             $tagId = $tag->id;
+                            AuditLog::logModelAction($tag, AuditLog::ACTION_CREATE);
                         } else {
                             throw new \Exception('Error creating new tag: ' . json_encode($tag->errors));
                         }
@@ -533,11 +415,13 @@ class PhotosController extends Controller {
                         // Update tag frequency
                         $tag->frequency += 1;
                         $tag->save();
+                        $addedTags[] = $tag->name;
                     }
                 }
 
                 // Update categories
                 PhotoCategory::deleteAll(['photo_id' => $id]);
+                $addedCategories = [];
                 foreach ($newCategories as $categoryId) {
                     $category = Category::findOne($categoryId);
                     if ($category) {
@@ -547,14 +431,35 @@ class PhotosController extends Controller {
                         if (!$photoCategory->save()) {
                             throw new \Exception('Error saving category relationship');
                         }
+                        $addedCategories[] = $category->name;
                     }
                 }
 
                 $transaction->commit();
+
+                // Loguj szczegóły aktualizacji tagów i kategorii
+                if (!empty($addedTags)) {
+                    AuditLog::logSystemEvent("Zaktualizowano tagi zdjęcia {$model->search_code}: " . implode(', ', $addedTags), 
+                        AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE, [
+                            'model_class' => get_class($model),
+                            'model_id' => $model->id
+                        ]);
+                }
+
+                if (!empty($addedCategories)) {
+                    AuditLog::logSystemEvent("Zaktualizowano kategorie zdjęcia {$model->search_code}: " . implode(', ', $addedCategories), 
+                        AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE, [
+                            'model_class' => get_class($model),
+                            'model_id' => $model->id
+                        ]);
+                }
+
                 Yii::$app->session->setFlash('success', 'Photo updated successfully.');
                 return $this->redirect(['view', 'id' => $model->id]);
             } catch (\Exception $e) {
                 $transaction->rollBack();
+                AuditLog::logSystemEvent("Błąd aktualizacji zdjęcia ID {$id}: " . $e->getMessage(), 
+                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_UPDATE);
                 Yii::$app->session->setFlash('error', $e->getMessage());
             }
         }
@@ -566,6 +471,272 @@ class PhotosController extends Controller {
                     'selectedTags' => $selectedTags,
                     'selectedCategories' => $selectedCategories,
         ]);
+    }
+
+    /**
+     * Deletes a photo.
+     *
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionDelete($id) {
+        $model = $this->findModel($id);
+        $photoTitle = $model->title;
+        $searchCode = $model->search_code;
+        
+        $transaction = Yii::$app->db->beginTransaction();
+
+        try {
+            // Remove relationships with tags and categories
+            PhotoTag::deleteAll(['photo_id' => $id]);
+            PhotoCategory::deleteAll(['photo_id' => $id]);
+
+            // Change photo status to deleted
+            $model->status = Photo::STATUS_DELETED;
+
+            // If photo is stored on S3, move it to deleted directory
+            if (!empty($model->s3_path)) {
+                /** @var \common\components\S3Component $s3 */
+                $s3 = Yii::$app->get('s3');
+                $s3Settings = $s3->getSettings();
+
+                // Target path in deleted directory
+                $deletedKey = $s3Settings['deleted_directory'] . '/' . date('Y/m/d') . '/' . $model->file_name;
+
+                // Copy file to deleted directory
+                $s3->copyObject([
+                    'Bucket' => $s3Settings['bucket'],
+                    'CopySource' => $s3Settings['bucket'] . '/' . $model->s3_path,
+                    'Key' => $deletedKey
+                ]);
+
+                // Delete original after copying
+                $s3->deleteObject([
+                    'Bucket' => $s3Settings['bucket'],
+                    'Key' => $model->s3_path
+                ]);
+
+                // Update S3 path to new location in deleted directory
+                $model->s3_path = $deletedKey;
+
+                AuditLog::logSystemEvent("Przeniesiono plik S3 do katalogu usuniętych: {$model->file_name}", 
+                    AuditLog::SEVERITY_INFO, AuditLog::ACTION_DELETE);
+            }
+
+            // Save model changes
+            if (!$model->save()) {
+                throw new \Exception('Cannot mark photo as deleted: ' . json_encode($model->errors));
+            }
+
+            // Move local file to deleted directory if exists
+            $localPath = Yii::getAlias('@webroot/uploads/temp/' . $model->file_name);
+            if (file_exists($localPath)) {
+                // Create deleted directory if it doesn't exist
+                $deletedDir = Yii::getAlias('@webroot/uploads/deleted/' . date('Y/m/d'));
+                if (!file_exists($deletedDir)) {
+                    \yii\helpers\FileHelper::createDirectory($deletedDir, 0777, true);
+                }
+
+                // Move file
+                $deletedPath = $deletedDir . '/' . $model->file_name;
+                rename($localPath, $deletedPath);
+            }
+
+            // Delete thumbnails - these are always completely removed
+            $thumbnailSizes = ThumbnailSize::find()->all();
+            $deletedThumbnails = 0;
+            foreach ($thumbnailSizes as $size) {
+                $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $model->file_name);
+                if (file_exists($thumbnailPath)) {
+                    unlink($thumbnailPath);
+                    $deletedThumbnails++;
+                }
+            }
+
+            // Loguj usunięcie zdjęcia
+            AuditLog::logModelAction($model, AuditLog::ACTION_DELETE);
+            AuditLog::logSystemEvent("Usunięto zdjęcie: {$photoTitle} (kod: {$searchCode}) wraz z {$deletedThumbnails} miniaturami", 
+                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_DELETE, [
+                    'model_class' => get_class($model),
+                    'model_id' => $model->id
+                ]);
+
+            $transaction->commit();
+            Yii::$app->session->setFlash('success', 'Photo has been successfully deleted.');
+        } catch (\Exception $e) {
+            $transaction->rollBack();
+            AuditLog::logSystemEvent("Błąd usuwania zdjęcia ID {$id}: " . $e->getMessage(), 
+                AuditLog::SEVERITY_ERROR, AuditLog::ACTION_DELETE);
+            Yii::$app->session->setFlash('error', 'Error occurred while deleting photo: ' . $e->getMessage());
+        }
+
+        return $this->redirect(['index']);
+    }
+
+    /**
+     * Approves a photo in queue.
+     *
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionApprove($id) {
+        $model = $this->findModel($id);
+
+        if ($model->status != Photo::STATUS_QUEUE) {
+            AuditLog::logSystemEvent("Próba zatwierdzenia zdjęcia które nie jest w poczekalni: ID {$id}", 
+                AuditLog::SEVERITY_WARNING, AuditLog::ACTION_APPROVE);
+            Yii::$app->session->setFlash('error', 'Only photos in queue can be approved.');
+            return $this->redirect(['queue']);
+        }
+
+        // Update status to active
+        $model->status = Photo::STATUS_ACTIVE;
+
+        if ($model->save()) {
+            // Loguj zatwierdzenie
+            AuditLog::logPhotoApproval($model, true);
+
+            // Sync with S3 if needed and S3 is configured
+            if (empty($model->s3_path) && Yii::$app->has('s3')) {
+                try {
+                    /** @var \common\components\S3Component $s3 */
+                    $s3 = Yii::$app->get('s3');
+                    $s3Settings = $s3->getSettings();
+
+                    // Check if S3 is properly configured
+                    if (!empty($s3Settings['bucket']) && !empty($s3Settings['region']) &&
+                            !empty($s3Settings['access_key']) && !empty($s3Settings['secret_key'])) {
+
+                        $filePath = Yii::getAlias('@webroot/uploads/temp/' . $model->file_name);
+
+                        if (file_exists($filePath)) {
+                            // Generate S3 path
+                            $s3Key = $s3Settings['directory'] . '/' . date('Y/m/d', $model->created_at) . '/' . $model->file_name;
+
+                            // Upload file to S3
+                            $s3->putObject([
+                                'Bucket' => $s3Settings['bucket'],
+                                'Key' => $s3Key,
+                                'SourceFile' => $filePath,
+                                'ContentType' => $model->mime_type
+                            ]);
+
+                            // Update S3 path in model
+                            $model->s3_path = $s3Key;
+                            $model->save();
+
+                            AuditLog::logSystemEvent("Zsynchronizowano zatwierdzone zdjęcie z S3: {$model->search_code}", 
+                                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_SYNC);
+                        }
+                    } else {
+                        Yii::$app->session->setFlash('warning', 'S3 is not properly configured. Photo was approved but not synced to S3 storage.');
+                        AuditLog::logSystemEvent("S3 nie jest skonfigurowane - zdjęcie zatwierdzone lokalnie: {$model->search_code}", 
+                            AuditLog::SEVERITY_WARNING, AuditLog::ACTION_APPROVE);
+                    }
+                } catch (\Exception $e) {
+                    Yii::$app->session->setFlash('warning', 'Photo was approved but error occurred during S3 sync: ' . $e->getMessage());
+                    AuditLog::logSystemEvent("Błąd synchronizacji S3 po zatwierdzeniu zdjęcia {$model->search_code}: " . $e->getMessage(), 
+                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYNC);
+                }
+            }
+
+            Yii::$app->session->setFlash('success', 'Photo has been approved and moved to main gallery.');
+        } else {
+            AuditLog::logSystemEvent("Błąd zatwierdzania zdjęcia ID {$id}: " . json_encode($model->errors), 
+                AuditLog::SEVERITY_ERROR, AuditLog::ACTION_APPROVE);
+            Yii::$app->session->setFlash('error', 'Cannot approve photo: ' . json_encode($model->errors));
+        }
+
+        return $this->redirect(['view', 'id' => $model->id]);
+    }
+
+    /**
+     * Imports photos from default FTP directory.
+     *
+     * @return mixed
+     */
+    public function actionImportFromFtp() {
+        // Get default import directory from settings
+        $importDirectory = Settings::findOne(['key' => 'upload.import_directory']);
+        $directory = $importDirectory ? $importDirectory->value : 'uploads/import';
+
+        // Additional options
+        $recursive = (bool) Yii::$app->request->post('recursive', true);
+        $deleteOriginals = (bool) Yii::$app->request->post('delete_originals', false);
+        $runNow = (bool) Yii::$app->request->post('run_now', false);
+
+        // Loguj rozpoczęcie importu
+        AuditLog::logSystemEvent("Rozpoczęto import zdjęć z katalogu: {$directory} (rekursywnie: " . ($recursive ? 'tak' : 'nie') . ", usuń oryginały: " . ($deleteOriginals ? 'tak' : 'nie') . ")", 
+            AuditLog::SEVERITY_INFO, AuditLog::ACTION_IMPORT);
+
+        // Create background job for processing
+        $job = new QueuedJob();
+        $job->type = 'import_photos';
+        $job->data = json_encode([
+            'directory' => $directory,
+            'recursive' => $recursive,
+            'delete_originals' => $deleteOriginals,
+            'created_by' => Yii::$app->user->id,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
+        $job->status = QueuedJob::STATUS_PENDING;
+        $job->created_at = time();
+        $job->updated_at = time();
+
+        if ($job->save()) {
+            AuditLog::logSystemEvent("Utworzono zadanie importu ID: {$job->id}", 
+                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_IMPORT);
+
+            if ($runNow) {
+                try {
+                    AuditLog::logSystemEvent("Rozpoczynam natychmiastowe przetwarzanie zadania importu ID: {$job->id}", 
+                        AuditLog::SEVERITY_INFO, AuditLog::ACTION_IMPORT);
+
+                    $jobProcessor = new \common\components\JobProcessor();
+                    $job->markAsStarted();
+
+                    if ($jobProcessor->processJob($job)) {
+                        $job->markAsFinished();
+                        AuditLog::logSystemEvent("Import zdjęć zakończony pomyślnie - zadanie ID: {$job->id}", 
+                            AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_IMPORT);
+                        Yii::$app->session->setFlash('success', 'Import zdjęć zakończony pomyślnie. Sprawdź szczegóły w widoku zadania.');
+                    } else {
+                        $job->markAsFailed('Błąd podczas przetwarzania zadania importu');
+                        AuditLog::logSystemEvent("Import zdjęć nieudany - zadanie ID: {$job->id}", 
+                            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
+                        Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu zdjęć. Sprawdź szczegóły w widoku zadania.');
+                    }
+
+                    return $this->redirect(['queue/view', 'id' => $job->id]);
+                } catch (\Exception $e) {
+                    AuditLog::logSystemEvent("Błąd podczas importu zdjęć - zadanie ID {$job->id}: " . $e->getMessage(), 
+                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
+                    $job->markAsFailed($e->getMessage());
+                    Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu: ' . $e->getMessage());
+                    return $this->redirect(['queue/view', 'id' => $job->id]);
+                }
+            } else {
+                Yii::$app->session->setFlash('success', 'Zadanie importu zostało dodane do kolejki. Zdjęcia pojawią się w poczekalni po przetworzeniu.');
+                return $this->redirect(['queue/index']);
+            }
+        } else {
+            $errorMsg = 'Nie udało się utworzyć zadania importu: ' . json_encode($job->errors);
+            AuditLog::logSystemEvent($errorMsg, AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
+            Yii::$app->session->setFlash('error', $errorMsg);
+            return $this->redirect(['import']);
+        }
+    }
+
+    /**
+     * Renders the import form.
+     *
+     * @return mixed
+     */
+    public function actionImport() {
+        AuditLog::logSystemEvent('Otwarcie formularza importu zdjęć', AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS);
+        return $this->render('import');
     }
 
     /**
@@ -587,21 +758,34 @@ class PhotosController extends Controller {
                 return $this->redirect(['index']);
             }
 
+            AuditLog::logSystemEvent("Rozpoczęto aktualizację wsadową " . count($ids) . " zdjęć", 
+                AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE);
+
             $updatedCount = 0;
             $transaction = Yii::$app->db->beginTransaction();
 
             try {
                 foreach ($ids as $id) {
                     $model = $this->findModel($id);
+                    $oldAttributes = $model->attributes;
+                    $changes = [];
 
                     // Update status if provided
                     if ($status !== '') {
+                        $oldStatus = $model->status;
                         $model->status = (int) $status;
+                        if ($oldStatus != $model->status) {
+                            $changes[] = "status: {$oldStatus} → {$model->status}";
+                        }
                     }
 
                     // Update visibility if provided
                     if ($isPublic !== '') {
+                        $oldPublic = $model->is_public;
                         $model->is_public = (int) $isPublic;
+                        if ($oldPublic != $model->is_public) {
+                            $changes[] = "publiczne: " . ($oldPublic ? 'tak' : 'nie') . " → " . ($model->is_public ? 'tak' : 'nie');
+                        }
                     }
 
                     // Save model changes
@@ -652,13 +836,30 @@ class PhotosController extends Controller {
                         }
                     }
 
+                    // Loguj zmiany dla tego zdjęcia
+                    if (!empty($changes)) {
+                        AuditLog::logSystemEvent("Aktualizacja wsadowa zdjęcia {$model->search_code}: " . implode(', ', $changes), 
+                            AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE, [
+                                'model_class' => get_class($model),
+                                'model_id' => $model->id,
+                                'old_values' => $oldAttributes,
+                                'new_values' => $model->attributes
+                            ]);
+                    }
+
                     $updatedCount++;
                 }
 
                 $transaction->commit();
+                
+                AuditLog::logSystemEvent("Zakończono aktualizację wsadową - zaktualizowano {$updatedCount} zdjęć", 
+                    AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_UPDATE);
+                
                 Yii::$app->session->setFlash('success', "Pomyślnie zaktualizowano $updatedCount zdjęć.");
             } catch (\Exception $e) {
                 $transaction->rollBack();
+                AuditLog::logSystemEvent("Błąd aktualizacji wsadowej: " . $e->getMessage(), 
+                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_UPDATE);
                 Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas aktualizacji: ' . $e->getMessage());
             }
         }
@@ -667,83 +868,130 @@ class PhotosController extends Controller {
     }
 
     /**
-     * Deletes a photo.
+     * Batch approve photos in queue.
      *
-     * @param integer $id
      * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
      */
-    public function actionDelete($id) {
-        $model = $this->findModel($id);
-        $transaction = Yii::$app->db->beginTransaction();
+    public function actionApproveBatch() {
+        if (Yii::$app->request->isPost) {
+            $ids = explode(',', Yii::$app->request->post('ids', ''));
+            $autoPublish = (bool) Yii::$app->request->post('auto_publish', false);
 
-        try {
-            // Remove relationships with tags and categories
-            PhotoTag::deleteAll(['photo_id' => $id]);
-            PhotoCategory::deleteAll(['photo_id' => $id]);
+            if (empty($ids)) {
+                Yii::$app->session->setFlash('error', 'No photos selected for approval.');
+                return $this->redirect(['queue']);
+            }
 
-            // Change photo status to deleted
-            $model->status = Photo::STATUS_DELETED;
+            AuditLog::logSystemEvent("Rozpoczęto zatwierdzanie wsadowe " . count($ids) . " zdjęć" . ($autoPublish ? " z publikacją" : ""), 
+                AuditLog::SEVERITY_INFO, AuditLog::ACTION_APPROVE);
 
-            // If photo is stored on S3, move it to deleted directory
-            if (!empty($model->s3_path)) {
+            $approvedCount = 0;
+            $errorCount = 0;
+            $s3ErrorCount = 0;
+
+            // Check if S3 is available and configured
+            $s3Available = false;
+            $s3Settings = [];
+
+            if (Yii::$app->has('s3')) {
                 /** @var \common\components\S3Component $s3 */
                 $s3 = Yii::$app->get('s3');
                 $s3Settings = $s3->getSettings();
 
-                // Target path in deleted directory
-                $deletedKey = $s3Settings['deleted_directory'] . '/' . date('Y/m/d') . '/' . $model->file_name;
-
-                // Copy file to deleted directory
-                $s3->copyObject([
-                    'Bucket' => $s3Settings['bucket'],
-                    'CopySource' => $s3Settings['bucket'] . '/' . $model->s3_path,
-                    'Key' => $deletedKey
-                ]);
-
-                // Delete original after copying
-                $s3->deleteObject([
-                    'Bucket' => $s3Settings['bucket'],
-                    'Key' => $model->s3_path
-                ]);
-
-                // Update S3 path to new location in deleted directory
-                $model->s3_path = $deletedKey;
-            }
-
-            // Save model changes
-            if (!$model->save()) {
-                throw new \Exception('Cannot mark photo as deleted: ' . json_encode($model->errors));
-            }
-
-            // Move local file to deleted directory if exists
-            $localPath = Yii::getAlias('@webroot/uploads/temp/' . $model->file_name);
-            if (file_exists($localPath)) {
-                // Create deleted directory if it doesn't exist
-                $deletedDir = Yii::getAlias('@webroot/uploads/deleted/' . date('Y/m/d'));
-                if (!file_exists($deletedDir)) {
-                    \yii\helpers\FileHelper::createDirectory($deletedDir, 0777, true);
-                }
-
-                // Move file
-                $deletedPath = $deletedDir . '/' . $model->file_name;
-                rename($localPath, $deletedPath);
-            }
-
-            // Delete thumbnails - these are always completely removed
-            $thumbnailSizes = ThumbnailSize::find()->all();
-            foreach ($thumbnailSizes as $size) {
-                $thumbnailPath = Yii::getAlias('@webroot/uploads/thumbnails/' . $size->name . '_' . $model->file_name);
-                if (file_exists($thumbnailPath)) {
-                    unlink($thumbnailPath);
+                // Check if S3 is properly configured
+                if (!empty($s3Settings['bucket']) && !empty($s3Settings['region']) &&
+                        !empty($s3Settings['access_key']) && !empty($s3Settings['secret_key'])) {
+                    $s3Available = true;
                 }
             }
 
-            $transaction->commit();
-            Yii::$app->session->setFlash('success', 'Photo has been successfully deleted.');
-        } catch (\Exception $e) {
-            $transaction->rollBack();
-            Yii::$app->session->setFlash('error', 'Error occurred while deleting photo: ' . $e->getMessage());
+            foreach ($ids as $id) {
+                try {
+                    $model = $this->findModel($id);
+
+                    if ($model->status != Photo::STATUS_QUEUE) {
+                        continue;
+                    }
+
+                    // Update status to active
+                    $model->status = Photo::STATUS_ACTIVE;
+
+                    // Set as public if option selected
+                    if ($autoPublish) {
+                        $model->is_public = 1;
+                    }
+
+                    if ($model->save()) {
+                        $approvedCount++;
+                        AuditLog::logPhotoApproval($model, true);
+
+                        // Sync with S3 if needed and available
+                        if (empty($model->s3_path) && $s3Available) {
+                            $filePath = Yii::getAlias('@webroot/uploads/temp/' . $model->file_name);
+
+                            if (file_exists($filePath)) {
+                                // Generate S3 path
+                                $s3Key = $s3Settings['directory'] . '/' . date('Y/m/d', $model->created_at) . '/' . $model->file_name;
+
+                                try {
+                                    // Upload file to S3
+                                    $s3->putObject([
+                                        'Bucket' => $s3Settings['bucket'],
+                                        'Key' => $s3Key,
+                                        'SourceFile' => $filePath,
+                                        'ContentType' => $model->mime_type
+                                    ]);
+
+                                    // Update S3 path in model
+                                    $model->s3_path = $s3Key;
+                                    $model->save();
+                                } catch (\Exception $e) {
+                                    // Log error but continue with next files
+                                    AuditLog::logSystemEvent("Błąd synchronizacji S3 dla zdjęcia ID {$id}: " . $e->getMessage(), 
+                                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYNC);
+                                    $s3ErrorCount++;
+                                }
+                            }
+                        }
+                    } else {
+                        $errorCount++;
+                        AuditLog::logSystemEvent("Błąd zatwierdzania zdjęcia ID {$id}: " . json_encode($model->errors), 
+                            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_APPROVE);
+                    }
+                } catch (\Exception $e) {
+                    $errorCount++;
+                    AuditLog::logSystemEvent("Wyjątek podczas zatwierdzania zdjęcia ID {$id}: " . $e->getMessage(), 
+                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_APPROVE);
+                }
+            }
+
+            // Podsumowanie operacji
+            $summaryMessage = "Zatwierdzanie wsadowe zakończone - zatwierdzone: {$approvedCount}, błędy: {$errorCount}";
+            if ($s3ErrorCount > 0) {
+                $summaryMessage .= ", błędy S3: {$s3ErrorCount}";
+            }
+
+            AuditLog::logSystemEvent($summaryMessage, 
+                $errorCount > 0 ? AuditLog::SEVERITY_WARNING : AuditLog::SEVERITY_SUCCESS, 
+                AuditLog::ACTION_APPROVE);
+
+            if ($approvedCount > 0) {
+                $message = "Successfully approved $approvedCount photos.";
+
+                if ($errorCount > 0) {
+                    $message .= " Errors occurred with $errorCount photos.";
+                }
+
+                if ($s3ErrorCount > 0) {
+                    $message .= " Failed to sync $s3ErrorCount photos with S3.";
+                } else if (!$s3Available && $approvedCount > 0) {
+                    $message .= " S3 is not configured - photos were approved locally.";
+                }
+
+                Yii::$app->session->setFlash('success', $message);
+            } else if ($errorCount > 0) {
+                Yii::$app->session->setFlash('error', "Failed to approve any photos. Errors occurred with $errorCount photos.");
+            }
         }
 
         return $this->redirect(['index']);
@@ -763,12 +1011,16 @@ class PhotosController extends Controller {
                 return $this->redirect(['index']);
             }
 
+            AuditLog::logSystemEvent("Rozpoczęto usuwanie wsadowe " . count($ids) . " zdjęć", 
+                AuditLog::SEVERITY_INFO, AuditLog::ACTION_DELETE);
+
             $transaction = Yii::$app->db->beginTransaction();
             $deletedCount = 0;
 
             try {
                 foreach ($ids as $id) {
                     $model = $this->findModel($id);
+                    $photoInfo = "ID: {$id}, tytuł: {$model->title}, kod: {$model->search_code}";
 
                     // Remove relationships
                     PhotoTag::deleteAll(['photo_id' => $id]);
@@ -831,275 +1083,25 @@ class PhotosController extends Controller {
                         }
                     }
 
+                    AuditLog::logModelAction($model, AuditLog::ACTION_DELETE);
                     $deletedCount++;
                 }
 
                 $transaction->commit();
+                
+                AuditLog::logSystemEvent("Zakończono usuwanie wsadowe - usunięto {$deletedCount} zdjęć", 
+                    AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_DELETE);
+                
                 Yii::$app->session->setFlash('success', "Successfully deleted $deletedCount photos.");
             } catch (\Exception $e) {
                 $transaction->rollBack();
+                AuditLog::logSystemEvent("Błąd usuwania wsadowego: " . $e->getMessage(), 
+                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_DELETE);
                 Yii::$app->session->setFlash('error', 'Error occurred while deleting photos: ' . $e->getMessage());
             }
         }
 
         return $this->redirect(['index']);
-    }
-
-    /**
-     * Approves a photo in queue.
-     *
-     * @param integer $id
-     * @return mixed
-     * @throws NotFoundHttpException if the model cannot be found
-     */
-    public function actionApprove($id) {
-        $model = $this->findModel($id);
-
-        if ($model->status != Photo::STATUS_QUEUE) {
-            Yii::$app->session->setFlash('error', 'Only photos in queue can be approved.');
-            return $this->redirect(['queue']);
-        }
-
-        // Update status to active
-        $model->status = Photo::STATUS_ACTIVE;
-
-        if ($model->save()) {
-            // Sync with S3 if needed and S3 is configured
-            if (empty($model->s3_path) && Yii::$app->has('s3')) {
-                try {
-                    /** @var \common\components\S3Component $s3 */
-                    $s3 = Yii::$app->get('s3');
-                    $s3Settings = $s3->getSettings();
-
-                    // Check if S3 is properly configured
-                    if (!empty($s3Settings['bucket']) && !empty($s3Settings['region']) &&
-                            !empty($s3Settings['access_key']) && !empty($s3Settings['secret_key'])) {
-
-                        $filePath = Yii::getAlias('@webroot/uploads/temp/' . $model->file_name);
-
-                        if (file_exists($filePath)) {
-                            // Generate S3 path
-                            $s3Key = $s3Settings['directory'] . '/' . date('Y/m/d', $model->created_at) . '/' . $model->file_name;
-
-                            // Upload file to S3
-                            $s3->putObject([
-                                'Bucket' => $s3Settings['bucket'],
-                                'Key' => $s3Key,
-                                'SourceFile' => $filePath,
-                                'ContentType' => $model->mime_type
-                            ]);
-
-                            // Update S3 path in model
-                            $model->s3_path = $s3Key;
-                            $model->save();
-                        }
-                    } else {
-                        Yii::$app->session->setFlash('warning', 'S3 is not properly configured. Photo was approved but not synced to S3 storage.');
-                    }
-                } catch (\Exception $e) {
-                    Yii::$app->session->setFlash('warning', 'Photo was approved but error occurred during S3 sync: ' . $e->getMessage());
-                }
-            }
-
-            Yii::$app->session->setFlash('success', 'Photo has been approved and moved to main gallery.');
-        } else {
-            Yii::$app->session->setFlash('error', 'Cannot approve photo: ' . json_encode($model->errors));
-        }
-
-        return $this->redirect(['view', 'id' => $model->id]);
-    }
-
-    /**
-     * Batch approve photos in queue.
-     *
-     * @return mixed
-     */
-    public function actionApproveBatch() {
-        if (Yii::$app->request->isPost) {
-            $ids = explode(',', Yii::$app->request->post('ids', ''));
-            $autoPublish = (bool) Yii::$app->request->post('auto_publish', false);
-
-            if (empty($ids)) {
-                Yii::$app->session->setFlash('error', 'No photos selected for approval.');
-                return $this->redirect(['queue']);
-            }
-
-            $approvedCount = 0;
-            $errorCount = 0;
-            $s3ErrorCount = 0;
-
-            // Check if S3 is available and configured
-            $s3Available = false;
-            $s3Settings = [];
-
-            if (Yii::$app->has('s3')) {
-                /** @var \common\components\S3Component $s3 */
-                $s3 = Yii::$app->get('s3');
-                $s3Settings = $s3->getSettings();
-
-                // Check if S3 is properly configured
-                if (!empty($s3Settings['bucket']) && !empty($s3Settings['region']) &&
-                        !empty($s3Settings['access_key']) && !empty($s3Settings['secret_key'])) {
-                    $s3Available = true;
-                }
-            }
-
-            foreach ($ids as $id) {
-                try {
-                    $model = $this->findModel($id);
-
-                    if ($model->status != Photo::STATUS_QUEUE) {
-                        continue;
-                    }
-
-                    // Update status to active
-                    $model->status = Photo::STATUS_ACTIVE;
-
-                    // Set as public if option selected
-                    if ($autoPublish) {
-                        $model->is_public = 1;
-                    }
-
-                    if ($model->save()) {
-                        $approvedCount++;
-
-                        // Sync with S3 if needed and available
-                        if (empty($model->s3_path) && $s3Available) {
-                            $filePath = Yii::getAlias('@webroot/uploads/temp/' . $model->file_name);
-
-                            if (file_exists($filePath)) {
-                                // Generate S3 path
-                                $s3Key = $s3Settings['directory'] . '/' . date('Y/m/d', $model->created_at) . '/' . $model->file_name;
-
-                                try {
-                                    // Upload file to S3
-                                    $s3->putObject([
-                                        'Bucket' => $s3Settings['bucket'],
-                                        'Key' => $s3Key,
-                                        'SourceFile' => $filePath,
-                                        'ContentType' => $model->mime_type
-                                    ]);
-
-                                    // Update S3 path in model
-                                    $model->s3_path = $s3Key;
-                                    $model->save();
-                                } catch (\Exception $e) {
-                                    // Log error but continue with next files
-                                    Yii::error('S3 sync error for photo ID ' . $id . ': ' . $e->getMessage());
-                                    $s3ErrorCount++;
-                                }
-                            }
-                        }
-                    } else {
-                        $errorCount++;
-                        Yii::error('Photo approval error for ID ' . $id . ': ' . json_encode($model->errors));
-                    }
-                } catch (\Exception $e) {
-                    $errorCount++;
-                    Yii::error('Error during photo approval for ID ' . $id . ': ' . $e->getMessage());
-                }
-            }
-
-            if ($approvedCount > 0) {
-                $message = "Successfully approved $approvedCount photos.";
-
-                if ($errorCount > 0) {
-                    $message .= " Errors occurred with $errorCount photos.";
-                }
-
-                if ($s3ErrorCount > 0) {
-                    $message .= " Failed to sync $s3ErrorCount photos with S3.";
-                } else if (!$s3Available && $approvedCount > 0) {
-                    $message .= " S3 is not configured - photos were approved locally.";
-                }
-
-                Yii::$app->session->setFlash('success', $message);
-            } else if ($errorCount > 0) {
-                Yii::$app->session->setFlash('error', "Failed to approve any photos. Errors occurred with $errorCount photos.");
-            }
-        }
-
-        return $this->redirect(['index']);
-    }
-
-    /**
-     * Imports photos from default FTP directory.
-     *
-     * @return mixed
-     */
-    public function actionImportFromFtp() {
-        // Get default import directory from settings
-        $importDirectory = Settings::findOne(['key' => 'upload.import_directory']);
-        $directory = $importDirectory ? $importDirectory->value : 'uploads/import';
-
-        // Additional options
-        $recursive = (bool) Yii::$app->request->post('recursive', true);
-        $deleteOriginals = (bool) Yii::$app->request->post('delete_originals', false);
-        $runNow = (bool) Yii::$app->request->post('run_now', false);
-
-        // Debug: Loguj parametry
-        Yii::info("Import FTP - Katalog: $directory, Rekursywnie: " . ($recursive ? 'tak' : 'nie') .
-                ", Usuń oryginały: " . ($deleteOriginals ? 'tak' : 'nie') .
-                ", Uruchom teraz: " . ($runNow ? 'tak' : 'nie'));
-
-        // Create background job for processing
-        $job = new QueuedJob();
-        $job->type = 'import_photos';
-        $job->data = json_encode([
-            'directory' => $directory,
-            'recursive' => $recursive,
-            'delete_originals' => $deleteOriginals,
-            'created_by' => Yii::$app->user->id,
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
-        $job->status = QueuedJob::STATUS_PENDING;
-        $job->created_at = time();
-        $job->updated_at = time();
-
-        if ($job->save()) {
-            Yii::info('Utworzono zadanie importu ID: ' . $job->id);
-
-            if ($runNow) {
-                try {
-                    Yii::info('Rozpoczynam natychmiastowe przetwarzanie zadania ID: ' . $job->id);
-
-                    $jobProcessor = new \common\components\JobProcessor();
-                    $job->markAsStarted();
-
-                    if ($jobProcessor->processJob($job)) {
-                        $job->markAsFinished();
-                        Yii::$app->session->setFlash('success', 'Import zdjęć zakończony pomyślnie. Sprawdź szczegóły w widoku zadania.');
-                    } else {
-                        $job->markAsFailed('Błąd podczas przetwarzania zadania importu');
-                        Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu zdjęć. Sprawdź szczegóły w widoku zadania.');
-                    }
-
-                    return $this->redirect(['queue/view', 'id' => $job->id]);
-                } catch (\Exception $e) {
-                    Yii::error('Błąd podczas importu: ' . $e->getMessage());
-                    $job->markAsFailed($e->getMessage());
-                    Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu: ' . $e->getMessage());
-                    return $this->redirect(['queue/view', 'id' => $job->id]);
-                }
-            } else {
-                Yii::$app->session->setFlash('success', 'Zadanie importu zostało dodane do kolejki. Zdjęcia pojawią się w poczekalni po przetworzeniu.');
-                return $this->redirect(['queue/index']);
-            }
-        } else {
-            $errorMsg = 'Nie udało się utworzyć zadania importu: ' . json_encode($job->errors);
-            Yii::error($errorMsg);
-            Yii::$app->session->setFlash('error', $errorMsg);
-            return $this->redirect(['import']);
-        }
-    }
-
-    /**
-     * Renders the import form.
-     *
-     * @return mixed
-     */
-    public function actionImport() {
-        return $this->render('import');
     }
 
     /**

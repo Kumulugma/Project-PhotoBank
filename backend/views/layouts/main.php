@@ -1,255 +1,334 @@
 <?php
-use backend\assets\AppAsset;
+
 use yii\helpers\Html;
-use yii\helpers\Url;
+use yii\bootstrap5\Nav;
+use yii\bootstrap5\NavBar;
+use yii\bootstrap5\Breadcrumbs;
 use common\widgets\Alert;
+use backend\assets\AppAsset;
+use common\models\AuditLog;
 
 AppAsset::register($this);
+
+// Pobierz statystyki dla menu (tylko jeśli użytkownik jest zalogowany)
+$todayErrors = 0;
+$queuedJobs = 0;
+
+if (!Yii::$app->user->isGuest) {
+    try {
+        $todayErrors = AuditLog::find()
+            ->where(['severity' => [AuditLog::SEVERITY_ERROR, AuditLog::SEVERITY_WARNING]])
+            ->andWhere(['>=', 'created_at', strtotime('today')])
+            ->count();
+
+        $queuedJobs = \common\models\QueuedJob::find()
+            ->where(['status' => \common\models\QueuedJob::STATUS_PENDING])
+            ->count();
+    } catch (\Exception $e) {
+        // Ignoruj błędy pobierania statystyk (np. gdy tabele jeszcze nie istnieją)
+    }
+}
 ?>
 <?php $this->beginPage() ?>
 <!DOCTYPE html>
 <html lang="<?= Yii::$app->language ?>" class="h-100">
 <head>
     <meta charset="<?= Yii::$app->charset ?>">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <?php $this->registerCsrfMetaTags() ?>
-    <title><?= Html::encode($this->title) ?> - Zasobnik B - Admin</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title><?= Html::encode($this->title) ?></title>
     <?php $this->head() ?>
 </head>
-<body>
+<body class="d-flex flex-column h-100">
 <?php $this->beginBody() ?>
 
-<div class="d-flex">
-    <!-- Sidebar -->
-    <aside class="sidebar bg-dark" id="sidebar">
-        <div class="sidebar-header p-3 border-bottom">
-            <?= Html::a('Zasobnik B', ['/site/index'], ['class' => 'text-white text-decoration-none h5']) ?>
-            <button type="button" class="btn btn-sm btn-outline-light d-lg-none ms-auto" id="sidebarClose">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <nav class="sidebar-nav p-3">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <?= Html::a('<i class="fas fa-tachometer-alt me-2"></i>Dashboard', ['/site/index'], ['class' => 'nav-link text-white']) ?>
-                </li>
-                
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="collapse" data-bs-target="#photosMenu">
-                        <i class="fas fa-images me-2"></i>Zdjęcia
-                    </a>
-                    <div class="collapse" id="photosMenu">
-                        <div class="ms-3">
-                            <?= Html::a('<i class="fas fa-list me-2"></i>Wszystkie', ['/photos/index'], ['class' => 'nav-link text-white-50']) ?>
-                            <?= Html::a('<i class="fas fa-clock me-2"></i>Poczekalnia', ['/photos/queue'], ['class' => 'nav-link text-white-50']) ?>
-                            <?= Html::a('<i class="fas fa-upload me-2"></i>Prześlij', ['/photos/upload'], ['class' => 'nav-link text-white-50']) ?>
-                        </div>
-                    </div>
-                </li>
-                
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="collapse" data-bs-target="#orgMenu">
-                        <i class="fas fa-tags me-2"></i>Organizacja
-                    </a>
-                    <div class="collapse" id="orgMenu">
-                        <div class="ms-3">
-                            <?= Html::a('<i class="fas fa-folder me-2"></i>Kategorie', ['/categories/index'], ['class' => 'nav-link text-white-50']) ?>
-                            <?= Html::a('<i class="fas fa-hashtag me-2"></i>Tagi', ['/tags/index'], ['class' => 'nav-link text-white-50']) ?>
-                        </div>
-                    </div>
-                </li>
-                
-                <li class="nav-item">
-                    <?= Html::a('<i class="fas fa-users me-2"></i>Użytkownicy', ['/users/index'], ['class' => 'nav-link text-white']) ?>
-                </li>
-                
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="collapse" data-bs-target="#systemMenu">
-                        <i class="fas fa-cogs me-2"></i>System
-                    </a>
-                    <div class="collapse" id="systemMenu">
-                        <div class="ms-3">
-                            <?= Html::a('<i class="fas fa-image me-2"></i>Miniatury', ['/thumbnails/index'], ['class' => 'nav-link text-white-50']) ?>
-                            <?= Html::a('<i class="fas fa-tint me-2"></i>Znak wodny', ['/watermark/index'], ['class' => 'nav-link text-white-50']) ?>
-                            <?= Html::a('<i class="fab fa-aws me-2"></i>S3 Storage', ['/s3/index'], ['class' => 'nav-link text-white-50']) ?>
-                            <?= Html::a('<i class="fas fa-robot me-2"></i>AI Integration', ['/ai/index'], ['class' => 'nav-link text-white-50']) ?>
-                            <?= Html::a('<i class="fas fa-list-alt me-2"></i>Kolejka zadań', ['/queue/index'], ['class' => 'nav-link text-white-50']) ?>
-                            <?= Html::a('<i class="fas fa-sliders-h me-2"></i>Ustawienia', ['/settings/index'], ['class' => 'nav-link text-white-50']) ?>
-                        </div>
-                    </div>
-                </li>
-            </ul>
-        </nav>
-    </aside>
+<header id="header">
+    <?php
+    NavBar::begin([
+        'brandLabel' => Yii::$app->name,
+        'brandUrl' => Yii::$app->homeUrl,
+        'options' => ['class' => 'navbar-expand-lg navbar-dark bg-dark fixed-top'],
+    ]);
+    
+    $menuItems = [
+        ['label' => 'Dashboard', 'url' => ['/site/index']],
+        [
+            'label' => 'Zdjęcia',
+            'items' => [
+                ['label' => '<i class="fas fa-images me-2"></i>Wszystkie zdjęcia', 'url' => ['/photos/index'], 'encode' => false],
+                ['label' => '<i class="fas fa-clock me-2"></i>Poczekalnia', 'url' => ['/photos/queue'], 'encode' => false],
+                '<div class="dropdown-divider"></div>',
+                ['label' => '<i class="fas fa-upload me-2"></i>Przesyłanie', 'url' => ['/photos/upload'], 'encode' => false],
+                ['label' => '<i class="fas fa-file-import me-2"></i>Import', 'url' => ['/photos/import'], 'encode' => false],
+            ],
+        ],
+        [
+            'label' => 'Zarządzanie',
+            'items' => [
+                ['label' => '<i class="fas fa-folder me-2"></i>Kategorie', 'url' => ['/categories/index'], 'encode' => false],
+                ['label' => '<i class="fas fa-tags me-2"></i>Tagi', 'url' => ['/tags/index'], 'encode' => false],
+                ['label' => '<i class="fas fa-image me-2"></i>Rozmiary miniatur', 'url' => ['/thumbnail-size/index'], 'encode' => false],
+                '<div class="dropdown-divider"></div>',
+                ['label' => '<i class="fas fa-users me-2"></i>Użytkownicy', 'url' => ['/users/index'], 'encode' => false],
+            ],
+        ],
+        [
+            'label' => 'System',
+            'items' => [
+                [
+                    'label' => '<i class="fas fa-tasks me-2"></i>Kolejka zadań' . ($queuedJobs > 0 ? ' <span class="badge bg-warning ms-1">' . $queuedJobs . '</span>' : ''),
+                    'url' => ['/queue/index'],
+                    'encode' => false
+                ],
+                '<div class="dropdown-divider"></div>',
+                ['label' => '<i class="fab fa-aws me-2"></i>Ustawienia S3', 'url' => ['/s3/index'], 'encode' => false],
+                ['label' => '<i class="fas fa-tint me-2"></i>Znak wodny', 'url' => ['/watermark/index'], 'encode' => false],
+                ['label' => '<i class="fas fa-robot me-2"></i>AI/Analiza', 'url' => ['/ai/index'], 'encode' => false],
+                '<div class="dropdown-divider"></div>',
+                ['label' => '<i class="fas fa-cogs me-2"></i>Ustawienia', 'url' => ['/settings/index'], 'encode' => false],
+            ],
+        ],
+        // NOWE MENU DZIENNIKA ZDARZEŃ
+        [
+            'label' => '<i class="fas fa-clipboard-list me-2"></i>Dziennik zdarzeń' . ($todayErrors > 0 ? ' <span class="badge bg-danger ms-1">' . $todayErrors . '</span>' : ''),
+            'items' => [
+                ['label' => '<i class="fas fa-tachometer-alt me-2"></i>Dashboard', 'url' => ['/audit-log/dashboard'], 'encode' => false],
+                ['label' => '<i class="fas fa-list me-2"></i>Wszystkie zdarzenia', 'url' => ['/audit-log/index'], 'encode' => false],
+                '<div class="dropdown-divider"></div>',
+                ['label' => '<i class="fas fa-exclamation-triangle me-2 text-danger"></i>Błędy i ostrzeżenia', 'url' => ['/audit-log/index', 'AuditLogSearch[severity]' => 'error'], 'encode' => false],
+                ['label' => '<i class="fas fa-sign-in-alt me-2 text-success"></i>Logowania', 'url' => ['/audit-log/index', 'AuditLogSearch[action]' => 'login'], 'encode' => false],
+                ['label' => '<i class="fas fa-cogs me-2 text-info"></i>Zmiany ustawień', 'url' => ['/audit-log/index', 'AuditLogSearch[action]' => 'settings'], 'encode' => false],
+                ['label' => '<i class="fas fa-upload me-2 text-primary"></i>Przesłane pliki', 'url' => ['/audit-log/index', 'AuditLogSearch[action]' => 'upload'], 'encode' => false],
+                '<div class="dropdown-divider"></div>',
+                ['label' => '<i class="fas fa-download me-2"></i>Eksport danych', 'url' => '#', 'linkOptions' => ['data-bs-toggle' => 'modal', 'data-bs-target' => '#auditExportModal'], 'encode' => false],
+                ['label' => '<i class="fas fa-broom me-2"></i>Czyszczenie starych wpisów', 'url' => '#', 'linkOptions' => ['data-bs-toggle' => 'modal', 'data-bs-target' => '#auditCleanupModal'], 'encode' => false],
+            ],
+            'encode' => false
+        ],
+    ];
 
-    <!-- Main content -->
-    <main class="main-content flex-grow-1">
-        <!-- Header -->
-        <header class="header bg-white shadow-sm p-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                    <button type="button" class="btn btn-sm btn-outline-secondary d-lg-none me-3" id="sidebarToggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <h1 class="h4 mb-0"><?= Html::encode($this->title) ?></h1>
+    if (Yii::$app->user->isGuest) {
+        $menuItems[] = ['label' => 'Login', 'url' => ['/site/login']];
+    } else {
+        $menuItems[] = [
+            'label' => '<i class="fas fa-user me-2"></i>Logout (' . Html::encode(Yii::$app->user->identity->username) . ')',
+            'url' => ['/site/logout'],
+            'linkOptions' => ['data-method' => 'post'],
+            'encode' => false
+        ];
+    }
+
+    echo Nav::widget([
+        'options' => ['class' => 'navbar-nav me-auto'],
+        'items' => $menuItems,
+    ]);
+    
+    NavBar::end();
+    ?>
+</header>
+
+<main id="main" class="flex-shrink-0" role="main">
+    <div class="container-fluid">
+        <?php if (!empty($this->params['breadcrumbs'])): ?>
+            <?= Breadcrumbs::widget(['links' => $this->params['breadcrumbs']]) ?>
+        <?php endif ?>
+        
+        <?= Alert::widget() ?>
+        
+        <?= $content ?>
+    </div>
+</main>
+
+<footer id="footer" class="mt-auto py-3 bg-light">
+    <div class="container">
+        <div class="row text-muted">
+            <div class="col-md-6 text-start">
+                <p>&copy; <?= Html::encode(Yii::$app->name) ?> <?= date('Y') ?></p>
+            </div>
+            <div class="col-md-6 text-end">
+                <p><?= Yii::powered() ?></p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- Globalne modale dla dziennika zdarzeń -->
+<?php if (!Yii::$app->user->isGuest): ?>
+
+<!-- Modal eksportu dziennika zdarzeń (globalny) -->
+<div class="modal fade" id="auditExportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <?= Html::beginForm(['/audit-log/export'], 'post') ?>
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-download me-2"></i>Eksport dziennika zdarzeń
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Format eksportu:</label>
+                    <select name="format" class="form-control">
+                        <option value="csv">CSV (Excel)</option>
+                        <option value="json">JSON</option>
+                    </select>
                 </div>
-                
-                <div class="d-flex align-items-center">
-                    <?php
-                    $queuedPhotos = \common\models\Photo::find()
-                        ->where(['status' => \common\models\Photo::STATUS_QUEUE])
-                        ->count();
-                    $pendingJobs = \common\models\QueuedJob::find()
-                        ->where(['status' => \common\models\QueuedJob::STATUS_PENDING])
-                        ->count();
-                    ?>
-                    
-                    <?php if ($queuedPhotos > 0): ?>
-                    <a href="<?= Url::to(['/photos/queue']) ?>" class="btn btn-sm btn-outline-warning me-2 position-relative">
-                        <i class="fas fa-clock"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
-                            <?= $queuedPhotos ?>
-                        </span>
-                    </a>
-                    <?php endif; ?>
-                    
-                    <?php if ($pendingJobs > 0): ?>
-                    <a href="<?= Url::to(['/queue/index']) ?>" class="btn btn-sm btn-outline-info me-2 position-relative">
-                        <i class="fas fa-tasks"></i>
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                            <?= $pendingJobs ?>
-                        </span>
-                    </a>
-                    <?php endif; ?>
-                    
-                    <a href="<?= 'http://' . str_replace('admin.', '', $_SERVER['HTTP_HOST']) ?>" 
-                       class="btn btn-sm btn-outline-secondary me-3" target="_blank" title="Przejdź do frontendu">
-                        <i class="fas fa-external-link-alt"></i>
-                    </a>
-                    
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user"></i> <?= Html::encode(Yii::$app->user->identity->username) ?>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li>
-                                <a class="dropdown-item" href="<?= Url::to(['/users/view', 'id' => Yii::$app->user->id]) ?>">
-                                    <i class="fas fa-user me-2"></i>Profil
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="<?= Url::to(['/settings/index']) ?>">
-                                    <i class="fas fa-cog me-2"></i>Ustawienia
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <?= Html::beginForm(['/site/logout'], 'post') ?>
-                                <?= Html::submitButton('<i class="fas fa-sign-out-alt me-2"></i>Wyloguj', [
-                                    'class' => 'dropdown-item text-danger border-0 bg-transparent',
-                                ]) ?>
-                                <?= Html::endForm() ?>
-                            </li>
-                        </ul>
+                <div class="mb-3">
+                    <label class="form-label">Zakres czasowy:</label>
+                    <select name="quick_range" class="form-control" id="quickRangeSelect">
+                        <option value="">Wybierz zakres...</option>
+                        <option value="today">Dzisiaj</option>
+                        <option value="week">Ostatnie 7 dni</option>
+                        <option value="month">Ostatnie 30 dni</option>
+                        <option value="custom">Niestandardowy zakres</option>
+                    </select>
+                </div>
+                <div class="row" id="customDateRange" style="display: none;">
+                    <div class="col-md-6">
+                        <label class="form-label">Data od:</label>
+                        <input type="date" name="date_from" class="form-control">
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Data do:</label>
+                        <input type="date" name="date_to" class="form-control">
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <small>Plik zostanie automatycznie pobrany po wygenerowaniu.</small>
                 </div>
             </div>
-        </header>
-        
-        <!-- Breadcrumbs -->
-        <?php if (isset($this->params['breadcrumbs'])): ?>
-        <nav class="breadcrumb-nav p-3 bg-light">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><?= Html::a('<i class="fas fa-home"></i>', ['/site/index']) ?></li>
-                <?php foreach ($this->params['breadcrumbs'] as $index => $crumb): ?>
-                    <?php if ($index === array_key_last($this->params['breadcrumbs'])): ?>
-                        <li class="breadcrumb-item active" aria-current="page"><?= Html::encode($crumb) ?></li>
-                    <?php elseif (is_array($crumb)): ?>
-                        <li class="breadcrumb-item">
-                            <?= Html::a(Html::encode($crumb['label']), $crumb['url']) ?>
-                        </li>
-                    <?php else: ?>
-                        <li class="breadcrumb-item">
-                            <?= Html::encode($crumb) ?>
-                        </li>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </ol>
-        </nav>
-        <?php endif; ?>
-        
-        <!-- Content -->
-        <div class="content p-4">
-            <?= Alert::widget() ?>
-            <?= $content ?>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-download me-2"></i>Eksportuj
+                </button>
+            </div>
+            <?= Html::endForm() ?>
         </div>
-    </main>
+    </div>
 </div>
 
-<!-- Sidebar overlay for mobile -->
-<div class="sidebar-overlay d-lg-none" id="sidebarOverlay"></div>
+<!-- Modal czyszczenia dziennika zdarzeń (globalny) -->
+<div class="modal fade" id="auditCleanupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <?= Html::beginForm(['/audit-log/cleanup'], 'post') ?>
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-broom me-2"></i>Czyszczenie dziennika zdarzeń
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Uwaga!</strong> Ta operacja jest nieodwracalna. Stare wpisy zostaną trwale usunięte.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Usuń wpisy starsze niż:</label>
+                    <select name="days" class="form-control">
+                        <option value="30">30 dni</option>
+                        <option value="60">60 dni</option>
+                        <option value="90" selected>90 dni (zalecane)</option>
+                        <option value="180">180 dni</option>
+                        <option value="365">1 rok</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="confirmCleanup" required>
+                        <label class="form-check-label" for="confirmCleanup">
+                            Potwierdzam, że chcę usunąć stare wpisy dziennika
+                        </label>
+                    </div>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <small>Minimum 30 dni - wpisy młodsze nie mogą zostać usunięte.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                <button type="submit" class="btn btn-warning">
+                    <i class="fas fa-trash me-2"></i>Wyczyść dziennik
+                </button>
+            </div>
+            <?= Html::endForm() ?>
+        </div>
+    </div>
+</div>
 
-<?php $this->endBody() ?>
+<?php endif; ?>
+
+<!-- Powiadomienia o błędach dziennika (opcjonalnie) -->
+<?php if (!Yii::$app->user->isGuest && $todayErrors > 0): ?>
+<div class="alert alert-warning alert-dismissible fade show position-fixed" 
+     style="top: 80px; right: 20px; z-index: 1050; max-width: 350px;" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    <strong>Uwaga!</strong> W dzienniku zdarzeń odnotowano <?= $todayErrors ?> błędów/ostrzeżeń dzisiaj.
+    <?= Html::a('Zobacz szczegóły', ['/audit-log/index', 'AuditLogSearch[severity]' => 'error'], 
+        ['class' => 'alert-link ms-2']) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<?php endif; ?>
 
 <script>
+// JavaScript dla globalnych modali dziennika zdarzeń
 document.addEventListener('DOMContentLoaded', function() {
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const toggleBtn = document.getElementById('sidebarToggle');
-    const closeBtn = document.getElementById('sidebarClose');
+    const quickRangeSelect = document.getElementById('quickRangeSelect');
+    const customDateRange = document.getElementById('customDateRange');
     
-    // Toggle sidebar
-    toggleBtn?.addEventListener('click', function() {
-        sidebar.classList.add('show');
-        overlay.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    });
-    
-    // Close sidebar
-    closeBtn?.addEventListener('click', function() {
-        sidebar.classList.remove('show');
-        overlay.classList.remove('show');
-        document.body.style.overflow = '';
-    });
-    
-    // Close sidebar when clicking overlay
-    overlay?.addEventListener('click', function() {
-        sidebar.classList.remove('show');
-        overlay.classList.remove('show');
-        document.body.style.overflow = '';
-    });
-    
-    // Set active navigation
-    // Set active navigation
-const currentPath = window.location.pathname;
-const navLinks = document.querySelectorAll('.nav-link');
-
-
-navLinks.forEach(link => {
-    const href = link.getAttribute('href');
-    if (href) {
-        
-        
-        if (href !== '/' && currentPath == href && 
-                (currentPath === href || currentPath[href.length] === '/')) {
-            link.classList.add('active');
-        }
-        
-        // Expand parent menu for active links
-        if (link.classList.contains('active')) {
-            const parentCollapse = link.closest('.collapse');
-            if (parentCollapse) {
-                parentCollapse.classList.add('show');
+    if (quickRangeSelect) {
+        quickRangeSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customDateRange.style.display = 'block';
+            } else {
+                customDateRange.style.display = 'none';
+                
+                // Automatyczne ustawienie dat dla predefiniowanych zakresów
+                const dateFrom = document.querySelector('input[name="date_from"]');
+                const dateTo = document.querySelector('input[name="date_to"]');
+                
+                const today = new Date();
+                const formatDate = (date) => date.toISOString().split('T')[0];
+                
+                switch(this.value) {
+                    case 'today':
+                        dateFrom.value = formatDate(today);
+                        dateTo.value = formatDate(today);
+                        break;
+                    case 'week':
+                        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                        dateFrom.value = formatDate(weekAgo);
+                        dateTo.value = formatDate(today);
+                        break;
+                    case 'month':
+                        const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+                        dateFrom.value = formatDate(monthAgo);
+                        dateTo.value = formatDate(today);
+                        break;
+                    default:
+                        dateFrom.value = '';
+                        dateTo.value = '';
+                }
             }
-        }
+        });
     }
-});
+    
+    // Auto-dismiss notification after 10 seconds
+    const autoAlert = document.querySelector('.alert.position-fixed');
+    if (autoAlert) {
+        setTimeout(function() {
+            const alert = new bootstrap.Alert(autoAlert);
+            alert.close();
+        }, 10000);
+    }
 });
 </script>
 
+<?php $this->endBody() ?>
 </body>
 </html>
-<?php $this->endPage(); ?>
+<?php $this->endPage() ?>
