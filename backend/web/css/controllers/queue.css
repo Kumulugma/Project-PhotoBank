@@ -1,0 +1,135 @@
+.queue-stats-cards .stat-card {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-left: 4px solid;
+}
+
+.queue-stats-cards .stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.queue-stats-cards .stat-card.pending {
+    border-left-color: var(--warning-color);
+}
+
+.queue-stats-cards .stat-card.processing {
+    border-left-color: var(--primary-color);
+}
+
+.queue-stats-cards .stat-card.completed {
+    border-left-color: var(--success-color);
+}
+
+.queue-stats-cards .stat-card.failed {
+    border-left-color: var(--danger-color);
+}
+
+.job-status-badge {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.job-type-icon {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0.75rem;
+}
+
+.job-type-icon.s3-sync { background: #ff9800; color: white; }
+.job-type-icon.regenerate { background: #2196f3; color: white; }
+.job-type-icon.analyze { background: #9c27b0; color: white; }
+.job-type-icon.import { background: #4caf50; color: white; }
+
+.job-progress {
+    position: relative;
+    background: #e9ecef;
+    border-radius: 0.25rem;
+    height: 20px;
+    overflow: hidden;
+}
+
+.job-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--info-color) 100%);
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.job-duration {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.job-duration.fast { color: var(--success-color); }
+.job-duration.medium { color: var(--warning-color); }
+.job-duration.slow { color: var(--danger-color); }
+
+.queue-actions {
+    background: var(--light-color);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.queue-processor-info {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.queue-processor-info code {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.job-details-modal .modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.job-params-table {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+}
+
+.job-error-message {
+    background: #ffe6e6;
+    border: 1px solid #ffcccc;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    color: var(--danger-color);
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+}
+
+.spinning-icon {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

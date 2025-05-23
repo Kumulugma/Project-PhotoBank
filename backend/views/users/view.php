@@ -2,7 +2,7 @@
 
 use yii\helpers\Html;
 use yii\widgets\DetailView;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'users');
 /* @var $this yii\web\View */
 /* @var $model common\models\User */
 /* @var $roles array */

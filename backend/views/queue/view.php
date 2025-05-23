@@ -2,7 +2,8 @@
 
 use yii\helpers\Html;
 use yii\widgets\DetailView;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'queue');
+\backend\assets\AppAsset::registerComponentCss($this, 'tables');
 /* @var $this yii\web\View */
 /* @var $model common\models\QueuedJob */
 

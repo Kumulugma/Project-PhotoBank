@@ -5,6 +5,9 @@ use yii\helpers\Html;
 use yii\helpers\Url;
 use common\models\search\AuditLogSearch;
 
+\backend\assets\AppAsset::registerControllerCss($this, 'audit-log');
+\backend\assets\AppAsset::registerComponentCss($this, 'modals');
+
 $this->title = 'Dashboard Dziennika Zdarzeń';
 $this->params['breadcrumbs'][] = ['label' => 'Dziennik Zdarzeń', 'url' => ['index']];
 $this->params['breadcrumbs'][] = 'Dashboard';

@@ -7,6 +7,10 @@ use yii\widgets\Pjax;
 use common\models\search\AuditLogSearch;
 use common\models\AuditLog;
 
+\backend\assets\AppAsset::registerControllerCss($this, 'audit-log');
+\backend\assets\AppAsset::registerComponentCss($this, 'tables');
+\backend\assets\AppAsset::registerComponentCss($this, 'modals');
+
 $this->title = 'Dziennik Zdarzeń';
 $this->params['breadcrumbs'][] = $this->title;
 ?>

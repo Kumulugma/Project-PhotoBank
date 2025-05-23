@@ -6,7 +6,10 @@ use yii\widgets\Pjax;
 use common\models\Tag;
 use common\models\Category;
 use yii\helpers\ArrayHelper;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'photos');
+\backend\assets\AppAsset::registerComponentCss($this, 'tables');
+\backend\assets\AppAsset::registerComponentCss($this, 'modals');
+\backend\assets\AppAsset::registerComponentCss($this, 'alerts');
 /* @var $this yii\web\View */
 /* @var $searchModel common\models\search\PhotoSearch */
 /* @var $dataProvider yii\data\ActiveDataProvider */

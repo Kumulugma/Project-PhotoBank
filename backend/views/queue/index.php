@@ -3,7 +3,10 @@
 use yii\helpers\Html;
 use yii\grid\GridView;
 use yii\widgets\Pjax;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'queue');
+\backend\assets\AppAsset::registerComponentCss($this, 'tables');
+\backend\assets\AppAsset::registerComponentCss($this, 'modals');
+\backend\assets\AppAsset::registerComponentCss($this, 'alerts');
 /* @var $this yii\web\View */
 /* @var $searchModel common\models\search\QueuedJobSearch */
 /* @var $dataProvider yii\data\ActiveDataProvider */

@@ -3,7 +3,9 @@
 use yii\helpers\Html;
 use yii\helpers\Url;
 use backend\assets\DropzoneAsset;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'photos');
+\backend\assets\AppAsset::registerComponentCss($this, 'forms');
+\backend\assets\AppAsset::registerComponentCss($this, 'alerts');
 /* @var $this yii\web\View */
 
 $this->title = 'Prześlij zdjęcia';

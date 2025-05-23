@@ -3,7 +3,8 @@
 use yii\helpers\Html;
 use yii\helpers\Url;
 use yii\widgets\DetailView;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'photos');
+\backend\assets\AppAsset::registerComponentCss($this, 'modals');
 $this->title = $model->title;
 $this->params['breadcrumbs'][] = ['label' => 'Zdjęcia', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;

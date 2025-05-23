@@ -3,7 +3,9 @@
 use yii\helpers\Html;
 use yii\bootstrap5\ActiveForm;
 use common\models\Settings;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'photos');
+\backend\assets\AppAsset::registerComponentCss($this, 'forms');
+\backend\assets\AppAsset::registerComponentCss($this, 'alerts');
 /* @var $this yii\web\View */
 
 $this->title = 'Import zdjęć';

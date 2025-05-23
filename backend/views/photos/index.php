@@ -7,7 +7,9 @@ use common\models\Tag;
 use common\models\Category;
 use yii\helpers\ArrayHelper;
 use common\models\Photo;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'photos');
+\backend\assets\AppAsset::registerComponentCss($this, 'tables');
+\backend\assets\AppAsset::registerComponentCss($this, 'forms');
 $this->title = 'Aktywne zdjęcia';
 $this->params['breadcrumbs'][] = $this->title;
 

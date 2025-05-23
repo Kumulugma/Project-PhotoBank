@@ -3,7 +3,9 @@
 use yii\helpers\Html;
 use yii\bootstrap5\ActiveForm;
 use yii\helpers\Url;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'settings');
+\backend\assets\AppAsset::registerComponentCss($this, 'forms');
+\backend\assets\AppAsset::registerComponentCss($this, 'alerts');
 /* @var $this yii\web\View */
 /* @var $settings array */
 

@@ -4,7 +4,9 @@ use yii\helpers\Html;
 use yii\grid\GridView;
 use yii\widgets\Pjax;
 use yii\helpers\Url;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'settings');
+\backend\assets\AppAsset::registerComponentCss($this, 'tables');
+\backend\assets\AppAsset::registerComponentCss($this, 'modals');
 /* @var $this yii\web\View */
 /* @var $searchModel common\models\search\ThumbnailSizeSearch */
 /* @var $dataProvider yii\data\ActiveDataProvider */

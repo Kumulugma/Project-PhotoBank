@@ -2,7 +2,8 @@
 
 use yii\helpers\Html;
 use yii\widgets\DetailView;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'settings');
+\backend\assets\AppAsset::registerComponentCss($this, 'modals');
 /* @var $this yii\web\View */
 /* @var $model common\models\ThumbnailSize */
 

@@ -1,5 +1,5 @@
 <?php
-
+\backend\assets\AppAsset::registerComponentCss($this, 'alerts');
 /* @var $this yii\web\View */
 /* @var $name string */
 /* @var $message string */

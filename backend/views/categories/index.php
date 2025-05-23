@@ -3,7 +3,8 @@
 use yii\helpers\Html;
 use yii\grid\GridView;
 use yii\widgets\Pjax;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'categories');
+\backend\assets\AppAsset::registerComponentCss($this, 'tables');
 /* @var $this yii\web\View */
 /* @var $searchModel common\models\search\CategorySearch */
 /* @var $dataProvider yii\data\ActiveDataProvider */

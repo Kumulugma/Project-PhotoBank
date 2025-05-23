@@ -1,7 +1,8 @@
 <?php
 
 use yii\helpers\Html;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'tags');
+\backend\assets\AppAsset::registerComponentCss($this, 'forms');
 /* @var $this yii\web\View */
 /* @var $model common\models\Tag */
 

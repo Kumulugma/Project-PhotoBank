@@ -6,7 +6,8 @@ use yii\helpers\ArrayHelper;
 use common\models\Tag;
 use common\models\Category;
 use common\models\Photo;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'photos');
+\backend\assets\AppAsset::registerComponentCss($this, 'forms');
 /* @var $this yii\web\View */
 /* @var $model common\models\Photo */
 /* @var $form yii\bootstrap5\ActiveForm */

@@ -2,7 +2,9 @@
 
 use yii\helpers\Html;
 use yii\bootstrap5\ActiveForm;
-
+\backend\assets\AppAsset::registerControllerCss($this, 'users');
+\backend\assets\AppAsset::registerComponentCss($this, 'forms');
+\backend\assets\AppAsset::registerComponentCss($this, 'alerts');
 /* @var $this yii\web\View */
 /* @var $model common\models\User */
 
