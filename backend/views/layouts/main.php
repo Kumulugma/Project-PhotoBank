@@ -1,5 +1,4 @@
 <?php
-
 use yii\helpers\Html;
 use yii\bootstrap5\Nav;
 use yii\bootstrap5\NavBar;
@@ -9,6 +8,12 @@ use backend\assets\AppAsset;
 use common\models\AuditLog;
 
 AppAsset::register($this);
+
+// Register common component assets
+AppAsset::registerComponentJs($this, 'modals');
+AppAsset::registerComponentJs($this, 'forms');
+AppAsset::registerComponentJs($this, 'tables');
+AppAsset::registerComponentJs($this, 'alerts');
 
 // Pobierz statystyki dla menu (tylko jeśli użytkownik jest zalogowany)
 $todayErrors = 0;
@@ -80,7 +85,7 @@ if (!Yii::$app->user->isGuest) {
                             'url' => ['/queue/index'],
                             'encode' => false
                         ],
-                        ['label' => '<i class="fas fa-terminal me-2"></i>Komendy consolowe', 'url' => ['/console/index'], 'encode' => false], // NOWA POZYCJA
+                        ['label' => '<i class="fas fa-terminal me-2"></i>Komendy consolowe', 'url' => ['/console/index'], 'encode' => false],
                         '<div class="dropdown-divider"></div>',
                         ['label' => '<i class="fab fa-aws me-2"></i>Ustawienia S3', 'url' => ['/s3/index'], 'encode' => false],
                         ['label' => '<i class="fas fa-tint me-2"></i>Znak wodny', 'url' => ['/watermark/index'], 'encode' => false],
@@ -89,7 +94,6 @@ if (!Yii::$app->user->isGuest) {
                         ['label' => '<i class="fas fa-cogs me-2"></i>Ustawienia', 'url' => ['/settings/index'], 'encode' => false],
                     ],
                 ],
-                // NOWE MENU DZIENNIKA ZDARZEŃ
                 [
                     'label' => '<i class="fas fa-clipboard-list me-2"></i>Dziennik zdarzeń' . ($todayErrors > 0 ? ' <span class="badge bg-danger ms-1">' . $todayErrors . '</span>' : ''),
                     'items' => [
@@ -155,7 +159,6 @@ if (!Yii::$app->user->isGuest) {
 
         <!-- Globalne modale dla dziennika zdarzeń -->
         <?php if (!Yii::$app->user->isGuest): ?>
-
             <!-- Modal eksportu dziennika zdarzeń (globalny) -->
             <div class="modal fade" id="auditExportModal" tabindex="-1">
                 <div class="modal-dialog">
@@ -260,7 +263,6 @@ if (!Yii::$app->user->isGuest) {
                     </div>
                 </div>
             </div>
-
         <?php endif; ?>
 
         <!-- Powiadomienia o błędach dziennika (opcjonalnie) -->
@@ -274,63 +276,9 @@ if (!Yii::$app->user->isGuest) {
                 ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-<?php endif; ?>
+        <?php endif; ?>
 
-        <script>
-            // JavaScript dla globalnych modali dziennika zdarzeń
-            document.addEventListener('DOMContentLoaded', function () {
-                const quickRangeSelect = document.getElementById('quickRangeSelect');
-                const customDateRange = document.getElementById('customDateRange');
-
-                if (quickRangeSelect) {
-                    quickRangeSelect.addEventListener('change', function () {
-                        if (this.value === 'custom') {
-                            customDateRange.style.display = 'block';
-                        } else {
-                            customDateRange.style.display = 'none';
-
-                            // Automatyczne ustawienie dat dla predefiniowanych zakresów
-                            const dateFrom = document.querySelector('input[name="date_from"]');
-                            const dateTo = document.querySelector('input[name="date_to"]');
-
-                            const today = new Date();
-                            const formatDate = (date) => date.toISOString().split('T')[0];
-
-                            switch (this.value) {
-                                case 'today':
-                                    dateFrom.value = formatDate(today);
-                                    dateTo.value = formatDate(today);
-                                    break;
-                                case 'week':
-                                    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-                                    dateFrom.value = formatDate(weekAgo);
-                                    dateTo.value = formatDate(today);
-                                    break;
-                                case 'month':
-                                    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-                                    dateFrom.value = formatDate(monthAgo);
-                                    dateTo.value = formatDate(today);
-                                    break;
-                                default:
-                                    dateFrom.value = '';
-                                    dateTo.value = '';
-                            }
-                        }
-                    });
-                }
-
-                // Auto-dismiss notification after 10 seconds
-                const autoAlert = document.querySelector('.alert.position-fixed');
-                if (autoAlert) {
-                    setTimeout(function () {
-                        const alert = new bootstrap.Alert(autoAlert);
-                        alert.close();
-                    }, 10000);
-                }
-            });
-        </script>
-
-<?php $this->endBody() ?>
+        <?php $this->endBody() ?>
     </body>
 </html>
 <?php $this->endPage() ?>

@@ -10,7 +10,7 @@ class AppAsset extends AssetBundle
     public $basePath = '@webroot';
     public $baseUrl = '@web';
     public $css = [
-        'css/admin.css', // Główny plik CSS
+        'css/admin.css',
         'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css',
     ];
     public $js = [
@@ -54,5 +54,52 @@ class AppAsset extends AssetBundle
                 'depends' => [self::class]
             ]);
         }
+    }
+    
+    /**
+     * Registers controller-specific JS file
+     * @param View $view
+     * @param string $controller
+     */
+    public static function registerControllerJs($view, $controller)
+    {
+        $jsFile = '@web/js/controllers/' . $controller . '.js';
+        $jsPath = Yii::getAlias('@webroot/js/controllers/' . $controller . '.js');
+        
+        if (file_exists($jsPath)) {
+            $view->registerJsFile($jsFile, [
+                'depends' => [self::class],
+                'position' => View::POS_END
+            ]);
+        }
+    }
+    
+    /**
+     * Registers component-specific JS file
+     * @param View $view
+     * @param string $component
+     */
+    public static function registerComponentJs($view, $component)
+    {
+        $jsFile = '@web/js/components/' . $component . '.js';
+        $jsPath = Yii::getAlias('@webroot/js/components/' . $component . '.js');
+        
+        if (file_exists($jsPath)) {
+            $view->registerJsFile($jsFile, [
+                'depends' => [self::class],
+                'position' => View::POS_END
+            ]);
+        }
+    }
+    
+    /**
+     * Registers full controller asset bundle (CSS + JS)
+     * @param View $view
+     * @param string $controller
+     */
+    public static function registerControllerAssets($view, $controller)
+    {
+        self::registerControllerCss($view, $controller);
+        self::registerControllerJs($view, $controller);
     }
 }
