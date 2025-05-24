@@ -147,11 +147,8 @@ if (!Yii::$app->user->isGuest) {
         <footer id="footer" class="mt-auto py-3 bg-light">
             <div class="container">
                 <div class="row text-muted">
-                    <div class="col-md-6 text-start">
+                    <div class="col-md-12 text-start">
                         <p>&copy; <?= Html::encode(Yii::$app->name) ?> <?= date('Y') ?></p>
-                    </div>
-                    <div class="col-md-6 text-end">
-                        <p><?= Yii::powered() ?></p>
                     </div>
                 </div>
             </div>

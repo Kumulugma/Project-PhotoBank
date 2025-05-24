@@ -9,6 +9,14 @@ document.addEventListener('DOMContentLoaded', function() {
     initFileUploads();
     initFormValidation();
     initTooltips();
+    
+    // Initialize essential components only if they haven't been initialized elsewhere
+    if (typeof window.componentsInitialized === 'undefined') {
+        window.componentsInitialized = true;
+        
+        // These will be initialized by their respective component files
+        // This is just a fallback check
+    }
 });
 
 /**

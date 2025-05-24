@@ -22,6 +22,8 @@ class AppAsset extends AssetBundle
         'yii\bootstrap5\BootstrapPluginAsset',
     ];
     
+    private static $registeredAssets = [];
+    
     /**
      * Registers controller-specific CSS file
      * @param View $view
@@ -46,6 +48,13 @@ class AppAsset extends AssetBundle
      */
     public static function registerComponentCss($view, $component)
     {
+        $assetKey = 'css_' . $component;
+        
+        // Prevent duplicate registration
+        if (isset(self::$registeredAssets[$assetKey])) {
+            return;
+        }
+        
         $cssFile = '@web/css/components/' . $component . '.css';
         $cssPath = Yii::getAlias('@webroot/css/components/' . $component . '.css');
         
@@ -53,6 +62,7 @@ class AppAsset extends AssetBundle
             $view->registerCssFile($cssFile, [
                 'depends' => [self::class]
             ]);
+            self::$registeredAssets[$assetKey] = true;
         }
     }
     
@@ -63,6 +73,13 @@ class AppAsset extends AssetBundle
      */
     public static function registerControllerJs($view, $controller)
     {
+        $assetKey = 'js_' . $controller;
+        
+        // Prevent duplicate registration
+        if (isset(self::$registeredAssets[$assetKey])) {
+            return;
+        }
+        
         $jsFile = '@web/js/controllers/' . $controller . '.js';
         $jsPath = Yii::getAlias('@webroot/js/controllers/' . $controller . '.js');
         
@@ -71,6 +88,7 @@ class AppAsset extends AssetBundle
                 'depends' => [self::class],
                 'position' => View::POS_END
             ]);
+            self::$registeredAssets[$assetKey] = true;
         }
     }
     
@@ -81,6 +99,13 @@ class AppAsset extends AssetBundle
      */
     public static function registerComponentJs($view, $component)
     {
+        $assetKey = 'js_component_' . $component;
+        
+        // Prevent duplicate registration
+        if (isset(self::$registeredAssets[$assetKey])) {
+            return;
+        }
+        
         $jsFile = '@web/js/components/' . $component . '.js';
         $jsPath = Yii::getAlias('@webroot/js/components/' . $component . '.js');
         
@@ -89,6 +114,7 @@ class AppAsset extends AssetBundle
                 'depends' => [self::class],
                 'position' => View::POS_END
             ]);
+            self::$registeredAssets[$assetKey] = true;
         }
     }
     
@@ -116,5 +142,26 @@ class AppAsset extends AssetBundle
         self::registerComponentCss($view, 'forms');
         self::registerComponentCss($view, 'alerts');
         self::registerComponentCss($view, 'modals');
+    }
+    
+    /**
+     * Registers essential components for most pages
+     * @param View $view
+     */
+    public static function registerEssentialComponents($view)
+    {
+        // Register core components that are used on most pages
+        self::registerComponentJs($view, 'alerts');
+        self::registerComponentJs($view, 'forms');  
+        self::registerComponentJs($view, 'modals');
+        self::registerComponentJs($view, 'tables');
+    }
+    
+    /**
+     * Clear registered assets cache (useful for development)
+     */
+    public static function clearRegisteredAssets()
+    {
+        self::$registeredAssets = [];
     }
 }
