@@ -18,6 +18,11 @@ $this->params['breadcrumbs'][] = $this->title;
         <div>
             <?= Html::a('Powrót do listy', ['index'], ['class' => 'btn btn-secondary']) ?>
             <?= Html::a('Dashboard', ['dashboard'], ['class' => 'btn btn-outline-primary']) ?>
+            <?= Html::a('Usuń wpis', '#', [
+                'class' => 'btn btn-danger',
+                'data-bs-toggle' => 'modal',
+                'data-bs-target' => '#deleteModal'
+            ]) ?>
         </div>
     </div>
 
@@ -196,7 +201,46 @@ $this->params['breadcrumbs'][] = $this->title;
                         ['index', 'AuditLogSearch[user_ip]' => $model->user_ip], 
                         ['class' => 'btn btn-outline-warning btn-sm d-block mb-2']) ?>
                     <?php endif; ?>
+                    
+                    <hr>
+                    
+                    <?= Html::a('<i class="fas fa-trash me-2"></i>Usuń wpis', '#', [
+                        'class' => 'btn btn-danger btn-sm d-block',
+                        'data-bs-toggle' => 'modal',
+                        'data-bs-target' => '#deleteModal'
+                    ]) ?>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Potwierdzenie usunięcia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Czy na pewno chcesz usunąć ten wpis dziennika?</p>
+                <div class="alert alert-info">
+                    <strong>Wpis:</strong> <?= Html::encode($model->getActionLabel()) ?><br>
+                    <strong>Data:</strong> <?= date('d.m.Y H:i:s', $model->created_at) ?><br>
+                    <?php if ($model->user): ?>
+                    <strong>Użytkownik:</strong> <?= Html::encode($model->user->username) ?><br>
+                    <?php endif; ?>
+                </div>
+                <div class="alert alert-warning">
+                    <strong>Uwaga:</strong> Ta operacja jest nieodwracalna!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                <?= Html::beginForm(['delete'], 'post') ?>
+                <?= Html::hiddenInput('id', $model->id) ?>
+                <button type="submit" class="btn btn-danger">Usuń wpis</button>
+                <?= Html::endForm() ?>
             </div>
         </div>
     </div>

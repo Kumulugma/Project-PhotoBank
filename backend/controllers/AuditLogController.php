@@ -16,27 +16,30 @@ use yii\filters\AccessControl;
  */
 class AuditLogController extends Controller
 {
-    public function behaviors()
-    {
-        return [
-            'access' => [
-                'class' => AccessControl::class,
-                'rules' => [
-                    [
-                        'allow' => true,
-                        'roles' => ['admin'],
-                    ],
+public function behaviors()
+{
+    return [
+        'access' => [
+            'class' => AccessControl::class,
+            'rules' => [
+                [
+                    'allow' => true,
+                    'roles' => ['admin'],
                 ],
             ],
-            'verbs' => [
-                'class' => VerbFilter::class,
-                'actions' => [
-                    'cleanup' => ['POST'],
-                    'export' => ['POST'],
-                ],
+        ],
+        'verbs' => [
+            'class' => VerbFilter::class,
+            'actions' => [
+                'cleanup' => ['POST'],
+                'export' => ['POST'],
+                'delete' => ['POST'],
+                'bulk-delete' => ['POST'],
+                'delete-errors' => ['POST'],
             ],
-        ];
-    }
+        ],
+    ];
+}
 
     /**
      * Lists all audit log entries
@@ -348,4 +351,131 @@ class AuditLogController extends Controller
 
         throw new NotFoundHttpException('Żądany wpis dziennika nie istnieje.');
     }
+    
+    public function actionDelete($id = null)
+{
+    if ($id === null) {
+        $id = Yii::$app->request->post('id');
+    }
+    
+    if (!$id) {
+        Yii::$app->session->setFlash('error', 'Nie podano ID wpisu do usunięcia.');
+        return $this->redirect(['index']);
+    }
+    
+    $model = $this->findModel($id);
+    
+    try {
+        $model->delete();
+        
+        AuditLog::logSystemEvent("Usunięto wpis dziennika zdarzeń ID: {$id}", 
+            AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_SYSTEM);
+        
+        Yii::$app->session->setFlash('success', 'Wpis dziennika został usunięty.');
+    } catch (\Exception $e) {
+        AuditLog::logSystemEvent("Błąd usuwania wpisu dziennika ID: {$id} - " . $e->getMessage(), 
+            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYSTEM);
+        
+        Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas usuwania wpisu: ' . $e->getMessage());
+    }
+
+    return $this->redirect(['index']);
+}
+
+public function actionBulkDelete()
+{
+    $ids = Yii::$app->request->post('selection', []);
+    
+    if (empty($ids)) {
+        Yii::$app->session->setFlash('error', 'Nie wybrano żadnych wpisów do usunięcia.');
+        return $this->redirect(['index']);
+    }
+    
+    $deleted = 0;
+    $errors = 0;
+    
+    foreach ($ids as $id) {
+        try {
+            $model = $this->findModel($id);
+            if ($model->delete()) {
+                $deleted++;
+            }
+        } catch (\Exception $e) {
+            $errors++;
+            Yii::error('Błąd usuwania wpisu dziennika ID: ' . $id . ' - ' . $e->getMessage());
+        }
+    }
+    
+    if ($deleted > 0) {
+        AuditLog::logSystemEvent("Usunięto masowo {$deleted} wpisów dziennika zdarzeń", 
+            AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_SYSTEM);
+        
+        Yii::$app->session->setFlash('success', "Pomyślnie usunięto {$deleted} wpisów.");
+    }
+    
+    if ($errors > 0) {
+        Yii::$app->session->setFlash('warning', "Wystąpiły błędy przy usuwaniu {$errors} wpisów.");
+    }
+    
+    return $this->redirect(['index']);
+}
+public function actionDeleteErrors()
+{
+    $errorType = Yii::$app->request->post('error_type', 'all_errors');
+    
+    try {
+        $query = AuditLog::find();
+        $deleted = 0;
+        
+        switch ($errorType) {
+            case 'all_errors':
+                $query->where(['severity' => [AuditLog::SEVERITY_ERROR, AuditLog::SEVERITY_WARNING]]);
+                break;
+            case 'errors_only':
+                $query->where(['severity' => AuditLog::SEVERITY_ERROR]);
+                break;
+            case 'warnings_only':
+                $query->where(['severity' => AuditLog::SEVERITY_WARNING]);
+                break;
+            case 'today_errors':
+                $query->where(['severity' => [AuditLog::SEVERITY_ERROR, AuditLog::SEVERITY_WARNING]])
+                      ->andWhere(['>=', 'created_at', strtotime('today')]);
+                break;
+            case 'week_errors':
+                $query->where(['severity' => [AuditLog::SEVERITY_ERROR, AuditLog::SEVERITY_WARNING]])
+                      ->andWhere(['>=', 'created_at', strtotime('-7 days')]);
+                break;
+        }
+        
+        $deleted = $query->count();
+        
+        if ($deleted > 0) {
+            $query->all(); // Pobierz wszystkie przed usunięciem dla logowania
+            $actualDeleted = 0;
+            
+            foreach ($query->batch(100) as $batch) {
+                foreach ($batch as $log) {
+                    if ($log->delete()) {
+                        $actualDeleted++;
+                    }
+                }
+            }
+            
+            AuditLog::logSystemEvent("Usunięto {$actualDeleted} wpisów błędów/ostrzeżeń (typ: {$errorType})", 
+                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_SYSTEM);
+            
+            Yii::$app->session->setFlash('success', "Pomyślnie usunięto {$actualDeleted} wpisów błędów.");
+        } else {
+            Yii::$app->session->setFlash('info', 'Nie znaleziono wpisów do usunięcia.');
+        }
+        
+    } catch (\Exception $e) {
+        AuditLog::logSystemEvent("Błąd usuwania błędów z dziennika: " . $e->getMessage(), 
+            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYSTEM);
+        
+        Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas usuwania: ' . $e->getMessage());
+    }
+
+    return $this->redirect(['dashboard']);
+}
 }

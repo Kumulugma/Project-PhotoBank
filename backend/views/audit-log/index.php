@@ -1,6 +1,4 @@
 <?php
-// backend/views/audit-log/index.php
-
 use yii\helpers\Html;
 use yii\grid\GridView;
 use yii\widgets\Pjax;
@@ -26,6 +24,13 @@ $this->params['breadcrumbs'][] = $this->title;
                 'data-bs-toggle' => 'modal', 
                 'data-bs-target' => '#exportModal'
             ]) ?>
+            <?= Html::a('Usuń wybrane', '#', [
+                'class' => 'btn btn-danger', 
+                'id' => 'bulk-delete-btn',
+                'data-bs-toggle' => 'modal', 
+                'data-bs-target' => '#bulkDeleteModal',
+                'style' => 'display: none;'
+            ]) ?>
             <?= Html::a('Czyszczenie', '#', [
                 'class' => 'btn btn-warning', 
                 'data-bs-toggle' => 'modal', 
@@ -34,7 +39,6 @@ $this->params['breadcrumbs'][] = $this->title;
         </div>
     </div>
 
-    <!-- Statystyki -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card bg-primary text-white">
@@ -98,7 +102,6 @@ $this->params['breadcrumbs'][] = $this->title;
         </div>
     </div>
 
-    <!-- Najczęstsze akcje -->
     <?php if (!empty($topActions)): ?>
     <div class="row mb-4">
         <div class="col-md-12">
@@ -127,7 +130,15 @@ $this->params['breadcrumbs'][] = $this->title;
         'dataProvider' => $dataProvider,
         'filterModel' => $searchModel,
         'layout' => "{summary}\n{items}\n{pager}",
+        'options' => ['class' => 'grid-view-with-checkboxes'],
         'columns' => [
+            [
+                'class' => 'yii\grid\CheckboxColumn',
+                'name' => 'selection',
+                'checkboxOptions' => function ($model, $key, $index, $column) {
+                    return ['value' => $model->id, 'class' => 'audit-checkbox'];
+                },
+            ],
             [
                 'attribute' => 'created_at',
                 'label' => 'Data',
@@ -196,13 +207,22 @@ $this->params['breadcrumbs'][] = $this->title;
             ],
             [
                 'class' => 'yii\grid\ActionColumn',
-                'template' => '{view}',
-                'headerOptions' => ['style' => 'width: 50px'],
+                'template' => '{view} {delete}',
+                'headerOptions' => ['style' => 'width: 80px'],
                 'buttons' => [
                     'view' => function ($url, $model, $key) {
                         return Html::a('<i class="fas fa-eye"></i>', $url, [
                             'title' => 'Podgląd',
-                            'class' => 'btn btn-sm btn-outline-primary',
+                            'class' => 'btn btn-sm btn-outline-primary me-1',
+                        ]);
+                    },
+                    'delete' => function ($url, $model, $key) {
+                        return Html::a('<i class="fas fa-trash"></i>', '#', [
+                            'title' => 'Usuń',
+                            'class' => 'btn btn-sm btn-outline-danger delete-single',
+                            'data-id' => $model->id,
+                            'data-bs-toggle' => 'modal',
+                            'data-bs-target' => '#deleteModal'
                         ]);
                     },
                 ],
@@ -213,7 +233,55 @@ $this->params['breadcrumbs'][] = $this->title;
     <?php Pjax::end(); ?>
 </div>
 
-<!-- Modal czyszczenia -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Potwierdzenie usunięcia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Czy na pewno chcesz usunąć wybrany wpis dziennika?</p>
+                <div class="alert alert-warning">
+                    <strong>Uwaga:</strong> Ta operacja jest nieodwracalna!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                <?= Html::beginForm(['delete'], 'post', ['id' => 'delete-form']) ?>
+                <?= Html::hiddenInput('id', '', ['id' => 'delete-id']) ?>
+                <button type="submit" class="btn btn-danger">Usuń</button>
+                <?= Html::endForm() ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Masowe usuwanie</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Czy na pewno chcesz usunąć wybrane wpisy dziennika?</p>
+                <p class="text-info">Wybrano: <span id="selected-count">0</span> wpisów</p>
+                <div class="alert alert-warning">
+                    <strong>Uwaga:</strong> Ta operacja jest nieodwracalna!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                <?= Html::beginForm(['bulk-delete'], 'post', ['id' => 'bulk-delete-form']) ?>
+                <div id="bulk-delete-inputs"></div>
+                <button type="submit" class="btn btn-danger">Usuń wybrane</button>
+                <?= Html::endForm() ?>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="cleanupModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -244,7 +312,6 @@ $this->params['breadcrumbs'][] = $this->title;
     </div>
 </div>
 
-<!-- Modal eksportu -->
 <div class="modal fade" id="exportModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -280,3 +347,49 @@ $this->params['breadcrumbs'][] = $this->title;
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.audit-checkbox');
+    const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+    const selectedCountSpan = document.getElementById('selected-count');
+    const bulkDeleteInputs = document.getElementById('bulk-delete-inputs');
+    
+    function updateBulkDeleteButton() {
+        const checked = document.querySelectorAll('.audit-checkbox:checked');
+        if (checked.length > 0) {
+            bulkDeleteBtn.style.display = 'inline-block';
+            selectedCountSpan.textContent = checked.length;
+            
+            bulkDeleteInputs.innerHTML = '';
+            checked.forEach(function(checkbox) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'selection[]';
+                input.value = checkbox.value;
+                bulkDeleteInputs.appendChild(input);
+            });
+        } else {
+            bulkDeleteBtn.style.display = 'none';
+        }
+    }
+    
+    checkboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', updateBulkDeleteButton);
+    });
+    
+    const selectAllCheckbox = document.querySelector('th input[type="checkbox"]');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            setTimeout(updateBulkDeleteButton, 10);
+        });
+    }
+    
+    document.querySelectorAll('.delete-single').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            document.getElementById('delete-id').value = id;
+        });
+    });
+});
+</script>
