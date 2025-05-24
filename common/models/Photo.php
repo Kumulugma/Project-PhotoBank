@@ -25,6 +25,12 @@ use common\behaviors\AuditBehavior;
  * @property int|null $width
  * @property int|null $height
  * @property string|null $exif_data
+ * @property int $uploaded_to_shutterstock
+ * @property int $uploaded_to_adobe_stock
+ * @property int $used_in_private_project
+ * @property int $is_ai_generated
+ * @property string|null $ai_prompt
+ * @property string|null $ai_generator_url
  * @property int $created_at
  * @property int $updated_at
  * @property int $created_by
@@ -55,11 +61,13 @@ class Photo extends ActiveRecord {
     public function rules() {
         return [
             [['title', 'file_name', 'file_size', 'mime_type', 'created_by'], 'required'],
-            [['description', 's3_path', 'exif_data'], 'string'],
+            [['description', 's3_path', 'exif_data', 'ai_prompt'], 'string'],
             [['series'], 'string', 'max' => 50],
             [['series'], 'trim'],
             [['file_size', 'status', 'is_public', 'width', 'height', 'created_at', 'updated_at', 'created_by'], 'integer'],
-            [['title', 'file_name', 'mime_type'], 'string', 'max' => 255],
+            [['uploaded_to_shutterstock', 'uploaded_to_adobe_stock', 'used_in_private_project', 'is_ai_generated'], 'boolean'],
+            [['uploaded_to_shutterstock', 'uploaded_to_adobe_stock', 'used_in_private_project', 'is_ai_generated'], 'default', 'value' => false],
+            [['title', 'file_name', 'mime_type', 'ai_generator_url'], 'string', 'max' => 255],
             [['search_code'], 'string', 'max' => 12],
             [['search_code'], 'unique'],
             [['search_code'], 'match', 'pattern' => '/^[A-Z0-9]{12}$/'],
@@ -67,6 +75,7 @@ class Photo extends ActiveRecord {
             [['status'], 'in', 'range' => [self::STATUS_QUEUE, self::STATUS_ACTIVE, self::STATUS_DELETED]],
             [['is_public'], 'default', 'value' => 0],
             [['is_public'], 'integer', 'min' => 0, 'max' => 1],
+            [['ai_generator_url'], 'url'],
             [['created_by'], 'exist', 'skipOnError' => true, 'targetClass' => User::class, 'targetAttribute' => ['created_by' => 'id']],
         ];
     }
@@ -87,6 +96,12 @@ class Photo extends ActiveRecord {
             'width' => 'Szerokość',
             'height' => 'Wysokość',
             'exif_data' => 'Dane EXIF',
+            'uploaded_to_shutterstock' => 'Przesłane do Shutterstock',
+            'uploaded_to_adobe_stock' => 'Przesłane do Adobe Stock',
+            'used_in_private_project' => 'Użyte w prywatnym projekcie',
+            'is_ai_generated' => 'Generowane przez AI',
+            'ai_prompt' => 'Prompt AI',
+            'ai_generator_url' => 'Link do generatora AI',
             'created_at' => 'Data utworzenia',
             'updated_at' => 'Data aktualizacji',
             'created_by' => 'Utworzone przez',
@@ -159,6 +174,66 @@ class Photo extends ActiveRecord {
         ];
 
         return $statusMap[$this->status] ?? 'Nieznany';
+    }
+
+    // Stock platform methods
+    public function isUploadedToShutterstock() {
+        return (bool) $this->uploaded_to_shutterstock;
+    }
+
+    public function isUploadedToAdobeStock() {
+        return (bool) $this->uploaded_to_adobe_stock;
+    }
+
+    public function isUsedInPrivateProject() {
+        return (bool) $this->used_in_private_project;
+    }
+
+    public function isUploadedToAnyStock() {
+        return $this->isUploadedToShutterstock() || $this->isUploadedToAdobeStock();
+    }
+
+    public function getStockPlatforms() {
+        $platforms = [];
+        if ($this->isUploadedToShutterstock()) {
+            $platforms[] = 'Shutterstock';
+        }
+        if ($this->isUploadedToAdobeStock()) {
+            $platforms[] = 'Adobe Stock';
+        }
+        return $platforms;
+    }
+
+    public function getStockPlatformsString() {
+        $platforms = $this->getStockPlatforms();
+        if (empty($platforms)) {
+            return 'Brak';
+        }
+        return implode(', ', $platforms);
+    }
+
+    // AI methods
+    public function isAiGenerated() {
+        return (bool) $this->is_ai_generated;
+    }
+
+    public function hasAiPrompt() {
+        return !empty($this->ai_prompt);
+    }
+
+    public function hasAiGeneratorUrl() {
+        return !empty($this->ai_generator_url);
+    }
+
+    public function getAiInfo() {
+        if (!$this->isAiGenerated()) {
+            return null;
+        }
+
+        return [
+            'prompt' => $this->ai_prompt,
+            'generator_url' => $this->ai_generator_url,
+        ];
     }
 
     /**

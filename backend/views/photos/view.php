@@ -40,6 +40,49 @@ $statusOptions = [
         </div>
     </div>
 
+    <!-- Stock and AI Status Display -->
+    <?php if ($model->isUploadedToAnyStock() || $model->isUsedInPrivateProject() || $model->isAiGenerated()): ?>
+    <div class="row mb-4">
+        <?php if ($model->isUploadedToAnyStock() || $model->isUsedInPrivateProject()): ?>
+        <div class="col-md-6">
+            <div class="alert alert-success">
+                <h6><i class="fas fa-store me-2"></i>Status stockowy</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <?php if ($model->isUploadedToShutterstock()): ?>
+                        <span class="badge bg-success"><i class="fas fa-camera me-1"></i>Shutterstock</span>
+                    <?php endif; ?>
+                    <?php if ($model->isUploadedToAdobeStock()): ?>
+                        <span class="badge bg-primary"><i class="fab fa-adobe me-1"></i>Adobe Stock</span>
+                    <?php endif; ?>
+                    <?php if ($model->isUsedInPrivateProject()): ?>
+                        <span class="badge bg-info"><i class="fas fa-briefcase me-1"></i>Prywatny projekt</span>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+        
+        <?php if ($model->isAiGenerated()): ?>
+        <div class="col-md-6">
+            <div class="alert alert-warning border-warning">
+                <h6><i class="fas fa-robot me-2"></i>Zdjęcie AI</h6>
+                <p class="mb-2"><strong>Wygenerowane przez sztuczną inteligencję</strong></p>
+                <?php if ($model->hasAiPrompt()): ?>
+                    <small class="d-block"><strong>Prompt:</strong> <?= Html::encode(mb_substr($model->ai_prompt, 0, 100)) ?><?= mb_strlen($model->ai_prompt) > 100 ? '...' : '' ?></small>
+                <?php endif; ?>
+                <?php if ($model->hasAiGeneratorUrl()): ?>
+                    <small class="d-block mt-1">
+                        <a href="<?= Html::encode($model->ai_generator_url) ?>" target="_blank" class="alert-link">
+                            <i class="fas fa-external-link-alt me-1"></i>Zobacz w generatorze
+                        </a>
+                    </small>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
     <!-- Action buttons -->
     <div class="mb-4">
         <div class="btn-group me-2">
@@ -164,6 +207,38 @@ $statusOptions = [
                                 },
                             ],
                             [
+                                'label' => 'Platformy stockowe',
+                                'format' => 'raw',
+                                'value' => function($model) {
+                                    $platforms = [];
+                                    if ($model->isUploadedToShutterstock()) {
+                                        $platforms[] = '<span class="badge bg-success me-1"><i class="fas fa-camera me-1"></i>Shutterstock</span>';
+                                    }
+                                    if ($model->isUploadedToAdobeStock()) {
+                                        $platforms[] = '<span class="badge bg-primary me-1"><i class="fab fa-adobe me-1"></i>Adobe Stock</span>';
+                                    }
+                                    if ($model->isUsedInPrivateProject()) {
+                                        $platforms[] = '<span class="badge bg-info me-1"><i class="fas fa-briefcase me-1"></i>Prywatny projekt</span>';
+                                    }
+                                    
+                                    if (empty($platforms)) {
+                                        return '<span class="text-muted">Nieużywane</span>';
+                                    }
+                                    
+                                    return implode(' ', $platforms);
+                                },
+                            ],
+                            [
+                                'label' => 'Generowane przez AI',
+                                'format' => 'raw',
+                                'value' => function($model) {
+                                    if ($model->isAiGenerated()) {
+                                        return '<span class="badge bg-warning text-dark"><i class="fas fa-robot me-1"></i>Tak</span>';
+                                    }
+                                    return '<span class="badge bg-secondary">Nie</span>';
+                                },
+                            ],
+                            [
                                 'attribute' => 'created_at',
                                 'label' => 'Data utworzenia',
                                 'value' => date('Y-m-d H:i:s', $model->created_at),
@@ -192,6 +267,42 @@ $statusOptions = [
                     ]) ?>
                 </div>
             </div>
+
+            <!-- AI Information Card -->
+            <?php if ($model->isAiGenerated()): ?>
+            <div class="card mt-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-robot me-2"></i>Informacje AI
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <?php if ($model->hasAiPrompt()): ?>
+                    <div class="mb-3">
+                        <h6><i class="fas fa-terminal me-2"></i>Prompt AI:</h6>
+                        <div class="bg-light p-3 rounded">
+                            <code><?= Html::encode($model->ai_prompt) ?></code>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($model->hasAiGeneratorUrl()): ?>
+                    <div class="mb-3">
+                        <h6><i class="fas fa-link me-2"></i>Generator:</h6>
+                        <a href="<?= Html::encode($model->ai_generator_url) ?>" target="_blank" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-external-link-alt me-1"></i>Otwórz w generatorze
+                        </a>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <small><strong>Uwaga:</strong> To zdjęcie zostało wygenerowane przez sztuczną inteligencję. 
+                        Należy przestrzegać odpowiednich regulacji dotyczących AI przy jego wykorzystaniu.</small>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
         
         <!-- Sidebar -->
@@ -514,8 +625,27 @@ function showToast(message, type = 'info') {
     background-color: #dc3545 !important;
 }
 
+/* Wyróżnienie sekcji AI */
+.border-warning {
+    border-color: #ffc107 !important;
+    border-width: 2px !important;
+}
+
+.card .bg-warning {
+    background-color: #ffc107 !important;
+}
+
 /* Toast notifications */
 .position-fixed {
     position: fixed !important;
+}
+
+/* Stock platform badges */
+.alert-success .badge {
+    font-size: 0.9em;
+}
+
+.alert-warning .badge {
+    font-size: 0.9em;
 }
 </style>

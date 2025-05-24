@@ -137,9 +137,26 @@ $statusOptions = [
                 'attribute' => 'title',
                 'format' => 'raw',
                 'value' => function ($model) {
-                    return Html::a(Html::encode($model->title), ['view', 'id' => $model->id], [
+                    $title = Html::a(Html::encode($model->title), ['view', 'id' => $model->id], [
                         'class' => 'fw-bold text-decoration-none'
                     ]);
+                    
+                    // Dodaj ikony dla AI i stocków
+                    $badges = [];
+                    if ($model->isAiGenerated()) {
+                        $badges[] = '<span class="badge bg-warning text-dark ms-1" title="Wygenerowane przez AI"><i class="fas fa-robot"></i></span>';
+                    }
+                    if ($model->isUploadedToAnyStock()) {
+                        $platforms = [];
+                        if ($model->isUploadedToShutterstock()) $platforms[] = 'S';
+                        if ($model->isUploadedToAdobeStock()) $platforms[] = 'A';
+                        $badges[] = '<span class="badge bg-success ms-1" title="Przesłane na platformy stockowe: ' . implode(', ', $platforms) . '"><i class="fas fa-store"></i></span>';
+                    }
+                    if ($model->isUsedInPrivateProject()) {
+                        $badges[] = '<span class="badge bg-info ms-1" title="Użyte w prywatnym projekcie"><i class="fas fa-briefcase"></i></span>';
+                    }
+                    
+                    return $title . implode('', $badges);
                 },
             ],
             [
@@ -197,6 +214,48 @@ $statusOptions = [
                 'headerOptions' => ['style' => 'width: 120px;'],
             ],
             [
+                'label' => 'Stock/AI',
+                'format' => 'raw',
+                'value' => function ($model) {
+                    $badges = [];
+                    
+                    if ($model->isAiGenerated()) {
+                        $badges[] = '<span class="badge bg-warning text-dark me-1" title="Wygenerowane przez AI"><i class="fas fa-robot me-1"></i>AI</span>';
+                    }
+                    
+                    if ($model->isUploadedToShutterstock()) {
+                        $badges[] = '<span class="badge bg-success me-1" title="Shutterstock"><i class="fas fa-camera me-1"></i>S</span>';
+                    }
+                    
+                    if ($model->isUploadedToAdobeStock()) {
+                        $badges[] = '<span class="badge bg-primary me-1" title="Adobe Stock"><i class="fab fa-adobe me-1"></i>A</span>';
+                    }
+                    
+                    if ($model->isUsedInPrivateProject()) {
+                        $badges[] = '<span class="badge bg-info me-1" title="Prywatny projekt"><i class="fas fa-briefcase me-1"></i>P</span>';
+                    }
+                    
+                    if (empty($badges)) {
+                        return '<span class="text-muted">-</span>';
+                    }
+                    
+                    return '<div class="d-flex flex-wrap">' . implode('', $badges) . '</div>';
+                },
+                'filter' => Html::activeDropDownList($searchModel, 'stock_filter', [
+                    'ai' => 'AI',
+                    'shutterstock' => 'Shutterstock',
+                    'adobe' => 'Adobe Stock',
+                    'private' => 'Prywatny projekt',
+                    'stock_any' => 'Dowolny stock',
+                    'unused' => 'Nieużywane'
+                ], [
+                    'class' => 'form-select',
+                    'prompt' => 'Wszystkie'
+                ]),
+                'headerOptions' => ['style' => 'width: 120px;'],
+                'contentOptions' => ['class' => 'text-center'],
+            ],
+            [
                 'label' => 'Tagi',
                 'format' => 'raw',
                 'value' => function ($model) {
@@ -219,7 +278,7 @@ $statusOptions = [
                 },
                 'filter' => false,
             ],
-                        [
+            [
                 'label' => 'Copyright',
                 'format' => 'raw',
                 'value' => function ($model) {
@@ -298,6 +357,130 @@ $statusOptions = [
     ?>
 
 <?php Pjax::end(); ?>
+
+<!-- Batch Update Modal -->
+<div class="modal fade" id="batchUpdateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Aktualizuj zaznaczone zdjęcia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <?php
+            $form = \yii\bootstrap5\ActiveForm::begin([
+                        'id' => 'batch-update-form',
+                        'action' => ['batch-update'],
+                    ]);
+            ?>
+            <div class="modal-body">
+                <input type="hidden" name="ids" id="batch-update-photo-ids">
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Wybrane pola zostaną zaktualizowane dla wszystkich zaznaczonych zdjęć. 
+                    Puste pola pozostaną bez zmian.
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <?= Html::dropDownList('status', '', $statusOptions, [
+                                'class' => 'form-select',
+                                'prompt' => 'Bez zmian'
+                            ]) ?>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Widoczność</label>
+                            <?= Html::dropDownList('is_public', '', [
+                                0 => 'Prywatne',
+                                1 => 'Publiczne'
+                            ], [
+                                'class' => 'form-select',
+                                'prompt' => 'Bez zmian'
+                            ]) ?>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock Platforms -->
+                <h6 class="mb-3"><i class="fas fa-store me-2"></i>Platformy stockowe</h6>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="uploaded_to_shutterstock" value="1" id="batch-shutterstock">
+                            <label class="form-check-label" for="batch-shutterstock">
+                                <i class="fas fa-camera me-1"></i>Shutterstock
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="uploaded_to_adobe_stock" value="1" id="batch-adobe">
+                            <label class="form-check-label" for="batch-adobe">
+                                <i class="fab fa-adobe me-1"></i>Adobe Stock
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="used_in_private_project" value="1" id="batch-private">
+                            <label class="form-check-label" for="batch-private">
+                                <i class="fas fa-briefcase me-1"></i>Prywatny projekt
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Section -->
+                <h6 class="mb-3"><i class="fas fa-robot me-2"></i>AI</h6>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_ai_generated" value="1" id="batch-ai">
+                        <label class="form-check-label" for="batch-ai">
+                            <i class="fas fa-magic me-1"></i>Oznacz jako wygenerowane przez AI
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Kategorie</label>
+                    <?= Html::dropDownList('categories', [], ArrayHelper::map($categories, 'id', 'name'), [
+                        'class' => 'form-select',
+                        'multiple' => true,
+                        'id' => 'batch-categories'
+                    ]) ?>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Tagi</label>
+                    <?= Html::dropDownList('tags', [], ArrayHelper::map($tags, 'id', 'name'), [
+                        'class' => 'form-select',
+                        'multiple' => true,
+                        'id' => 'batch-tags'
+                    ]) ?>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="replace" value="1" id="batch-replace">
+                    <label class="form-check-label" for="batch-replace">
+                        Zastąp istniejące tagi i kategorie
+                    </label>
+                    <div class="form-text">Jeśli nie zaznaczone, nowe tagi i kategorie zostaną dodane do istniejących</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                <button type="button" class="btn btn-primary" id="batch-update-submit">
+                    <i class="fas fa-save me-1"></i>Aktualizuj zdjęcia
+                </button>
+            </div>
+            <?php \yii\bootstrap5\ActiveForm::end(); ?>
+        </div>
+    </div>
+</div>
 </div>
 
 <script>
@@ -418,6 +601,23 @@ $statusOptions = [
         checkboxes.forEach(cb => {
             cb.addEventListener('change', updateBatchButtons);
         });
+
+        // Batch update form submission
+        const batchUpdateSubmit = document.getElementById('batch-update-submit');
+        if (batchUpdateSubmit) {
+            batchUpdateSubmit.addEventListener('click', function () {
+                const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
+                const ids = Array.from(checkedBoxes).map(cb => cb.value);
+                document.getElementById('batch-update-photo-ids').value = ids.join(',');
+                document.getElementById('batch-update-form').submit();
+            });
+        }
+
+        // Initialize Select2 for batch categories and tags
+        $('#batch-categories, #batch-tags').select2({
+            placeholder: 'Wybierz...',
+            allowClear: true
+        });
     });
 </script>
 
@@ -452,5 +652,45 @@ $statusOptions = [
 
     .img-thumbnail:hover {
         transform: scale(1.1);
+    }
+
+    /* Stock/AI badges styling */
+    .badge.bg-warning.text-dark {
+        background-color: #fff3cd !important;
+        border: 1px solid #ffc107;
+        color: #664d03 !important;
+    }
+
+    .badge.bg-success {
+        background-color: #d1e7dd !important;
+        border: 1px solid #198754;
+        color: #0f5132 !important;
+    }
+
+    .badge.bg-primary {
+        background-color: #cfe2ff !important;
+        border: 1px solid #0d6efd;
+        color: #084298 !important;
+    }
+
+    .badge.bg-info {
+        background-color: #cff4fc !important;
+        border: 1px solid #0dcaf0;
+        color: #055160 !important;
+    }
+
+    /* Batch modal improvements */
+    .modal-body h6 {
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .form-check {
+        margin-bottom: 0.75rem;
+    }
+
+    .select2-container {
+        width: 100% !important;
     }
 </style>

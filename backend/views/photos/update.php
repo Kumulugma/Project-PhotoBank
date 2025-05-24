@@ -116,7 +116,7 @@ Html::activeCheckbox($model, 'is_public', [
 
                     <div class="mb-3">
                         <label class="form-label">
-                            <i class="fas folder me-1"></i>Kategorie
+                            <i class="fas fa-folder me-1"></i>Kategorie
                         </label>
                         <?=
                         Html::dropDownList('categories', $selectedCategories, ArrayHelper::map($allCategories, 'id', 'name'), [
@@ -142,6 +142,78 @@ Html::activeCheckbox($model, 'is_public', [
                             <option value="<?= Html::encode($series) ?>">
 <?php endforeach; ?>
                     </datalist>
+
+                    <!-- Stock Platforms Section -->
+                    <hr class="my-4">
+                    <h6 class="mb-3"><i class="fas fa-store me-2"></i>Platformy stockowe</h6>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <?= Html::activeCheckbox($model, 'uploaded_to_shutterstock', [
+                                    'class' => 'form-check-input',
+                                    'id' => 'uploaded-to-shutterstock'
+                                ]) ?>
+                                <label class="form-check-label" for="uploaded-to-shutterstock">
+                                    <i class="fas fa-camera me-1"></i>Shutterstock
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <?= Html::activeCheckbox($model, 'uploaded_to_adobe_stock', [
+                                    'class' => 'form-check-input',
+                                    'id' => 'uploaded-to-adobe-stock'
+                                ]) ?>
+                                <label class="form-check-label" for="uploaded-to-adobe-stock">
+                                    <i class="fab fa-adobe me-1"></i>Adobe Stock
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <?= Html::activeCheckbox($model, 'used_in_private_project', [
+                                    'class' => 'form-check-input',
+                                    'id' => 'used-in-private-project'
+                                ]) ?>
+                                <label class="form-check-label" for="used-in-private-project">
+                                    <i class="fas fa-briefcase me-1"></i>Prywatny projekt
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-text">Zaznacz platformy, na które zostało przesłane zdjęcie lub w których zostało użyte</div>
+
+                    <!-- AI Section -->
+                    <hr class="my-4">
+                    <h6 class="mb-3"><i class="fas fa-robot me-2"></i>Sztuczna inteligencja</h6>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <?= Html::activeCheckbox($model, 'is_ai_generated', [
+                                'class' => 'form-check-input',
+                                'id' => 'is-ai-generated'
+                            ]) ?>
+                            <label class="form-check-label" for="is-ai-generated">
+                                <i class="fas fa-magic me-1"></i>Zdjęcie wygenerowane przez AI
+                            </label>
+                        </div>
+                        <div class="form-text">Zaznacz jeśli zdjęcie zostało utworzone za pomocą sztucznej inteligencji</div>
+                    </div>
+
+                    <div id="ai-fields" style="display: <?= $model->is_ai_generated ? 'block' : 'none' ?>;">
+                        <?= $form->field($model, 'ai_prompt')->textarea([
+                            'rows' => 3,
+                            'class' => 'form-control',
+                            'placeholder' => 'Wprowadź prompt użyty do wygenerowania obrazu...'
+                        ])->label('<i class="fas fa-terminal me-1"></i>Prompt AI') ?>
+
+                        <?= $form->field($model, 'ai_generator_url')->textInput([
+                            'maxlength' => true,
+                            'class' => 'form-control',
+                            'placeholder' => 'https://...'
+                        ])->label('<i class="fas fa-link me-1"></i>Link do generatora') ?>
+                    </div>
 
                     <div class="d-flex gap-2">
                     <?=
@@ -241,6 +313,53 @@ if ($previewUrl) {
                 </div>
             </div>
 
+            <!-- Stock and AI Status -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tags me-2"></i>Status wykorzystania
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <?php if ($model->isUploadedToAnyStock() || $model->isUsedInPrivateProject()): ?>
+                        <h6 class="mb-2">Platformy stockowe:</h6>
+                        <div class="mb-3">
+                            <?php if ($model->isUploadedToShutterstock()): ?>
+                                <span class="badge bg-success me-1"><i class="fas fa-camera me-1"></i>Shutterstock</span>
+                            <?php endif; ?>
+                            <?php if ($model->isUploadedToAdobeStock()): ?>
+                                <span class="badge bg-primary me-1"><i class="fab fa-adobe me-1"></i>Adobe Stock</span>
+                            <?php endif; ?>
+                            <?php if ($model->isUsedInPrivateProject()): ?>
+                                <span class="badge bg-info me-1"><i class="fas fa-briefcase me-1"></i>Prywatny projekt</span>
+                            <?php endif; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="text-muted mb-3">Zdjęcie nie zostało jeszcze wykorzystane</p>
+                    <?php endif; ?>
+
+                    <?php if ($model->isAiGenerated()): ?>
+                        <h6 class="mb-2">Informacje AI:</h6>
+                        <div class="alert alert-info">
+                            <i class="fas fa-robot me-2"></i>
+                            <strong>Zdjęcie wygenerowane przez AI</strong>
+                            <?php if ($model->hasAiPrompt()): ?>
+                                <hr>
+                                <small><strong>Prompt:</strong> <?= Html::encode($model->ai_prompt) ?></small>
+                            <?php endif; ?>
+                            <?php if ($model->hasAiGeneratorUrl()): ?>
+                                <hr>
+                                <small><strong>Generator:</strong> 
+                                    <a href="<?= Html::encode($model->ai_generator_url) ?>" target="_blank" class="alert-link">
+                                        Zobacz w generatorze <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                </small>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -324,6 +443,24 @@ $aiForm = ActiveForm::begin([
             allowClear: true
         });
 
+        // Handle AI checkbox toggle
+        const aiCheckbox = document.getElementById('is-ai-generated');
+        const aiFields = document.getElementById('ai-fields');
+        
+        if (aiCheckbox && aiFields) {
+            aiCheckbox.addEventListener('change', function() {
+                aiFields.style.display = this.checked ? 'block' : 'none';
+                
+                // Clear AI fields when unchecked
+                if (!this.checked) {
+                    const promptField = document.querySelector('textarea[name="Photo[ai_prompt]"]');
+                    const urlField = document.querySelector('input[name="Photo[ai_generator_url]"]');
+                    if (promptField) promptField.value = '';
+                    if (urlField) urlField.value = '';
+                }
+            });
+        }
+
         // Handle AI analysis form submission
         document.querySelector('.ai-analyze-form').addEventListener('submit', function (e) {
             const submitBtn = this.querySelector('button[type="submit"]');
@@ -344,6 +481,14 @@ $aiForm = ActiveForm::begin([
         const textarea = document.querySelector('textarea[name="Photo[description]"]');
         if (textarea) {
             textarea.addEventListener('input', function () {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+        }
+
+        const aiPromptTextarea = document.querySelector('textarea[name="Photo[ai_prompt]"]');
+        if (aiPromptTextarea) {
+            aiPromptTextarea.addEventListener('input', function () {
                 this.style.height = 'auto';
                 this.style.height = this.scrollHeight + 'px';
             });
@@ -388,5 +533,25 @@ $aiForm = ActiveForm::begin([
     .img-fluid:hover {
         transform: scale(1.02);
         transition: transform 0.2s ease;
+    }
+
+    .form-check {
+        margin-bottom: 0.75rem;
+    }
+
+    .alert {
+        border-radius: 0.5rem;
+    }
+
+    hr {
+        margin: 1rem 0;
+        opacity: 0.3;
+    }
+
+    #ai-fields {
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
     }
 </style>

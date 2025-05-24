@@ -752,6 +752,12 @@ class PhotosController extends Controller {
             $categories = Yii::$app->request->post('categories', []);
             $tags = Yii::$app->request->post('tags', []);
             $replace = (bool) Yii::$app->request->post('replace', false);
+            
+            // Nowe pola stockowe i AI
+            $uploadedToShutterstock = Yii::$app->request->post('uploaded_to_shutterstock', null);
+            $uploadedToAdobeStock = Yii::$app->request->post('uploaded_to_adobe_stock', null);
+            $usedInPrivateProject = Yii::$app->request->post('used_in_private_project', null);
+            $isAiGenerated = Yii::$app->request->post('is_ai_generated', null);
 
             if (empty($ids)) {
                 Yii::$app->session->setFlash('error', 'Nie wybrano żadnych zdjęć do aktualizacji.');
@@ -785,6 +791,40 @@ class PhotosController extends Controller {
                         $model->is_public = (int) $isPublic;
                         if ($oldPublic != $model->is_public) {
                             $changes[] = "publiczne: " . ($oldPublic ? 'tak' : 'nie') . " → " . ($model->is_public ? 'tak' : 'nie');
+                        }
+                    }
+
+                    // Update stock platform flags
+                    if ($uploadedToShutterstock !== null) {
+                        $oldValue = $model->uploaded_to_shutterstock;
+                        $model->uploaded_to_shutterstock = (bool) $uploadedToShutterstock;
+                        if ($oldValue != $model->uploaded_to_shutterstock) {
+                            $changes[] = "Shutterstock: " . ($oldValue ? 'tak' : 'nie') . " → " . ($model->uploaded_to_shutterstock ? 'tak' : 'nie');
+                        }
+                    }
+
+                    if ($uploadedToAdobeStock !== null) {
+                        $oldValue = $model->uploaded_to_adobe_stock;
+                        $model->uploaded_to_adobe_stock = (bool) $uploadedToAdobeStock;
+                        if ($oldValue != $model->uploaded_to_adobe_stock) {
+                            $changes[] = "Adobe Stock: " . ($oldValue ? 'tak' : 'nie') . " → " . ($model->uploaded_to_adobe_stock ? 'tak' : 'nie');
+                        }
+                    }
+
+                    if ($usedInPrivateProject !== null) {
+                        $oldValue = $model->used_in_private_project;
+                        $model->used_in_private_project = (bool) $usedInPrivateProject;
+                        if ($oldValue != $model->used_in_private_project) {
+                            $changes[] = "prywatny projekt: " . ($oldValue ? 'tak' : 'nie') . " → " . ($model->used_in_private_project ? 'tak' : 'nie');
+                        }
+                    }
+
+                    // Update AI flag
+                    if ($isAiGenerated !== null) {
+                        $oldValue = $model->is_ai_generated;
+                        $model->is_ai_generated = (bool) $isAiGenerated;
+                        if ($oldValue != $model->is_ai_generated) {
+                            $changes[] = "AI: " . ($oldValue ? 'tak' : 'nie') . " → " . ($model->is_ai_generated ? 'tak' : 'nie');
                         }
                     }
 
