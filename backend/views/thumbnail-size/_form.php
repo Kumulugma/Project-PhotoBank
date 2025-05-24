@@ -106,7 +106,7 @@ use yii\bootstrap5\ActiveForm;
                     <p><strong>Szerokość i wysokość:</strong> Wymiary miniatur w pikselach</p>
                     
                     <h6 class="fw-bold">Tryby skalowania:</h6>
-                    <div class="row">
+                    <div class="row size-recommendation-cards">
                         <div class="col-md-6">
                             <div class="card border-warning">
                                 <div class="card-body text-center p-3">
@@ -148,7 +148,7 @@ use yii\bootstrap5\ActiveForm;
                     </h5>
                 </div>
                 <div class="card-body text-center">
-                    <div id="dimension-preview" class="border rounded p-3" style="min-height: 200px; display: flex; align-items: center; justify-content: center; position: relative; background: #f8f9fa;">
+                    <div id="dimension-preview" class="dimension-preview-container border rounded p-3">
                         <div id="preview-box" style="border: 2px dashed #007bff; background: rgba(0, 123, 255, 0.1); position: relative; display: flex; align-items: center; justify-content: center; min-width: 50px; min-height: 50px;">
                             <span id="preview-label" class="text-primary fw-bold">Wprowadź wymiary</span>
                         </div>
@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add aspect ratio lock button
     const ratioButton = document.createElement('button');
     ratioButton.type = 'button';
-    ratioButton.className = 'btn btn-sm btn-outline-info';
+    ratioButton.className = 'btn btn-sm btn-outline-info aspect-ratio-lock-btn';
     ratioButton.innerHTML = '<i class="fas fa-lock-open"></i>';
     ratioButton.title = 'Zablokuj proporcje';
     
@@ -261,23 +261,3 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-
-<style>
-#dimension-preview {
-    background-image: 
-        linear-gradient(45deg, #f8f9fa 25%, transparent 25%), 
-        linear-gradient(-45deg, #f8f9fa 25%, transparent 25%), 
-        linear-gradient(45deg, transparent 75%, #f8f9fa 75%), 
-        linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
-    background-size: 20px 20px;
-    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-}
-
-#preview-box {
-    transition: all 0.3s ease;
-}
-
-.btn-sm {
-    margin-top: 0.25rem;
-}
-</style>

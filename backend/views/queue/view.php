@@ -62,11 +62,11 @@ $jobTypeOptions = [
 
     <div class="row">
         <div class="col-md-6">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">Job Details</h3>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Job Details</h5>
                 </div>
-                <div class="panel-body">
+                <div class="card-body">
                     <?= DetailView::widget([
                         'model' => $model,
                         'attributes' => [
@@ -84,16 +84,16 @@ $jobTypeOptions = [
                                     $class = '';
                                     switch ($model->status) {
                                         case \common\models\QueuedJob::STATUS_PENDING:
-                                            $class = 'label label-default';
+                                            $class = 'badge bg-warning text-dark';
                                             break;
                                         case \common\models\QueuedJob::STATUS_PROCESSING:
-                                            $class = 'label label-primary';
+                                            $class = 'badge bg-primary';
                                             break;
                                         case \common\models\QueuedJob::STATUS_COMPLETED:
-                                            $class = 'label label-success';
+                                            $class = 'badge bg-success';
                                             break;
                                         case \common\models\QueuedJob::STATUS_FAILED:
-                                            $class = 'label label-danger';
+                                            $class = 'badge bg-danger';
                                             break;
                                     }
                                     return '<span class="' . $class . '">' . $value . '</span>';
@@ -123,18 +123,18 @@ $jobTypeOptions = [
         </div>
         
         <div class="col-md-6">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">Job Parameters</h3>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Job Parameters</h5>
                 </div>
-                <div class="panel-body">
+                <div class="card-body">
                     <?php
                     $params = json_decode($model->data, true);
                     if (empty($params)): ?>
                         <p class="text-muted">No parameters provided</p>
                     <?php else: ?>
                         <div class="table-responsive">
-                            <table class="table table-striped">
+                            <table class="table table-striped job-params-table">
                                 <thead>
                                     <tr>
                                         <th>Parameter</th>
@@ -162,12 +162,12 @@ $jobTypeOptions = [
             </div>
             
             <?php if ($model->status === \common\models\QueuedJob::STATUS_FAILED && !empty($model->error_message)): ?>
-                <div class="panel panel-danger">
-                    <div class="panel-heading">
-                        <h3 class="panel-title">Error Message</h3>
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="card-title mb-0">Error Message</h5>
                     </div>
-                    <div class="panel-body">
-                        <pre><?= Html::encode($model->error_message) ?></pre>
+                    <div class="card-body">
+                        <pre class="job-error-message"><?= Html::encode($model->error_message) ?></pre>
                     </div>
                 </div>
             <?php endif; ?>
@@ -179,11 +179,11 @@ $jobTypeOptions = [
     ?>
     <div class="row mt-4">
         <div class="col-md-12">
-            <div class="panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">Wyniki importu zdjęć</h3>
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Wyniki importu zdjęć</h5>
                 </div>
-                <div class="panel-body">
+                <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <div class="card">

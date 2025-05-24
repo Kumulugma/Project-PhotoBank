@@ -151,3 +151,30 @@
         padding: 1rem;
     }
 }
+
+.error-page .error-icon {
+    font-size: 4rem;
+}
+
+.error-page .container {
+    padding: 2rem 1rem;
+}
+
+.error-page .card {
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.error-page .card-body {
+    padding: 3rem 2rem;
+}
+
+@media (max-width: 576px) {
+    .error-page .card-body {
+        padding: 2rem 1rem;
+    }
+    
+    .error-page .error-icon {
+        font-size: 3rem;
+    }
+}

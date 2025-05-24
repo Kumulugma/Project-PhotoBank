@@ -154,7 +154,7 @@ $this->params['breadcrumbs'][] = $this->title;
                                        class="d-block text-decoration-none">
                                         <?php if (isset($thumbnailUrl)): ?>
                                             <img src="<?= $thumbnailUrl ?>" 
-                                                 class="img-fluid rounded" 
+                                                 class="img-fluid rounded tag-recent-photo" 
                                                  style="aspect-ratio: 1; object-fit: cover; width: 100%;"
                                                  title="<?= Html::encode($photo->title) ?>">
                                         <?php else: ?>
@@ -202,7 +202,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         <div class="d-flex flex-wrap gap-1">
                             <?php foreach ($popularTags as $tag): ?>
                                 <a href="<?= yii\helpers\Url::to(['view', 'id' => $tag->id]) ?>" 
-                                   class="badge bg-secondary text-decoration-none">
+                                   class="badge bg-secondary text-decoration-none tag-link">
                                     #<?= Html::encode($tag->name) ?> (<?= $tag->frequency ?>)
                                 </a>
                             <?php endforeach; ?>
@@ -215,33 +215,3 @@ $this->params['breadcrumbs'][] = $this->title;
         </div>
     </div>
 </div>
-
-<style>
-.detail-view th {
-    width: 200px;
-    font-weight: 600;
-    background-color: #f8f9fa;
-}
-
-.detail-view td {
-    word-break: break-word;
-}
-
-.card {
-    border: 1px solid #dee2e6;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.img-fluid:hover {
-    transform: scale(1.05);
-    transition: transform 0.2s ease;
-}
-
-.badge {
-    transition: transform 0.1s ease;
-}
-
-.badge:hover {
-    transform: scale(1.05);
-}
-</style>

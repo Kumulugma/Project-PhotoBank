@@ -122,3 +122,43 @@
 .frequency-medium { background: var(--warning-color); }
 .frequency-high { background: var(--success-color); }
 .frequency-very-high { background: var(--danger-color); }
+
+
+.tag-view .detail-view th {
+    width: 200px;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.tag-view .detail-view td {
+    word-break: break-word;
+}
+
+.tag-view .card {
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.tag-recent-photo {
+    transition: transform 0.2s ease;
+}
+
+.tag-recent-photo:hover {
+    transform: scale(1.05);
+}
+
+.tag-link {
+    transition: transform 0.1s ease;
+}
+
+.tag-link:hover {
+    transform: scale(1.05);
+}
+
+.badge {
+    transition: transform 0.1s ease;
+}
+
+.badge:hover {
+    transform: scale(1.05);
+}

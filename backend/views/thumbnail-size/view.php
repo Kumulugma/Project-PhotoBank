@@ -284,20 +284,3 @@ $this->params['breadcrumbs'][] = $this->title;
         </div>
     </div>
 </div>
-
-<style>
-.detail-view th {
-    width: 200px;
-    font-weight: 600;
-    background-color: #f8f9fa;
-}
-
-.detail-view td {
-    word-break: break-word;
-}
-
-.card {
-    border: 1px solid #dee2e6;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-</style>

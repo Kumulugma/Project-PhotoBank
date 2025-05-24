@@ -4,6 +4,7 @@ use yii\helpers\Html;
 use yii\bootstrap5\ActiveForm;
 use yii\helpers\Url;
 \backend\assets\AppAsset::registerControllerCss($this, 'settings');
+\backend\assets\AppAsset::registerControllerCss($this, 'watermark');
 \backend\assets\AppAsset::registerComponentCss($this, 'forms');
 \backend\assets\AppAsset::registerComponentCss($this, 'alerts');
 /* @var $this yii\web\View */
@@ -94,7 +95,7 @@ $positionOptions = [
                         <div class="d-flex align-items-center gap-3">
                             <input type="range" class="form-range flex-grow-1" name="opacity" 
                                    min="0" max="1" step="0.1" value="<?= $settings['opacity'] ?>" id="watermark-opacity">
-                            <span class="badge bg-secondary" id="opacity-value"><?= $settings['opacity'] * 100 ?>%</span>
+                            <span class="badge bg-secondary watermark-opacity-display" id="opacity-value"><?= $settings['opacity'] * 100 ?>%</span>
                         </div>
                         <div class="form-text">Poziom przezroczystości znaku wodnego (0% = niewidoczny, 100% = nieprzezroczysty)</div>
                     </div>
@@ -121,16 +122,16 @@ $positionOptions = [
                     </h5>
                 </div>
                 <div class="card-body text-center">
-                    <div id="watermark-preview-container">
+                    <div id="watermark-preview-container" class="watermark-preview-container">
                         <div id="watermark-preview-placeholder" class="p-5">
                             <i class="fas fa-image fa-4x text-muted mb-3"></i>
                             <p class="text-muted">Kliknij "Podgląd" aby zobaczyć efekt</p>
                         </div>
-                        <div id="watermark-preview-loading" style="display: none;" class="p-5">
+                        <div id="watermark-preview-loading" class="watermark-preview-loading p-5" style="display: none;">
                             <i class="fas fa-spinner fa-spin fa-3x text-primary mb-3"></i>
                             <p class="text-primary">Generowanie podglądu...</p>
                         </div>
-                        <div id="watermark-preview-result" style="display: none;">
+                        <div id="watermark-preview-result" class="watermark-preview-result" style="display: none;">
                             <img src="" alt="Podgląd znaku wodnego" class="img-fluid rounded shadow" id="watermark-preview-image">
                             <div class="mt-2">
                                 <small class="text-muted">Podgląd na przykładowym obrazie</small>
@@ -140,7 +141,7 @@ $positionOptions = [
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card watermark-info-card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
                         <i class="fas fa-lightbulb me-2"></i>O znakach wodnych
@@ -155,22 +156,32 @@ $positionOptions = [
                     </ul>
                     
                     <h6 class="fw-bold mt-3">Rekomendacje:</h6>
-                    <div class="row">
+                    <div class="row watermark-recommendation-cards">
                         <div class="col-md-6">
-                            <h6 class="text-primary">Tekstowe:</h6>
-                            <ul class="list-unstyled small">
-                                <li><i class="fas fa-check text-success me-1"></i>Używaj krótkiego tekstu</li>
-                                <li><i class="fas fa-check text-success me-1"></i>Wybierz czytelną czcionkę</li>
-                                <li><i class="fas fa-check text-success me-1"></i>Umieść w rogu zdjęcia</li>
-                            </ul>
+                            <div class="card border-warning">
+                                <div class="card-body text-center p-3">
+                                    <i class="fas fa-font fa-2x text-warning mb-2"></i>
+                                    <h6>Tekstowe:</h6>
+                                    <ul class="list-unstyled small">
+                                        <li><i class="fas fa-check text-success me-1"></i>Używaj krótkiego tekstu</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Wybierz czytelną czcionkę</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Umieść w rogu zdjęcia</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <h6 class="text-info">Obrazkowe:</h6>
-                            <ul class="list-unstyled small">
-                                <li><i class="fas fa-check text-success me-1"></i>Używaj PNG z przezroczystością</li>
-                                <li><i class="fas fa-check text-success me-1"></i>Optymalne wymiary 200x200px</li>
-                                <li><i class="fas fa-check text-success me-1"></i>Unikaj zbyt dużych plików</li>
-                            </ul>
+                            <div class="card border-info">
+                                <div class="card-body text-center p-3">
+                                    <i class="fas fa-image fa-2x text-info mb-2"></i>
+                                    <h6>Obrazkowe:</h6>
+                                    <ul class="list-unstyled small">
+                                        <li><i class="fas fa-check text-success me-1"></i>Używaj PNG z przezroczystością</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Optymalne wymiary 200x200px</li>
+                                        <li><i class="fas fa-check text-success me-1"></i>Unikaj zbyt dużych plików</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
