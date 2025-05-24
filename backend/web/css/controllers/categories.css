@@ -100,3 +100,24 @@
 .related-categories .list-group-item:hover {
     background-color: var(--light-color);
 }
+
+/* Styles from categories/view.php */
+.detail-view th {
+    width: 200px;
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.detail-view td {
+    word-break: break-word;
+}
+
+.card {
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.img-fluid:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}

@@ -79,20 +79,20 @@ $statusOptions = [
                     ])->label('Opis')
                     ?>
 
-<?=
-$form->field($model, 'status')->dropDownList($statusOptions, [
-    'class' => 'form-select'
-])->label('Status')
-?>
+                    <?=
+                    $form->field($model, 'status')->dropDownList($statusOptions, [
+                        'class' => 'form-select'
+                    ])->label('Status')
+                    ?>
 
                     <div class="mb-3">
                         <div class="form-check">
-<?=
-Html::activeCheckbox($model, 'is_public', [
-    'class' => 'form-check-input',
-    'id' => 'photo-is-public'
-])
-?>
+                            <?=
+                            Html::activeCheckbox($model, 'is_public', [
+                                'class' => 'form-check-input',
+                                'id' => 'photo-is-public'
+                            ])
+                            ?>
                             <label class="form-check-label" for="photo-is-public">
                                 <i class="fas fa-eye me-1"></i>Zdjęcie publiczne
                             </label>
@@ -128,19 +128,19 @@ Html::activeCheckbox($model, 'is_public', [
                         <div class="form-text">Wybierz kategorie dla tego zdjęcia</div>
                     </div>
 
-                        <?=
-                        $form->field($model, 'series')->textInput([
-                            'maxlength' => true,
-                            'class' => 'form-control',
-                            'placeholder' => 'np. K01, K03, K05',
-                            'list' => 'series-datalist'
-                        ])->label('<i class="fas fa-layer-group me-1"></i>Seria')
-                        ?>
+                    <?=
+                    $form->field($model, 'series')->textInput([
+                        'maxlength' => true,
+                        'class' => 'form-control',
+                        'placeholder' => 'np. K01, K03, K05',
+                        'list' => 'series-datalist'
+                    ])->label('<i class="fas fa-layer-group me-1"></i>Seria')
+                    ?>
 
                     <datalist id="series-datalist">
-<?php foreach (Photo::getAllSeries() as $series): ?>
+                        <?php foreach (Photo::getAllSeries() as $series): ?>
                             <option value="<?= Html::encode($series) ?>">
-<?php endforeach; ?>
+                        <?php endforeach; ?>
                     </datalist>
 
                     <!-- Stock Platforms Section -->
@@ -216,16 +216,16 @@ Html::activeCheckbox($model, 'is_public', [
                     </div>
 
                     <div class="d-flex gap-2">
-                    <?=
-                    Html::submitButton('<i class="fas fa-save me-2"></i>Zapisz zmiany', [
-                        'class' => 'btn btn-success'
-                    ])
-                    ?>
-                    <?=
-                    Html::a('<i class="fas fa-times me-2"></i>Anuluj', ['view', 'id' => $model->id], [
-                        'class' => 'btn btn-secondary'
-                    ])
-                    ?>
+                        <?=
+                        Html::submitButton('<i class="fas fa-save me-2"></i>Zapisz zmiany', [
+                            'class' => 'btn btn-success'
+                        ])
+                        ?>
+                        <?=
+                        Html::a('<i class="fas fa-times me-2"></i>Anuluj', ['view', 'id' => $model->id], [
+                            'class' => 'btn btn-secondary'
+                        ])
+                        ?>
                     </div>
 
                     <?php ActiveForm::end(); ?>
@@ -241,27 +241,27 @@ Html::activeCheckbox($model, 'is_public', [
                     </h5>
                 </div>
                 <div class="card-body text-center">
-<?php
-$previewUrl = $model->getPreviewThumbnail();
+                    <?php
+                    $previewUrl = $model->getPreviewThumbnail();
 
-if ($previewUrl) {
-    echo Html::img($previewUrl, [
-        'class' => 'img-fluid rounded shadow',
-        'alt' => $model->title,
-        'style' => 'max-height: 300px;'
-    ]);
-} else {
-    echo '<div class="text-center p-4">';
-    echo '<i class="fas fa-image fa-4x text-muted mb-3"></i>';
-    echo '<p class="text-muted">Podgląd niedostępny</p>';
-    if (\common\helpers\PathHelper::isFrontendMode()) {
-        echo '<small class="text-info">Tryb frontend - sprawdź ścieżki do miniatur</small>';
-    } else {
-        echo '<small class="text-warning">Miniatury nie zostały wygenerowane</small>';
-    }
-    echo '</div>';
-}
-?>
+                    if ($previewUrl) {
+                        echo Html::img($previewUrl, [
+                            'class' => 'img-fluid rounded shadow',
+                            'alt' => $model->title,
+                            'style' => 'max-height: 300px;'
+                        ]);
+                    } else {
+                        echo '<div class="text-center p-4">';
+                        echo '<i class="fas fa-image fa-4x text-muted mb-3"></i>';
+                        echo '<p class="text-muted">Podgląd niedostępny</p>';
+                        if (\common\helpers\PathHelper::isFrontendMode()) {
+                            echo '<small class="text-info">Tryb frontend - sprawdź ścieżki do miniatur</small>';
+                        } else {
+                            echo '<small class="text-warning">Miniatury nie zostały wygenerowane</small>';
+                        }
+                        echo '</div>';
+                    }
+                    ?>
                 </div>
             </div>
 
@@ -297,14 +297,14 @@ if ($previewUrl) {
                             <tr>
                                 <th>Status:</th>
                                 <td>
-                    <?php
-                    $statusBadge = match ($model->status) {
-                        \common\models\Photo::STATUS_QUEUE => 'bg-warning text-dark',
-                        \common\models\Photo::STATUS_ACTIVE => 'bg-success',
-                        \common\models\Photo::STATUS_DELETED => 'bg-danger',
-                        default => 'bg-secondary'
-                    };
-                    ?>
+                                    <?php
+                                    $statusBadge = match ($model->status) {
+                                        \common\models\Photo::STATUS_QUEUE => 'bg-warning text-dark',
+                                        \common\models\Photo::STATUS_ACTIVE => 'bg-success',
+                                        \common\models\Photo::STATUS_DELETED => 'bg-danger',
+                                        default => 'bg-secondary'
+                                    };
+                                    ?>
                                     <span class="badge <?= $statusBadge ?>"><?= $statusOptions[$model->status] ?></span>
                                 </td>
                             </tr>
@@ -369,12 +369,12 @@ if ($previewUrl) {
                 <div class="card-body">
                     <p class="text-muted small">Użyj sztucznej inteligencji do automatycznego analizowania zdjęcia:</p>
 
-<?php
-$aiForm = ActiveForm::begin([
-            'action' => ['ai/analyze-photo', 'id' => $model->id],
-            'options' => ['class' => 'ai-analyze-form'],
-        ]);
-?>
+                    <?php
+                    $aiForm = ActiveForm::begin([
+                                'action' => ['ai/analyze-photo', 'id' => $model->id],
+                                'options' => ['class' => 'ai-analyze-form'],
+                            ]);
+                    ?>
 
                     <div class="mb-3">
                         <div class="form-check">
@@ -397,7 +397,7 @@ $aiForm = ActiveForm::begin([
                         </button>
                     </div>
 
-<?php ActiveForm::end(); ?>
+                    <?php ActiveForm::end(); ?>
 
                     <div class="alert alert-info mt-3 mb-0">
                         <small><i class="fas fa-info-circle me-1"></i>Analiza AI jest wykonywana w tle. Wyniki pojawią się w ciągu kilku minut.</small>
@@ -462,20 +462,23 @@ $aiForm = ActiveForm::begin([
         }
 
         // Handle AI analysis form submission
-        document.querySelector('.ai-analyze-form').addEventListener('submit', function (e) {
-            const submitBtn = this.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
+        const aiAnalyzeForm = document.querySelector('.ai-analyze-form');
+        if (aiAnalyzeForm) {
+            aiAnalyzeForm.addEventListener('submit', function (e) {
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
 
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analizowanie...';
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analizowanie...';
 
-            // Re-enable button after a delay
-            setTimeout(() => {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
-                showToast('Zadanie analizy AI zostało dodane do kolejki', 'info');
-            }, 2000);
-        });
+                // Re-enable button after a delay
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    showToast('Zadanie analizy AI zostało dodane do kolejki', 'info');
+                }, 2000);
+            });
+        }
 
         // Auto-resize textarea
         const textarea = document.querySelector('textarea[name="Photo[description]"]');
@@ -495,63 +498,3 @@ $aiForm = ActiveForm::begin([
         }
     });
 </script>
-
-<style>
-    .select2-container {
-        width: 100% !important;
-    }
-
-    .select2-container .select2-selection--multiple {
-        min-height: 38px;
-        border: 1px solid #ced4da;
-        border-radius: 0.375rem;
-    }
-
-    .select2-container--default .select2-selection--multiple .select2-selection__choice {
-        background-color: #0d6efd;
-        color: white;
-        border: none;
-        border-radius: 0.25rem;
-        margin: 2px;
-        padding: 2px 8px;
-    }
-
-    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-        color: white;
-        margin-right: 5px;
-    }
-
-    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
-        color: #ffdddd;
-    }
-
-    .table th {
-        font-weight: 600;
-        color: #495057;
-    }
-
-    .img-fluid:hover {
-        transform: scale(1.02);
-        transition: transform 0.2s ease;
-    }
-
-    .form-check {
-        margin-bottom: 0.75rem;
-    }
-
-    .alert {
-        border-radius: 0.5rem;
-    }
-
-    hr {
-        margin: 1rem 0;
-        opacity: 0.3;
-    }
-
-    #ai-fields {
-        padding: 1rem;
-        background-color: #f8f9fa;
-        border-radius: 0.5rem;
-        margin-top: 1rem;
-    }
-</style>

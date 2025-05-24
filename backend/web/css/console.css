@@ -333,3 +333,28 @@
     background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
     color: white;
 }
+
+/* Styles from console/index.php */
+.command-search-box .input-group {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.command-search-box .input-group-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    color: white;
+    font-weight: 500;
+}
+
+.command-search-box .form-control {
+    border-left: none;
+    font-size: 1.05rem;
+    padding: 0.75rem 1rem;
+}
+
+.command-search-box .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    border-color: #667eea;
+}
