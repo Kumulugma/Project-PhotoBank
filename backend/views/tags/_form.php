@@ -2,7 +2,7 @@
 
 use yii\helpers\Html;
 use yii\bootstrap5\ActiveForm;
-\backend\assets\AppAsset::registerControllerCss($this, 'tags');
+\backend\assets\AppAsset::registerControllerAssets($this, 'tags');
 \backend\assets\AppAsset::registerComponentCss($this, 'forms');
 \backend\assets\AppAsset::registerComponentCss($this, 'alerts');
 /* @var $this yii\web\View */
@@ -115,52 +115,3 @@ use yii\bootstrap5\ActiveForm;
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const nameInput = document.querySelector('input[name="Tag[name]"]');
-    const previewText = document.getElementById('preview-text');
-    
-    if (nameInput && previewText) {
-        // Update preview on input
-        nameInput.addEventListener('input', function() {
-            let tagName = this.value.trim();
-            
-            if (tagName) {
-                // Convert to lowercase and replace spaces with hyphens
-                tagName = tagName
-                    .toLowerCase()
-                    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-                    .replace(/\s+/g, '-') // Replace spaces with hyphens
-                    .replace(/-+/g, '-'); // Replace multiple hyphens with single
-                
-                previewText.textContent = tagName;
-            } else {
-                previewText.textContent = 'wprowadź-nazwę';
-            }
-        });
-        
-        // Initialize preview with current value
-        if (nameInput.value) {
-            nameInput.dispatchEvent(new Event('input'));
-        }
-        
-        // Validate tag name format
-        nameInput.addEventListener('blur', function() {
-            let value = this.value.trim();
-            if (value) {
-                // Clean up the value
-                value = value
-                    .toLowerCase()
-                    .replace(/[^a-z0-9\s-]/g, '')
-                    .replace(/\s+/g, '-')
-                    .replace(/-+/g, '-')
-                    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
-                
-                this.value = value;
-                previewText.textContent = value || 'wprowadź-nazwę';
-            }
-        });
-    }
-});
-</script>

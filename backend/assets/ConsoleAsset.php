@@ -3,20 +3,17 @@ namespace backend\assets;
 
 use yii\web\AssetBundle;
 
-/**
- * Asset bundle for Console Commands page
- */
 class ConsoleAsset extends AssetBundle
 {
     public $basePath = '@webroot';
     public $baseUrl = '@web';
     
     public $css = [
-        'css/console.css',
+        'css/controllers/console.css',
     ];
     
     public $js = [
-        'js/console.js',
+        'js/controllers/console.js',
     ];
     
     public $depends = [

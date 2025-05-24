@@ -3,17 +3,18 @@ namespace backend\assets;
 
 use yii\web\AssetBundle;
 
-class CategoriesAsset extends AssetBundle
+class SettingsAsset extends AssetBundle
 {
     public $basePath = '@webroot';
     public $baseUrl = '@web';
     
     public $css = [
-        'css/controllers/categories.css',
+        'css/controllers/settings.css',
+        'css/controllers/watermark.css',
     ];
     
     public $js = [
-        'js/controllers/categories.js',
+        'js/controllers/settings.js',
     ];
     
     public $depends = [

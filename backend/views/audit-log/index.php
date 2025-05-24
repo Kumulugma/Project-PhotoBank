@@ -5,7 +5,7 @@ use yii\widgets\Pjax;
 use common\models\search\AuditLogSearch;
 use common\models\AuditLog;
 
-\backend\assets\AppAsset::registerControllerCss($this, 'audit-log');
+\backend\assets\AppAsset::registerControllerAssets($this, 'audit-log');
 \backend\assets\AppAsset::registerComponentCss($this, 'tables');
 \backend\assets\AppAsset::registerComponentCss($this, 'modals');
 
@@ -233,6 +233,7 @@ $this->params['breadcrumbs'][] = $this->title;
     <?php Pjax::end(); ?>
 </div>
 
+<!-- Delete Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -257,6 +258,7 @@ $this->params['breadcrumbs'][] = $this->title;
     </div>
 </div>
 
+<!-- Bulk Delete Modal -->
 <div class="modal fade" id="bulkDeleteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -282,6 +284,7 @@ $this->params['breadcrumbs'][] = $this->title;
     </div>
 </div>
 
+<!-- Cleanup Modal -->
 <div class="modal fade" id="cleanupModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -312,6 +315,7 @@ $this->params['breadcrumbs'][] = $this->title;
     </div>
 </div>
 
+<!-- Export Modal -->
 <div class="modal fade" id="exportModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -347,49 +351,3 @@ $this->params['breadcrumbs'][] = $this->title;
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const checkboxes = document.querySelectorAll('.audit-checkbox');
-    const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
-    const selectedCountSpan = document.getElementById('selected-count');
-    const bulkDeleteInputs = document.getElementById('bulk-delete-inputs');
-    
-    function updateBulkDeleteButton() {
-        const checked = document.querySelectorAll('.audit-checkbox:checked');
-        if (checked.length > 0) {
-            bulkDeleteBtn.style.display = 'inline-block';
-            selectedCountSpan.textContent = checked.length;
-            
-            bulkDeleteInputs.innerHTML = '';
-            checked.forEach(function(checkbox) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'selection[]';
-                input.value = checkbox.value;
-                bulkDeleteInputs.appendChild(input);
-            });
-        } else {
-            bulkDeleteBtn.style.display = 'none';
-        }
-    }
-    
-    checkboxes.forEach(function(checkbox) {
-        checkbox.addEventListener('change', updateBulkDeleteButton);
-    });
-    
-    const selectAllCheckbox = document.querySelector('th input[type="checkbox"]');
-    if (selectAllCheckbox) {
-        selectAllCheckbox.addEventListener('change', function() {
-            setTimeout(updateBulkDeleteButton, 10);
-        });
-    }
-    
-    document.querySelectorAll('.delete-single').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            document.getElementById('delete-id').value = id;
-        });
-    });
-});
-</script>

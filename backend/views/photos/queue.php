@@ -6,13 +6,11 @@ use yii\widgets\Pjax;
 use common\models\Tag;
 use common\models\Category;
 use yii\helpers\ArrayHelper;
-\backend\assets\AppAsset::registerControllerCss($this, 'photos');
+
+\backend\assets\AppAsset::registerControllerAssets($this, 'photos');
 \backend\assets\AppAsset::registerComponentCss($this, 'tables');
 \backend\assets\AppAsset::registerComponentCss($this, 'modals');
 \backend\assets\AppAsset::registerComponentCss($this, 'alerts');
-/* @var $this yii\web\View */
-/* @var $searchModel common\models\search\PhotoSearch */
-/* @var $dataProvider yii\data\ActiveDataProvider */
 
 $this->title = 'Poczekalnia zdjęć';
 $this->params['breadcrumbs'][] = ['label' => 'Zdjęcia', 'url' => ['index']];
@@ -26,23 +24,17 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3"><?= Html::encode($this->title) ?></h1>
         <div class="btn-group">
-            <?=
-            Html::a('<i class="fas fa-upload me-2"></i>Prześlij więcej', ['upload'], [
+            <?= Html::a('<i class="fas fa-upload me-2"></i>Prześlij więcej', ['upload'], [
                 'class' => 'btn btn-success'
-            ])
-            ?>
-            <?=
-            Html::a('<i class="fas fa-file-import me-2"></i>Importuj z FTP', ['import-from-ftp'], [
+            ]) ?>
+            <?= Html::a('<i class="fas fa-file-import me-2"></i>Importuj z FTP', ['import-from-ftp'], [
                 'class' => 'btn btn-info',
                 'data-method' => 'post',
                 'data-confirm' => 'Czy na pewno chcesz zaimportować zdjęcia z domyślnego katalogu FTP?',
-            ])
-            ?>
-<?=
-Html::a('<i class="fas fa-file-import me-2"></i>Import zdjęć', ['import'], [
-    'class' => 'btn btn-success'
-])
-?>
+            ]) ?>
+            <?= Html::a('<i class="fas fa-file-import me-2"></i>Import zdjęć', ['import'], [
+                'class' => 'btn btn-success'
+            ]) ?>
             <button type="button" class="btn btn-primary batch-action-btn" style="display: none;" 
                     data-bs-toggle="modal" data-bs-target="#batchApproveModal">
                 <i class="fas fa-check me-2"></i>Zatwierdź zaznaczone
@@ -54,16 +46,14 @@ Html::a('<i class="fas fa-file-import me-2"></i>Import zdjęć', ['import'], [
         </div>
     </div>
 
-        <?php if ($dataProvider->totalCount == 0): ?>
+    <?php if ($dataProvider->totalCount == 0): ?>
         <div class="alert alert-info text-center">
             <i class="fas fa-clock fa-3x mb-3"></i>
             <h4>Brak zdjęć w kolejce</h4>
             <p>Wszystkie zdjęcia zostały już przetworzone lub nie ma żadnych oczekujących.</p>
-    <?=
-    Html::a('<i class="fas fa-upload me-2"></i>Prześlij nowe zdjęcia', ['upload'], [
-        'class' => 'btn btn-primary'
-    ])
-    ?>
+            <?= Html::a('<i class="fas fa-upload me-2"></i>Prześlij nowe zdjęcia', ['upload'], [
+                'class' => 'btn btn-primary'
+            ]) ?>
         </div>
     <?php else: ?>
         <div class="alert alert-warning">
@@ -74,8 +64,7 @@ Html::a('<i class="fas fa-file-import me-2"></i>Import zdjęć', ['import'], [
 
         <?php Pjax::begin(['id' => 'photos-queue-pjax']); ?>
 
-        <?=
-        GridView::widget([
+        <?= GridView::widget([
             'dataProvider' => $dataProvider,
             'filterModel' => $searchModel,
             'options' => ['class' => 'table-responsive'],
@@ -93,26 +82,26 @@ Html::a('<i class="fas fa-file-import me-2"></i>Import zdjęć', ['import'], [
                     'contentOptions' => ['class' => 'fw-bold'],
                 ],
                 [
-                'label' => 'Miniatura',
-                'format' => 'raw',
-                'value' => function ($model) {
-                    $thumbnailUrl = $model->getListThumbnail();
-                    
-                    if ($thumbnailUrl) {
-                        return Html::img($thumbnailUrl, [
-                                    'class' => 'img-thumbnail',
-                                    'style' => 'max-width: 80px; max-height: 80px; object-fit: cover;',
-                                    'alt' => $model->title,
-                        ]);
-                    } else {
-                        return '<div class="text-center p-2" style="width: 80px; height: 80px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
-                                    <i class="fas fa-image text-muted"></i>
-                                </div>';
-                    }
-                },
-                'filter' => false,
-                'headerOptions' => ['style' => 'width: 100px;'],
-            ],
+                    'label' => 'Miniatura',
+                    'format' => 'raw',
+                    'value' => function ($model) {
+                        $thumbnailUrl = $model->getListThumbnail();
+                        
+                        if ($thumbnailUrl) {
+                            return Html::img($thumbnailUrl, [
+                                'class' => 'img-thumbnail',
+                                'style' => 'max-width: 80px; max-height: 80px; object-fit: cover;',
+                                'alt' => $model->title,
+                            ]);
+                        } else {
+                            return '<div class="text-center p-2" style="width: 80px; height: 80px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fas fa-image text-muted"></i>
+                                    </div>';
+                        }
+                    },
+                    'filter' => false,
+                    'headerOptions' => ['style' => 'width: 100px;'],
+                ],
                 [
                     'attribute' => 'title',
                     'format' => 'raw',
@@ -189,11 +178,10 @@ Html::a('<i class="fas fa-file-import me-2"></i>Import zdjęć', ['import'], [
                     'contentOptions' => ['class' => 'text-end'],
                 ],
             ],
-        ]);
-        ?>
+        ]); ?>
 
-    <?php Pjax::end(); ?>
-            <?php endif; ?>
+        <?php Pjax::end(); ?>
+    <?php endif; ?>
 </div>
 
 <!-- Batch Approve Modal -->
@@ -204,12 +192,12 @@ Html::a('<i class="fas fa-file-import me-2"></i>Import zdjęć', ['import'], [
                 <h5 class="modal-title">Zatwierdź zaznaczone zdjęcia</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-<?php
-$form = \yii\bootstrap5\ActiveForm::begin([
-            'id' => 'batch-approve-form',
-            'action' => ['approve-batch'],
-        ]);
-?>
+            <?php
+            $form = \yii\bootstrap5\ActiveForm::begin([
+                'id' => 'batch-approve-form',
+                'action' => ['approve-batch'],
+            ]);
+            ?>
             <div class="modal-body">
                 <input type="hidden" name="ids" id="approve-photo-ids">
 
@@ -248,12 +236,12 @@ $form = \yii\bootstrap5\ActiveForm::begin([
                 <h5 class="modal-title">Usuń zaznaczone zdjęcia</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-<?php
-$form = \yii\bootstrap5\ActiveForm::begin([
-            'id' => 'batch-delete-form',
-            'action' => ['batch-delete'],
-        ]);
-?>
+            <?php
+            $form = \yii\bootstrap5\ActiveForm::begin([
+                'id' => 'batch-delete-form',
+                'action' => ['batch-delete'],
+            ]);
+            ?>
             <div class="modal-body">
                 <input type="hidden" name="ids" id="delete-photo-ids">
 
@@ -271,52 +259,7 @@ $form = \yii\bootstrap5\ActiveForm::begin([
                     <i class="fas fa-trash me-1"></i>Usuń zdjęcia
                 </button>
             </div>
-<?php \yii\bootstrap5\ActiveForm::end(); ?>
+            <?php \yii\bootstrap5\ActiveForm::end(); ?>
         </div>
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Handle batch operations
-        const checkboxes = document.querySelectorAll('input[name="selection[]"]');
-        const batchButtons = document.querySelectorAll('.batch-action-btn');
-        const selectAll = document.querySelector('input[name="selection_all"]');
-
-        function updateBatchButtons() {
-            const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
-            batchButtons.forEach(btn => {
-                btn.style.display = checkedBoxes.length > 0 ? 'inline-block' : 'none';
-            });
-        }
-
-        // Select all functionality
-        if (selectAll) {
-            selectAll.addEventListener('change', function () {
-                checkboxes.forEach(cb => cb.checked = selectAll.checked);
-                updateBatchButtons();
-            });
-        }
-
-        // Individual checkboxes
-        checkboxes.forEach(cb => {
-            cb.addEventListener('change', updateBatchButtons);
-        });
-
-        // Batch approve form submission
-        document.getElementById('batch-approve-submit').addEventListener('click', function () {
-            const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
-            const ids = Array.from(checkedBoxes).map(cb => cb.value);
-            document.getElementById('approve-photo-ids').value = ids.join(',');
-            document.getElementById('batch-approve-form').submit();
-        });
-
-        // Batch delete form submission
-        document.getElementById('batch-delete-submit').addEventListener('click', function () {
-            const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
-            const ids = Array.from(checkedBoxes).map(cb => cb.value);
-            document.getElementById('delete-photo-ids').value = ids.join(',');
-            document.getElementById('batch-delete-form').submit();
-        });
-    });
-</script>

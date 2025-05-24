@@ -39,7 +39,8 @@ use yii\bootstrap5\ActiveForm;
                                 'max' => 5000,
                                 'class' => 'form-control',
                                 'required' => true,
-                                'placeholder' => '300'
+                                'placeholder' => '300',
+                                'id' => 'thumbnailsize-width'
                             ])->label('Szerokość (px)') ?>
                         </div>
                         <div class="col-md-6">
@@ -49,7 +50,8 @@ use yii\bootstrap5\ActiveForm;
                                 'max' => 5000,
                                 'class' => 'form-control',
                                 'required' => true,
-                                'placeholder' => '300'
+                                'placeholder' => '300',
+                                'id' => 'thumbnailsize-height'
                             ])->label('Wysokość (px)') ?>
                         </div>
                     </div>
@@ -161,103 +163,3 @@ use yii\bootstrap5\ActiveForm;
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const widthInput = document.getElementById('thumbnailsize-width');
-    const heightInput = document.getElementById('thumbnailsize-height');
-    const previewBox = document.getElementById('preview-box');
-    const previewLabel = document.getElementById('preview-label');
-    const nameInput = document.getElementById('thumbnailsize-name');
-    
-    function updatePreview() {
-        const width = parseInt(widthInput.value) || 0;
-        const height = parseInt(heightInput.value) || 0;
-        
-        if (width > 0 && height > 0) {
-            // Scale down the preview to fit in the container
-            const maxPreviewSize = 150;
-            const scale = Math.min(maxPreviewSize / width, maxPreviewSize / height);
-            const previewWidth = width * scale;
-            const previewHeight = height * scale;
-            
-            previewBox.style.width = previewWidth + 'px';
-            previewBox.style.height = previewHeight + 'px';
-            previewLabel.textContent = width + '×' + height + 'px';
-            
-            // Update name suggestion
-            if (!nameInput.value) {
-                if (width <= 200 && height <= 200) {
-                    nameInput.placeholder = 'small';
-                } else if (width <= 400 && height <= 400) {
-                    nameInput.placeholder = 'medium';
-                } else {
-                    nameInput.placeholder = 'large';
-                }
-            }
-        } else {
-            previewBox.style.width = '50px';
-            previewBox.style.height = '50px';
-            previewLabel.textContent = 'Wprowadź wymiary';
-            nameInput.placeholder = 'np. small, medium, large';
-        }
-    }
-    
-    // Update preview on input change
-    widthInput.addEventListener('input', updatePreview);
-    heightInput.addEventListener('input', updatePreview);
-    
-    // Initialize preview
-    updatePreview();
-    
-    // Aspect ratio helper
-    let aspectRatioLocked = false;
-    let lastRatio = 1;
-    
-    // Add aspect ratio lock button
-    const ratioButton = document.createElement('button');
-    ratioButton.type = 'button';
-    ratioButton.className = 'btn btn-sm btn-outline-info aspect-ratio-lock-btn';
-    ratioButton.innerHTML = '<i class="fas fa-lock-open"></i>';
-    ratioButton.title = 'Zablokuj proporcje';
-    
-    // Insert after height input
-    heightInput.parentNode.appendChild(ratioButton);
-    
-    ratioButton.addEventListener('click', function() {
-        aspectRatioLocked = !aspectRatioLocked;
-        
-        if (aspectRatioLocked) {
-            const width = parseInt(widthInput.value) || 1;
-            const height = parseInt(heightInput.value) || 1;
-            lastRatio = width / height;
-            ratioButton.innerHTML = '<i class="fas fa-lock"></i>';
-            ratioButton.title = 'Odblokuj proporcje';
-            ratioButton.classList.remove('btn-outline-info');
-            ratioButton.classList.add('btn-info');
-        } else {
-            ratioButton.innerHTML = '<i class="fas fa-lock-open"></i>';
-            ratioButton.title = 'Zablokuj proporcje';
-            ratioButton.classList.remove('btn-info');
-            ratioButton.classList.add('btn-outline-info');
-        }
-    });
-    
-    // Handle aspect ratio locking
-    widthInput.addEventListener('input', function() {
-        if (aspectRatioLocked && this.value) {
-            const newHeight = Math.round(parseInt(this.value) / lastRatio);
-            heightInput.value = newHeight;
-            updatePreview();
-        }
-    });
-    
-    heightInput.addEventListener('input', function() {
-        if (aspectRatioLocked && this.value) {
-            const newWidth = Math.round(parseInt(this.value) * lastRatio);
-            widthInput.value = newWidth;
-            updatePreview();
-        }
-    });
-});
-</script>

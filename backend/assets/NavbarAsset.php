@@ -3,17 +3,13 @@ namespace backend\assets;
 
 use yii\web\AssetBundle;
 
-class CategoriesAsset extends AssetBundle
+class NavbarAsset extends AssetBundle
 {
     public $basePath = '@webroot';
     public $baseUrl = '@web';
     
     public $css = [
-        'css/controllers/categories.css',
-    ];
-    
-    public $js = [
-        'js/controllers/categories.js',
+        'css/components/navbar.css',
     ];
     
     public $depends = [

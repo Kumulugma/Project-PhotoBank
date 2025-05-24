@@ -7,61 +7,10 @@ use common\widgets\Alert;
 $this->title = 'Komendy Consolowe';
 $this->params['breadcrumbs'][] = $this->title;
 
-// Rejestracja CSS dla lepszego wyglądu
-\backend\assets\AppAsset::registerControllerCss($this, 'console');
+// Rejestracja CSS i JS dla lepszego wyglądu
+\backend\assets\AppAsset::registerControllerAssets($this, 'console');
 \backend\assets\AppAsset::registerComponentCss($this, 'forms');
 \backend\assets\AppAsset::registerComponentCss($this, 'alerts');
-
-// JavaScript dla funkcjonalności kopiowania i wyszukiwania
-$this->registerJs("
-// Funkcja kopiowania do schowka
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(function() {
-        // Pokazanie powiadomienia
-        var alert = $('<div class=\"alert alert-success alert-dismissible fade show\" role=\"alert\">' +
-            '<i class=\"fas fa-check-circle me-2\"></i>Skopiowano do schowka!' +
-            '<button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"alert\"></button>' +
-            '</div>');
-        $('.container-fluid').prepend(alert);
-        
-        setTimeout(function() {
-            alert.alert('close');
-        }, 2000);
-    });
-}
-
-// Wyszukiwanie komend
-$('#commandSearch').on('input', function() {
-    var searchTerm = $(this).val().toLowerCase();
-    
-    $('.command-card').each(function() {
-        var card = $(this);
-        var content = card.text().toLowerCase();
-        
-        if (searchTerm === '' || content.includes(searchTerm)) {
-            card.show();
-        } else {
-            card.hide();
-        }
-    });
-});
-
-// Dodanie przycisków kopiowania
-$('.command-code').each(function() {
-    var codeBlock = $(this);
-    var command = codeBlock.text().trim();
-    
-    var copyBtn = $('<button class=\"btn btn-outline-light btn-sm copy-btn float-end\" type=\"button\">' +
-        '<i class=\"fas fa-copy me-1\"></i>Kopiuj</button>');
-    
-    copyBtn.on('click', function(e) {
-        e.preventDefault();
-        copyToClipboard(command);
-    });
-    
-    codeBlock.append(copyBtn);
-});
-");
 ?>
 
 <div class="console-commands">
@@ -93,7 +42,7 @@ $('.command-code').each(function() {
             <span class="input-group-text">
                 <i class="fas fa-search"></i>
             </span>
-            <input type="text" id="commandSearch" class="form-control" placeholder="Szukaj komend...">
+            <input type="text" id="commandSearch" class="form-control" placeholder="Szukaj komend... (Ctrl+K)">
         </div>
     </div>
 

@@ -6,15 +6,10 @@ use yii\helpers\ArrayHelper;
 use common\models\Tag;
 use common\models\Category;
 use common\models\Photo;
-\backend\assets\AppAsset::registerControllerCss($this, 'photos');
+
+\backend\assets\AppAsset::registerControllerAssets($this, 'photos');
 \backend\assets\AppAsset::registerComponentCss($this, 'forms');
-/* @var $this yii\web\View */
-/* @var $model common\models\Photo */
-/* @var $form yii\bootstrap5\ActiveForm */
-/* @var $allTags array */
-/* @var $allCategories array */
-/* @var $selectedTags array */
-/* @var $selectedCategories array */
+\backend\assets\Select2Asset::register($this);
 
 $this->title = 'Edytuj zdjęcie: ' . $model->title;
 $this->params['breadcrumbs'][] = ['label' => 'Wszystkie zdjęcia', 'url' => ['index']];
@@ -27,24 +22,17 @@ $statusOptions = [
     \common\models\Photo::STATUS_ACTIVE => 'Aktywne',
     \common\models\Photo::STATUS_DELETED => 'Usunięte',
 ];
-
-// Register Select2 assets
-\backend\assets\Select2Asset::register($this);
 ?>
 <div class="photo-update">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3"><?= Html::encode($this->title) ?></h1>
         <div>
-            <?=
-            Html::a('<i class="fas fa-eye me-2"></i>Zobacz zdjęcie', ['view', 'id' => $model->id], [
+            <?= Html::a('<i class="fas fa-eye me-2"></i>Zobacz zdjęcie', ['view', 'id' => $model->id], [
                 'class' => 'btn btn-outline-info'
-            ])
-            ?>
-            <?=
-            Html::a('<i class="fas fa-list me-2"></i>Lista zdjęć', ['index'], [
+            ]) ?>
+            <?= Html::a('<i class="fas fa-list me-2"></i>Lista zdjęć', ['index'], [
                 'class' => 'btn btn-outline-secondary'
-            ])
-            ?>
+            ]) ?>
         </div>
     </div>
 
@@ -59,48 +47,38 @@ $statusOptions = [
                 <div class="card-body">
                     <?php
                     $form = ActiveForm::begin([
-                                'options' => ['class' => 'needs-validation'],
+                        'options' => ['class' => 'needs-validation'],
                     ]);
                     ?>
 
-                    <?=
-                    $form->field($model, 'title')->textInput([
+                    <?= $form->field($model, 'title')->textInput([
                         'maxlength' => true,
                         'class' => 'form-control',
                         'required' => true,
-                    ])->label('Tytuł zdjęcia')
-                    ?>
+                    ])->label('Tytuł zdjęcia') ?>
 
-                    <?=
-                    $form->field($model, 'description')->textarea([
+                    <?= $form->field($model, 'description')->textarea([
                         'rows' => 6,
                         'class' => 'form-control',
                         'placeholder' => 'Wprowadź opis zdjęcia...'
-                    ])->label('Opis')
-                    ?>
+                    ])->label('Opis') ?>
 
-                    <?=
-                    $form->field($model, 'english_description')->textarea([
+                    <?= $form->field($model, 'english_description')->textarea([
                         'rows' => 6,
                         'class' => 'form-control',
                         'placeholder' => 'Enter photo description in English...'
-                    ])->label('Opis w języku angielskim')
-                    ?>
+                    ])->label('Opis w języku angielskim') ?>
 
-                    <?=
-                    $form->field($model, 'status')->dropDownList($statusOptions, [
+                    <?= $form->field($model, 'status')->dropDownList($statusOptions, [
                         'class' => 'form-select'
-                    ])->label('Status')
-                    ?>
+                    ])->label('Status') ?>
 
                     <div class="mb-3">
                         <div class="form-check">
-                            <?=
-                            Html::activeCheckbox($model, 'is_public', [
+                            <?= Html::activeCheckbox($model, 'is_public', [
                                 'class' => 'form-check-input',
                                 'id' => 'photo-is-public'
-                            ])
-                            ?>
+                            ]) ?>
                             <label class="form-check-label" for="photo-is-public">
                                 <i class="fas fa-eye me-1"></i>Zdjęcie publiczne
                             </label>
@@ -112,13 +90,11 @@ $statusOptions = [
                         <label class="form-label">
                             <i class="fas fa-tags me-1"></i>Tagi
                         </label>
-                        <?=
-                        Html::dropDownList('tags', $selectedTags, ArrayHelper::map($allTags, 'id', 'name'), [
+                        <?= Html::dropDownList('tags', $selectedTags, ArrayHelper::map($allTags, 'id', 'name'), [
                             'class' => 'form-select select2-tags',
                             'multiple' => true,
                             'id' => 'photo-tags',
-                        ])
-                        ?>
+                        ]) ?>
                         <div class="form-text">Wybierz lub wpisz aby utworzyć nowe tagi</div>
                     </div>
 
@@ -126,24 +102,20 @@ $statusOptions = [
                         <label class="form-label">
                             <i class="fas fa-folder me-1"></i>Kategorie
                         </label>
-                        <?=
-                        Html::dropDownList('categories', $selectedCategories, ArrayHelper::map($allCategories, 'id', 'name'), [
+                        <?= Html::dropDownList('categories', $selectedCategories, ArrayHelper::map($allCategories, 'id', 'name'), [
                             'class' => 'form-select select2-categories',
                             'multiple' => true,
                             'id' => 'photo-categories',
-                        ])
-                        ?>
+                        ]) ?>
                         <div class="form-text">Wybierz kategorie dla tego zdjęcia</div>
                     </div>
 
-                    <?=
-                    $form->field($model, 'series')->textInput([
+                    <?= $form->field($model, 'series')->textInput([
                         'maxlength' => true,
                         'class' => 'form-control',
                         'placeholder' => 'np. K01, K03, K05',
                         'list' => 'series-datalist'
-                    ])->label('<i class="fas fa-layer-group me-1"></i>Seria')
-                    ?>
+                    ])->label('<i class="fas fa-layer-group me-1"></i>Seria') ?>
 
                     <datalist id="series-datalist">
                         <?php foreach (Photo::getAllSeries() as $series): ?>
@@ -224,16 +196,12 @@ $statusOptions = [
                     </div>
 
                     <div class="d-flex gap-2">
-                        <?=
-                        Html::submitButton('<i class="fas fa-save me-2"></i>Zapisz zmiany', [
+                        <?= Html::submitButton('<i class="fas fa-save me-2"></i>Zapisz zmiany', [
                             'class' => 'btn btn-success'
-                        ])
-                        ?>
-                        <?=
-                        Html::a('<i class="fas fa-times me-2"></i>Anuluj', ['view', 'id' => $model->id], [
+                        ]) ?>
+                        <?= Html::a('<i class="fas fa-times me-2"></i>Anuluj', ['view', 'id' => $model->id], [
                             'class' => 'btn btn-secondary'
-                        ])
-                        ?>
+                        ]) ?>
                     </div>
 
                     <?php ActiveForm::end(); ?>
@@ -383,9 +351,9 @@ $statusOptions = [
 
                     <?php
                     $aiForm = ActiveForm::begin([
-                                'action' => ['ai/analyze-photo', 'id' => $model->id],
-                                'options' => ['class' => 'ai-analyze-form'],
-                            ]);
+                        'action' => ['ai/analyze-photo', 'id' => $model->id],
+                        'options' => ['class' => 'ai-analyze-form'],
+                    ]);
                     ?>
 
                     <div class="mb-3">
@@ -425,111 +393,3 @@ $statusOptions = [
         </div>
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Initialize Select2 for tags with tagging support
-        if (typeof $ !== 'undefined' && $.fn.select2) {
-            $('#photo-tags').select2({
-                tags: true,
-                tokenSeparators: [',', ' '],
-                placeholder: 'Wybierz lub wpisz tagi',
-                allowClear: true,
-                createTag: function (params) {
-                    const term = params.term.trim();
-
-                    if (term === '') {
-                        return null;
-                    }
-
-                    return {
-                        id: term,
-                        text: term,
-                        newTag: true
-                    };
-                },
-                templateResult: function (data) {
-                    if (data.newTag) {
-                        return $('<span><i class="fas fa-plus me-1"></i>Dodaj: <strong>' + data.text + '</strong></span>');
-                    }
-                    return data.text;
-                }
-            });
-
-            // Initialize Select2 for categories
-            $('#photo-categories').select2({
-                placeholder: 'Wybierz kategorie',
-                allowClear: true
-            });
-        }
-
-        // Handle AI checkbox toggle
-        const aiCheckbox = document.getElementById('is-ai-generated');
-        const aiFields = document.getElementById('ai-fields');
-        
-        if (aiCheckbox && aiFields) {
-            aiCheckbox.addEventListener('change', function() {
-                aiFields.style.display = this.checked ? 'block' : 'none';
-                
-                // Clear AI fields when unchecked
-                if (!this.checked) {
-                    const promptField = document.querySelector('textarea[name="Photo[ai_prompt]"]');
-                    const urlField = document.querySelector('input[name="Photo[ai_generator_url]"]');
-                    if (promptField) promptField.value = '';
-                    if (urlField) urlField.value = '';
-                }
-            });
-        }
-
-        // Handle AI analysis form submission
-        const aiAnalyzeForm = document.querySelector('.ai-analyze-form');
-        if (aiAnalyzeForm) {
-            aiAnalyzeForm.addEventListener('submit', function (e) {
-                const submitBtn = this.querySelector('button[type="submit"]');
-                const originalText = submitBtn.innerHTML;
-
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analizowanie...';
-
-                // Re-enable button after a delay
-                setTimeout(() => {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText;
-                    showToast('Zadanie analizy AI zostało dodane do kolejki', 'info');
-                }, 2000);
-            });
-        }
-
-        // Auto-resize textarea
-        const textareas = document.querySelectorAll('textarea');
-        textareas.forEach(textarea => {
-            textarea.addEventListener('input', function () {
-                this.style.height = 'auto';
-                this.style.height = this.scrollHeight + 'px';
-            });
-        });
-    });
-
-    function showToast(message, type = 'info') {
-        // Create toast element
-        const toast = document.createElement('div');
-        toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed`;
-        toast.style.top = '20px';
-        toast.style.right = '20px';
-        toast.style.zIndex = '9999';
-        toast.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.body.appendChild(toast);
-        
-        // Auto remove after 3 seconds
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 3000);
-    }
-</script>

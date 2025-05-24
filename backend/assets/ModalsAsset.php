@@ -3,17 +3,17 @@ namespace backend\assets;
 
 use yii\web\AssetBundle;
 
-class CategoriesAsset extends AssetBundle
+class ModalsAsset extends AssetBundle
 {
     public $basePath = '@webroot';
     public $baseUrl = '@web';
     
     public $css = [
-        'css/controllers/categories.css',
+        'css/components/modals.css',
     ];
     
     public $js = [
-        'js/controllers/categories.js',
+        'js/components/modals.js',
     ];
     
     public $depends = [

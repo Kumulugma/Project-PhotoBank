@@ -102,4 +102,19 @@ class AppAsset extends AssetBundle
         self::registerControllerCss($view, $controller);
         self::registerControllerJs($view, $controller);
     }
+
+    /**
+     * Registers settings controller assets (includes multiple controllers)
+     * @param View $view
+     */
+    public static function registerSettingsAssets($view)
+    {
+        self::registerControllerCss($view, 'settings');
+        self::registerControllerJs($view, 'settings');
+        
+        // Additional settings-related assets
+        self::registerComponentCss($view, 'forms');
+        self::registerComponentCss($view, 'alerts');
+        self::registerComponentCss($view, 'modals');
+    }
 }

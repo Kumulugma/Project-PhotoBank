@@ -7,9 +7,11 @@ use common\models\Tag;
 use common\models\Category;
 use yii\helpers\ArrayHelper;
 use common\models\Photo;
-\backend\assets\AppAsset::registerControllerCss($this, 'photos');
+
+\backend\assets\AppAsset::registerControllerAssets($this, 'photos');
 \backend\assets\AppAsset::registerComponentCss($this, 'tables');
 \backend\assets\AppAsset::registerComponentCss($this, 'forms');
+
 $this->title = 'Aktywne zdjęcia';
 $this->params['breadcrumbs'][] = $this->title;
 
@@ -20,11 +22,9 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3"><?= Html::encode($this->title) ?></h1>
         <div class="btn-group">
-            <?=
-            Html::a('<i class="fas fa-upload me-2"></i>Prześlij zdjęcia', ['upload'], [
+            <?= Html::a('<i class="fas fa-upload me-2"></i>Prześlij zdjęcia', ['upload'], [
                 'class' => 'btn btn-success'
-            ])
-            ?>
+            ]) ?>
             <button type="button" class="btn btn-primary batch-action-btn" style="display: none;" 
                     data-bs-toggle="modal" data-bs-target="#batchUpdateModal">
                 <i class="fas fa-edit me-2"></i>Aktualizuj zaznaczone
@@ -74,8 +74,7 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
 
     <?php Pjax::begin(['id' => 'photos-grid-pjax']); ?>
 
-    <?=
-    GridView::widget([
+    <?= GridView::widget([
         'dataProvider' => $dataProvider,
         'filterModel' => $searchModel,
         'options' => ['class' => 'table-responsive'],
@@ -109,9 +108,9 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                     
                     if ($thumbnailUrl) {
                         return Html::img($thumbnailUrl, [
-                                    'class' => 'img-thumbnail',
-                                    'style' => 'max-width: 80px; max-height: 80px; object-fit: cover;',
-                                    'alt' => $model->title,
+                            'class' => 'img-thumbnail',
+                            'style' => 'max-width: 80px; max-height: 80px; object-fit: cover;',
+                            'alt' => $model->title,
                         ]);
                     } else {
                         return '<div class="text-center p-2" style="width: 80px; height: 80px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
@@ -144,7 +143,7 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                 'filter' => Html::activeDropDownList($searchModel, 'is_public', [
                     0 => 'Prywatne',
                     1 => 'Publiczne'
-                        ], [
+                ], [
                     'class' => 'form-select',
                     'prompt' => 'Wszystkie'
                 ]),
@@ -160,10 +159,10 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                     return '<span class="badge bg-info text-dark"><i class="fas fa-layer-group me-1"></i>' . Html::encode($model->series) . '</span>';
                 },
                 'filter' => Html::activeDropDownList($searchModel, 'series',
-                        array_combine(Photo::getAllSeries(), Photo::getAllSeries()), [
+                    array_combine(Photo::getAllSeries(), Photo::getAllSeries()), [
                     'class' => 'form-select',
                     'prompt' => 'Wszystkie serie'
-                        ]),
+                ]),
                 'headerOptions' => ['style' => 'width: 120px;'],
             ],
             [
@@ -263,273 +262,131 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
                 'contentOptions' => ['class' => 'text-nowrap'],
             ],
         ],
-    ]);
-    ?>
+    ]); ?>
 
-<?php Pjax::end(); ?>
+    <?php Pjax::end(); ?>
 
-<!-- Batch Update Modal -->
-<div class="modal fade" id="batchUpdateModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Aktualizuj zaznaczone zdjęcia</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <?php
-            $form = \yii\bootstrap5\ActiveForm::begin([
-                        'id' => 'batch-update-form',
-                        'action' => ['batch-update'],
-                    ]);
-            ?>
-            <div class="modal-body">
-                <input type="hidden" name="ids" id="batch-update-photo-ids">
-
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Wybrane pola zostaną zaktualizowane dla wszystkich zaznaczonych zdjęć. 
-                    Puste pola pozostaną bez zmian.
+    <!-- Batch Update Modal -->
+    <div class="modal fade" id="batchUpdateModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Aktualizuj zaznaczone zdjęcia</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
+                <?php
+                $form = \yii\bootstrap5\ActiveForm::begin([
+                    'id' => 'batch-update-form',
+                    'action' => ['batch-update'],
+                ]);
+                ?>
+                <div class="modal-body">
+                    <input type="hidden" name="ids" id="batch-update-photo-ids">
 
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Widoczność</label>
-                            <?= Html::dropDownList('is_public', '', [
-                                0 => 'Prywatne',
-                                1 => 'Publiczne'
-                            ], [
-                                'class' => 'form-select',
-                                'prompt' => 'Bez zmian'
-                            ]) ?>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Wybrane pola zostaną zaktualizowane dla wszystkich zaznaczonych zdjęć. 
+                        Puste pola pozostaną bez zmian.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Widoczność</label>
+                                <?= Html::dropDownList('is_public', '', [
+                                    0 => 'Prywatne',
+                                    1 => 'Publiczne'
+                                ], [
+                                    'class' => 'form-select',
+                                    'prompt' => 'Bez zmian'
+                                ]) ?>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Seria</label>
+                                <?= Html::dropDownList('series', '', array_combine(Photo::getAllSeries(), Photo::getAllSeries()), [
+                                    'class' => 'form-select',
+                                    'prompt' => 'Bez zmian'
+                                ]) ?>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label">Seria</label>
-                            <?= Html::dropDownList('series', '', array_combine(Photo::getAllSeries(), Photo::getAllSeries()), [
-                                'class' => 'form-select',
-                                'prompt' => 'Bez zmian'
-                            ]) ?>
+
+                    <!-- Stock Platforms -->
+                    <h6 class="mb-3"><i class="fas fa-store me-2"></i>Platformy stockowe</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="uploaded_to_shutterstock" value="1" id="batch-shutterstock">
+                                <label class="form-check-label" for="batch-shutterstock">
+                                    <i class="fas fa-camera me-1"></i>Shutterstock
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="uploaded_to_adobe_stock" value="1" id="batch-adobe">
+                                <label class="form-check-label" for="batch-adobe">
+                                    <i class="fab fa-adobe me-1"></i>Adobe Stock
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="used_in_private_project" value="1" id="batch-private">
+                                <label class="form-check-label" for="batch-private">
+                                    <i class="fas fa-briefcase me-1"></i>Prywatny projekt
+                                </label>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Stock Platforms -->
-                <h6 class="mb-3"><i class="fas fa-store me-2"></i>Platformy stockowe</h6>
-                <div class="row mb-3">
-                    <div class="col-md-4">
+                    <!-- AI Section -->
+                    <h6 class="mb-3"><i class="fas fa-robot me-2"></i>AI</h6>
+                    <div class="mb-3">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="uploaded_to_shutterstock" value="1" id="batch-shutterstock">
-                            <label class="form-check-label" for="batch-shutterstock">
-                                <i class="fas fa-camera me-1"></i>Shutterstock
+                            <input class="form-check-input" type="checkbox" name="is_ai_generated" value="1" id="batch-ai">
+                            <label class="form-check-label" for="batch-ai">
+                                <i class="fas fa-magic me-1"></i>Oznacz jako wygenerowane przez AI
                             </label>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="uploaded_to_adobe_stock" value="1" id="batch-adobe">
-                            <label class="form-check-label" for="batch-adobe">
-                                <i class="fab fa-adobe me-1"></i>Adobe Stock
-                            </label>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="used_in_private_project" value="1" id="batch-private">
-                            <label class="form-check-label" for="batch-private">
-                                <i class="fas fa-briefcase me-1"></i>Prywatny projekt
-                            </label>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- AI Section -->
-                <h6 class="mb-3"><i class="fas fa-robot me-2"></i>AI</h6>
-                <div class="mb-3">
+                    <div class="mb-3">
+                        <label class="form-label">Kategorie</label>
+                        <?= Html::dropDownList('categories', [], $categories, [
+                            'class' => 'form-select',
+                            'multiple' => true,
+                            'id' => 'batch-categories'
+                        ]) ?>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tagi</label>
+                        <?= Html::dropDownList('tags', [], $tags, [
+                            'class' => 'form-select',
+                            'multiple' => true,
+                            'id' => 'batch-tags'
+                        ]) ?>
+                    </div>
+
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="is_ai_generated" value="1" id="batch-ai">
-                        <label class="form-check-label" for="batch-ai">
-                            <i class="fas fa-magic me-1"></i>Oznacz jako wygenerowane przez AI
+                        <input class="form-check-input" type="checkbox" name="replace" value="1" id="batch-replace">
+                        <label class="form-check-label" for="batch-replace">
+                            Zastąp istniejące tagi i kategorie
                         </label>
+                        <div class="form-text">Jeśli nie zaznaczone, nowe tagi i kategorie zostaną dodane do istniejących</div>
                     </div>
                 </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Kategorie</label>
-                    <?= Html::dropDownList('categories', [], $categories, [
-                        'class' => 'form-select',
-                        'multiple' => true,
-                        'id' => 'batch-categories'
-                    ]) ?>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                    <button type="button" class="btn btn-primary" id="batch-update-submit">
+                        <i class="fas fa-save me-1"></i>Aktualizuj zdjęcia
+                    </button>
                 </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Tagi</label>
-                    <?= Html::dropDownList('tags', [], $tags, [
-                        'class' => 'form-select',
-                        'multiple' => true,
-                        'id' => 'batch-tags'
-                    ]) ?>
-                </div>
-
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="replace" value="1" id="batch-replace">
-                    <label class="form-check-label" for="batch-replace">
-                        Zastąp istniejące tagi i kategorie
-                    </label>
-                    <div class="form-text">Jeśli nie zaznaczone, nowe tagi i kategorie zostaną dodane do istniejących</div>
-                </div>
+                <?php \yii\bootstrap5\ActiveForm::end(); ?>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
-                <button type="button" class="btn btn-primary" id="batch-update-submit">
-                    <i class="fas fa-save me-1"></i>Aktualizuj zdjęcia
-                </button>
-            </div>
-            <?php \yii\bootstrap5\ActiveForm::end(); ?>
         </div>
     </div>
 </div>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Szybkie wyszukiwanie po kodzie
-        const quickSearchInput = document.getElementById('quick-search-code');
-        const quickSearchBtn = document.getElementById('quick-search-btn');
-        const searchStatus = document.getElementById('search-status');
-
-        if (quickSearchInput && quickSearchBtn) {
-            // Automatyczne wielkie litery
-            quickSearchInput.addEventListener('input', function () {
-                this.value = this.value.toUpperCase();
-            });
-
-            // Funkcja wyszukiwania
-            function performSearch() {
-                const code = quickSearchInput.value.trim();
-                if (code.length > 0) {
-                    // Jeśli kod ma 12 znaków, spróbuj znaleźć konkretne zdjęcie
-                    if (code.length === 12) {
-                        searchStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Szukam zdjęcia...';
-                        searchStatus.className = 'form-text mt-1 text-primary';
-
-                        // Sprawdź czy zdjęcie o tym kodzie istnieje
-                        window.location.href = '/photos/find-by-code?code=' + encodeURIComponent(code);
-                    } else {
-                        // Dla niepełnych kodów użyj filtra tabeli
-                        filterByCode(code);
-                    }
-                }
-            }
-
-            // Funkcja filtrowania tabeli
-            function filterByCode(code) {
-                searchStatus.innerHTML = '<i class="fas fa-filter"></i> Filtruję wyniki...';
-                searchStatus.className = 'form-text mt-1 text-info';
-
-                const filterInput = document.querySelector('input[name="PhotoSearch[search_code]"]');
-                if (filterInput) {
-                    filterInput.value = code;
-
-                    // Wyczyść inne filtry dla lepszych wyników wyszukiwania po kodzie
-                    const titleFilter = document.querySelector('input[name="PhotoSearch[title]"]');
-                    if (titleFilter)
-                        titleFilter.value = '';
-
-                    // Wyślij formularz filtrowania
-                    const form = filterInput.closest('form');
-                    if (form) {
-                        form.submit();
-                    } else {
-                        // Jeśli nie ma formularza, odśwież stronę z parametrem
-                        const currentUrl = new URL(window.location);
-                        currentUrl.searchParams.set('PhotoSearch[search_code]', code);
-                        window.location.href = currentUrl.toString();
-                    }
-                }
-            }
-
-            // Wyszukiwanie po kliknięciu przycisku
-            quickSearchBtn.addEventListener('click', performSearch);
-
-            // Wyszukiwanie po naciśnięciu Enter
-            quickSearchInput.addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    performSearch();
-                }
-            });
-
-            // Dodaj wskazówkę wizualną
-            quickSearchInput.addEventListener('keyup', function () {
-                const code = this.value.trim();
-                if (code.length === 12) {
-                    this.classList.add('border-success');
-                    this.classList.remove('border-warning');
-                    quickSearchBtn.innerHTML = '<i class="fas fa-eye"></i> Zobacz';
-                    quickSearchBtn.className = 'btn btn-success';
-                    searchStatus.innerHTML = '<i class="fas fa-check-circle"></i> Kod kompletny - kliknij aby przejść do zdjęcia';
-                    searchStatus.className = 'form-text mt-1 text-success';
-                } else if (code.length > 0) {
-                    this.classList.add('border-warning');
-                    this.classList.remove('border-success');
-                    quickSearchBtn.innerHTML = '<i class="fas fa-search"></i> Filtruj';
-                    quickSearchBtn.className = 'btn btn-warning';
-                    searchStatus.innerHTML = '<i class="fas fa-info-circle"></i> Kod niekompletny - będzie użyty jako filtr';
-                    searchStatus.className = 'form-text mt-1 text-warning';
-                } else {
-                    this.classList.remove('border-success', 'border-warning');
-                    quickSearchBtn.innerHTML = '<i class="fas fa-search"></i> Znajdź';
-                    quickSearchBtn.className = 'btn btn-primary';
-                    searchStatus.innerHTML = '';
-                    searchStatus.className = 'form-text mt-1';
-                }
-            });
-        }
-
-        // Batch operations - obsługa zaznaczania zdjęć
-        const checkboxes = document.querySelectorAll('input[name="selection[]"]');
-        const batchButtons = document.querySelectorAll('.batch-action-btn');
-        const selectAll = document.querySelector('input[name="selection_all"]');
-
-        function updateBatchButtons() {
-            const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
-            batchButtons.forEach(btn => {
-                btn.style.display = checkedBoxes.length > 0 ? 'inline-block' : 'none';
-            });
-        }
-
-        if (selectAll) {
-            selectAll.addEventListener('change', function () {
-                checkboxes.forEach(cb => cb.checked = selectAll.checked);
-                updateBatchButtons();
-            });
-        }
-
-        checkboxes.forEach(cb => {
-            cb.addEventListener('change', updateBatchButtons);
-        });
-
-        // Batch update form submission
-        const batchUpdateSubmit = document.getElementById('batch-update-submit');
-        if (batchUpdateSubmit) {
-            batchUpdateSubmit.addEventListener('click', function () {
-                const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
-                const ids = Array.from(checkedBoxes).map(cb => cb.value);
-                document.getElementById('batch-update-photo-ids').value = ids.join(',');
-                document.getElementById('batch-update-form').submit();
-            });
-        }
-
-        // Initialize Select2 for batch categories and tags
-        if (typeof $ !== 'undefined' && $.fn.select2) {
-            $('#batch-categories, #batch-tags').select2({
-                placeholder: 'Wybierz...',
-                allowClear: true,
-                dropdownParent: $('#batchUpdateModal')
-            });
-        }
-    });
-</script>

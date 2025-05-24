@@ -180,8 +180,6 @@ $this->params['breadcrumbs'][] = $this->title;
                                     <button type="button" class="btn btn-sm btn-outline-primary use-template" data-type="import_photos" data-template='{"directory": "uploads/import", "recursive": true}'>
                                         Użyj szablonu
                                     </button>
-                                        Użyj szablonu
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -216,59 +214,3 @@ $this->params['breadcrumbs'][] = $this->title;
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize JSON editor and beautify content
-    const paramsField = document.getElementById('job-params');
-    
-    // Helper function to format JSON
-    const formatJSON = function(json) {
-        try {
-            return JSON.stringify(JSON.parse(json), null, 2);
-        } catch (e) {
-            return json;
-        }
-    };
-    
-    // Format initial JSON
-    if (paramsField.value) {
-        paramsField.value = formatJSON(paramsField.value);
-    }
-    
-    // Add template buttons functionality
-    document.querySelectorAll('.use-template').forEach(button => {
-        button.addEventListener('click', function() {
-            const type = this.getAttribute('data-type');
-            const template = this.getAttribute('data-template');
-            
-            document.getElementById('job-type').value = type;
-            paramsField.value = formatJSON(template);
-        });
-    });
-    
-    // Auto-format JSON when input changes
-    paramsField.addEventListener('blur', function() {
-        if (this.value) {
-            try {
-                this.value = formatJSON(this.value);
-            } catch (e) {
-                // Leave as is if not valid JSON
-            }
-        }
-    });
-    
-    // Form validation
-    document.querySelector('form').addEventListener('submit', function(e) {
-        if (paramsField.value) {
-            try {
-                JSON.parse(paramsField.value);
-            } catch (e) {
-                e.preventDefault();
-                alert('Wprowadź poprawny format JSON dla parametrów.');
-                return false;
-            }
-        }
-    });
-});
-</script>
