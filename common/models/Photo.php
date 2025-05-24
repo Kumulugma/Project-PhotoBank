@@ -14,6 +14,7 @@ use common\behaviors\AuditBehavior;
  * @property int $id
  * @property string $title
  * @property string|null $description
+ * @property string|null $english_description
  * @property string|null $series
  * @property string $file_name
  * @property int $file_size
@@ -61,7 +62,7 @@ class Photo extends ActiveRecord {
     public function rules() {
         return [
             [['title', 'file_name', 'file_size', 'mime_type', 'created_by'], 'required'],
-            [['description', 's3_path', 'exif_data', 'ai_prompt'], 'string'],
+            [['description', 'english_description', 's3_path', 'exif_data', 'ai_prompt'], 'string'],
             [['series'], 'string', 'max' => 50],
             [['series'], 'trim'],
             [['file_size', 'status', 'is_public', 'width', 'height', 'created_at', 'updated_at', 'created_by'], 'integer'],
@@ -85,6 +86,7 @@ class Photo extends ActiveRecord {
             'id' => 'ID',
             'title' => 'Tytuł',
             'description' => 'Opis',
+            'english_description' => 'Opis w języku angielskim',
             'series' => 'Seria',
             'file_name' => 'Nazwa pliku',
             'file_size' => 'Rozmiar pliku',
@@ -108,6 +110,12 @@ class Photo extends ActiveRecord {
         ];
     }
 
+    // Sprawdza czy ma opis angielski
+    public function hasEnglishDescription() {
+        return !empty($this->english_description);
+    }
+
+    // Reszta metod pozostaje bez zmian...
     public function beforeSave($insert) {
         if ($insert && empty($this->search_code)) {
             $this->search_code = $this->generateSearchCode();

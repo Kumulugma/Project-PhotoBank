@@ -68,8 +68,8 @@ class PhotosController extends Controller {
     public function actionFindByCode($code = null) {
         // Loguj próbę wyszukiwania po kodzie
         if (!empty($code)) {
-            AuditLog::logSystemEvent("Wyszukiwanie zdjęcia po kodzie: {$code}", 
-                AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS);
+            AuditLog::logSystemEvent("Wyszukiwanie zdjęcia po kodzie: {$code}",
+                    AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS);
         }
 
         // Jeśli to żądanie AJAX, zwróć odpowiedź JSON
@@ -83,13 +83,13 @@ class PhotosController extends Controller {
             $photo = Photo::findBySearchCode($code);
 
             if (!$photo) {
-                AuditLog::logSystemEvent("Nie znaleziono zdjęcia o kodzie: {$code}", 
-                    AuditLog::SEVERITY_WARNING, AuditLog::ACTION_ACCESS);
+                AuditLog::logSystemEvent("Nie znaleziono zdjęcia o kodzie: {$code}",
+                        AuditLog::SEVERITY_WARNING, AuditLog::ACTION_ACCESS);
                 return ['success' => false, 'message' => 'Nie znaleziono zdjęcia o kodzie: ' . $code];
             }
 
-            AuditLog::logSystemEvent("Znaleziono zdjęcie ID {$photo->id} po kodzie: {$code}", 
-                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_ACCESS);
+            AuditLog::logSystemEvent("Znaleziono zdjęcie ID {$photo->id} po kodzie: {$code}",
+                    AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_ACCESS);
 
             return [
                 'success' => true,
@@ -124,7 +124,7 @@ class PhotosController extends Controller {
      */
     public function actionIndex() {
         AuditLog::logSystemEvent('Przeglądanie listy zdjęć', AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS);
-        
+
         $searchModel = new PhotoSearch();
         $searchModel->status = Photo::STATUS_ACTIVE;
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
@@ -142,7 +142,7 @@ class PhotosController extends Controller {
      */
     public function actionQueue() {
         AuditLog::logSystemEvent('Przeglądanie poczekalni zdjęć', AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS);
-        
+
         $searchModel = new PhotoSearch();
         $searchModel->status = Photo::STATUS_QUEUE;
         $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
@@ -164,11 +164,11 @@ class PhotosController extends Controller {
         $model = $this->findModel($id);
 
         // Loguj podgląd zdjęcia
-        AuditLog::logSystemEvent("Podgląd zdjęcia: {$model->title} (kod: {$model->search_code})", 
-            AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS, [
-                'model_class' => get_class($model),
-                'model_id' => $model->id
-            ]);
+        AuditLog::logSystemEvent("Podgląd zdjęcia: {$model->title} (kod: {$model->search_code})",
+                AuditLog::SEVERITY_INFO, AuditLog::ACTION_ACCESS, [
+            'model_class' => get_class($model),
+            'model_id' => $model->id
+        ]);
 
         // Get available thumbnail sizes using PathHelper
         $thumbnailSizes = ThumbnailSize::find()->all();
@@ -314,13 +314,13 @@ class PhotosController extends Controller {
                     $thumbnailImage->save($thumbnailPath);
                     $thumbnails[$size->name] = PathHelper::getThumbnailUrl($size->name, $fileName);
                 } catch (\Exception $e) {
-                    AuditLog::logSystemEvent("Błąd generowania miniatury {$size->name} dla {$fileName}: " . $e->getMessage(), 
-                        AuditLog::SEVERITY_WARNING, AuditLog::ACTION_UPLOAD);
+                    AuditLog::logSystemEvent("Błąd generowania miniatury {$size->name} dla {$fileName}: " . $e->getMessage(),
+                            AuditLog::SEVERITY_WARNING, AuditLog::ACTION_UPLOAD);
                 }
             }
 
-            AuditLog::logSystemEvent("Wygenerowano miniatury dla zdjęcia: {$photo->search_code}", 
-                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_UPLOAD);
+            AuditLog::logSystemEvent("Wygenerowano miniatury dla zdjęcia: {$photo->search_code}",
+                    AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_UPLOAD);
 
             return [
                 'success' => true,
@@ -338,9 +338,9 @@ class PhotosController extends Controller {
             if (file_exists($filePath)) {
                 unlink($filePath);
             }
-            AuditLog::logSystemEvent("Błąd przetwarzania przesłanego pliku {$uploadedFile->name}: " . $e->getMessage(), 
-                AuditLog::SEVERITY_ERROR, AuditLog::ACTION_UPLOAD);
-            
+            AuditLog::logSystemEvent("Błąd przetwarzania przesłanego pliku {$uploadedFile->name}: " . $e->getMessage(),
+                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_UPLOAD);
+
             return [
                 'success' => false,
                 'message' => 'Error processing uploaded file: ' . $e->getMessage(),
@@ -358,7 +358,6 @@ class PhotosController extends Controller {
     public function actionUpdate($id) {
         $model = $this->findModel($id);
         $oldAttributes = $model->attributes; // Zapisz stare wartości
-
         // Get all tags and categories for dropdown
         $allTags = Tag::find()->orderBy(['name' => SORT_ASC])->all();
         $allCategories = Category::find()->orderBy(['name' => SORT_ASC])->all();
@@ -439,27 +438,27 @@ class PhotosController extends Controller {
 
                 // Loguj szczegóły aktualizacji tagów i kategorii
                 if (!empty($addedTags)) {
-                    AuditLog::logSystemEvent("Zaktualizowano tagi zdjęcia {$model->search_code}: " . implode(', ', $addedTags), 
-                        AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE, [
-                            'model_class' => get_class($model),
-                            'model_id' => $model->id
-                        ]);
+                    AuditLog::logSystemEvent("Zaktualizowano tagi zdjęcia {$model->search_code}: " . implode(', ', $addedTags),
+                            AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE, [
+                        'model_class' => get_class($model),
+                        'model_id' => $model->id
+                    ]);
                 }
 
                 if (!empty($addedCategories)) {
-                    AuditLog::logSystemEvent("Zaktualizowano kategorie zdjęcia {$model->search_code}: " . implode(', ', $addedCategories), 
-                        AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE, [
-                            'model_class' => get_class($model),
-                            'model_id' => $model->id
-                        ]);
+                    AuditLog::logSystemEvent("Zaktualizowano kategorie zdjęcia {$model->search_code}: " . implode(', ', $addedCategories),
+                            AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE, [
+                        'model_class' => get_class($model),
+                        'model_id' => $model->id
+                    ]);
                 }
 
                 Yii::$app->session->setFlash('success', 'Photo updated successfully.');
                 return $this->redirect(['view', 'id' => $model->id]);
             } catch (\Exception $e) {
                 $transaction->rollBack();
-                AuditLog::logSystemEvent("Błąd aktualizacji zdjęcia ID {$id}: " . $e->getMessage(), 
-                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_UPDATE);
+                AuditLog::logSystemEvent("Błąd aktualizacji zdjęcia ID {$id}: " . $e->getMessage(),
+                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_UPDATE);
                 Yii::$app->session->setFlash('error', $e->getMessage());
             }
         }
@@ -484,7 +483,7 @@ class PhotosController extends Controller {
         $model = $this->findModel($id);
         $photoTitle = $model->title;
         $searchCode = $model->search_code;
-        
+
         $transaction = Yii::$app->db->beginTransaction();
 
         try {
@@ -520,8 +519,8 @@ class PhotosController extends Controller {
                 // Update S3 path to new location in deleted directory
                 $model->s3_path = $deletedKey;
 
-                AuditLog::logSystemEvent("Przeniesiono plik S3 do katalogu usuniętych: {$model->file_name}", 
-                    AuditLog::SEVERITY_INFO, AuditLog::ACTION_DELETE);
+                AuditLog::logSystemEvent("Przeniesiono plik S3 do katalogu usuniętych: {$model->file_name}",
+                        AuditLog::SEVERITY_INFO, AuditLog::ACTION_DELETE);
             }
 
             // Save model changes
@@ -556,18 +555,18 @@ class PhotosController extends Controller {
 
             // Loguj usunięcie zdjęcia
             AuditLog::logModelAction($model, AuditLog::ACTION_DELETE);
-            AuditLog::logSystemEvent("Usunięto zdjęcie: {$photoTitle} (kod: {$searchCode}) wraz z {$deletedThumbnails} miniaturami", 
-                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_DELETE, [
-                    'model_class' => get_class($model),
-                    'model_id' => $model->id
-                ]);
+            AuditLog::logSystemEvent("Usunięto zdjęcie: {$photoTitle} (kod: {$searchCode}) wraz z {$deletedThumbnails} miniaturami",
+                    AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_DELETE, [
+                'model_class' => get_class($model),
+                'model_id' => $model->id
+            ]);
 
             $transaction->commit();
             Yii::$app->session->setFlash('success', 'Photo has been successfully deleted.');
         } catch (\Exception $e) {
             $transaction->rollBack();
-            AuditLog::logSystemEvent("Błąd usuwania zdjęcia ID {$id}: " . $e->getMessage(), 
-                AuditLog::SEVERITY_ERROR, AuditLog::ACTION_DELETE);
+            AuditLog::logSystemEvent("Błąd usuwania zdjęcia ID {$id}: " . $e->getMessage(),
+                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_DELETE);
             Yii::$app->session->setFlash('error', 'Error occurred while deleting photo: ' . $e->getMessage());
         }
 
@@ -585,8 +584,8 @@ class PhotosController extends Controller {
         $model = $this->findModel($id);
 
         if ($model->status != Photo::STATUS_QUEUE) {
-            AuditLog::logSystemEvent("Próba zatwierdzenia zdjęcia które nie jest w poczekalni: ID {$id}", 
-                AuditLog::SEVERITY_WARNING, AuditLog::ACTION_APPROVE);
+            AuditLog::logSystemEvent("Próba zatwierdzenia zdjęcia które nie jest w poczekalni: ID {$id}",
+                    AuditLog::SEVERITY_WARNING, AuditLog::ACTION_APPROVE);
             Yii::$app->session->setFlash('error', 'Only photos in queue can be approved.');
             return $this->redirect(['queue']);
         }
@@ -627,25 +626,25 @@ class PhotosController extends Controller {
                             $model->s3_path = $s3Key;
                             $model->save();
 
-                            AuditLog::logSystemEvent("Zsynchronizowano zatwierdzone zdjęcie z S3: {$model->search_code}", 
-                                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_SYNC);
+                            AuditLog::logSystemEvent("Zsynchronizowano zatwierdzone zdjęcie z S3: {$model->search_code}",
+                                    AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_SYNC);
                         }
                     } else {
                         Yii::$app->session->setFlash('warning', 'S3 is not properly configured. Photo was approved but not synced to S3 storage.');
-                        AuditLog::logSystemEvent("S3 nie jest skonfigurowane - zdjęcie zatwierdzone lokalnie: {$model->search_code}", 
-                            AuditLog::SEVERITY_WARNING, AuditLog::ACTION_APPROVE);
+                        AuditLog::logSystemEvent("S3 nie jest skonfigurowane - zdjęcie zatwierdzone lokalnie: {$model->search_code}",
+                                AuditLog::SEVERITY_WARNING, AuditLog::ACTION_APPROVE);
                     }
                 } catch (\Exception $e) {
                     Yii::$app->session->setFlash('warning', 'Photo was approved but error occurred during S3 sync: ' . $e->getMessage());
-                    AuditLog::logSystemEvent("Błąd synchronizacji S3 po zatwierdzeniu zdjęcia {$model->search_code}: " . $e->getMessage(), 
-                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYNC);
+                    AuditLog::logSystemEvent("Błąd synchronizacji S3 po zatwierdzeniu zdjęcia {$model->search_code}: " . $e->getMessage(),
+                            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYNC);
                 }
             }
 
             Yii::$app->session->setFlash('success', 'Photo has been approved and moved to main gallery.');
         } else {
-            AuditLog::logSystemEvent("Błąd zatwierdzania zdjęcia ID {$id}: " . json_encode($model->errors), 
-                AuditLog::SEVERITY_ERROR, AuditLog::ACTION_APPROVE);
+            AuditLog::logSystemEvent("Błąd zatwierdzania zdjęcia ID {$id}: " . json_encode($model->errors),
+                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_APPROVE);
             Yii::$app->session->setFlash('error', 'Cannot approve photo: ' . json_encode($model->errors));
         }
 
@@ -668,8 +667,8 @@ class PhotosController extends Controller {
         $runNow = (bool) Yii::$app->request->post('run_now', false);
 
         // Loguj rozpoczęcie importu
-        AuditLog::logSystemEvent("Rozpoczęto import zdjęć z katalogu: {$directory} (rekursywnie: " . ($recursive ? 'tak' : 'nie') . ", usuń oryginały: " . ($deleteOriginals ? 'tak' : 'nie') . ")", 
-            AuditLog::SEVERITY_INFO, AuditLog::ACTION_IMPORT);
+        AuditLog::logSystemEvent("Rozpoczęto import zdjęć z katalogu: {$directory} (rekursywnie: " . ($recursive ? 'tak' : 'nie') . ", usuń oryginały: " . ($deleteOriginals ? 'tak' : 'nie') . ")",
+                AuditLog::SEVERITY_INFO, AuditLog::ACTION_IMPORT);
 
         // Create background job for processing
         $job = new QueuedJob();
@@ -686,33 +685,33 @@ class PhotosController extends Controller {
         $job->updated_at = time();
 
         if ($job->save()) {
-            AuditLog::logSystemEvent("Utworzono zadanie importu ID: {$job->id}", 
-                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_IMPORT);
+            AuditLog::logSystemEvent("Utworzono zadanie importu ID: {$job->id}",
+                    AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_IMPORT);
 
             if ($runNow) {
                 try {
-                    AuditLog::logSystemEvent("Rozpoczynam natychmiastowe przetwarzanie zadania importu ID: {$job->id}", 
-                        AuditLog::SEVERITY_INFO, AuditLog::ACTION_IMPORT);
+                    AuditLog::logSystemEvent("Rozpoczynam natychmiastowe przetwarzanie zadania importu ID: {$job->id}",
+                            AuditLog::SEVERITY_INFO, AuditLog::ACTION_IMPORT);
 
                     $jobProcessor = new \common\components\JobProcessor();
                     $job->markAsStarted();
 
                     if ($jobProcessor->processJob($job)) {
                         $job->markAsFinished();
-                        AuditLog::logSystemEvent("Import zdjęć zakończony pomyślnie - zadanie ID: {$job->id}", 
-                            AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_IMPORT);
+                        AuditLog::logSystemEvent("Import zdjęć zakończony pomyślnie - zadanie ID: {$job->id}",
+                                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_IMPORT);
                         Yii::$app->session->setFlash('success', 'Import zdjęć zakończony pomyślnie. Sprawdź szczegóły w widoku zadania.');
                     } else {
                         $job->markAsFailed('Błąd podczas przetwarzania zadania importu');
-                        AuditLog::logSystemEvent("Import zdjęć nieudany - zadanie ID: {$job->id}", 
-                            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
+                        AuditLog::logSystemEvent("Import zdjęć nieudany - zadanie ID: {$job->id}",
+                                AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
                         Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu zdjęć. Sprawdź szczegóły w widoku zadania.');
                     }
 
                     return $this->redirect(['queue/view', 'id' => $job->id]);
                 } catch (\Exception $e) {
-                    AuditLog::logSystemEvent("Błąd podczas importu zdjęć - zadanie ID {$job->id}: " . $e->getMessage(), 
-                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
+                    AuditLog::logSystemEvent("Błąd podczas importu zdjęć - zadanie ID {$job->id}: " . $e->getMessage(),
+                            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
                     $job->markAsFailed($e->getMessage());
                     Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu: ' . $e->getMessage());
                     return $this->redirect(['queue/view', 'id' => $job->id]);
@@ -739,20 +738,18 @@ class PhotosController extends Controller {
         return $this->render('import');
     }
 
-    /**
-     * Batch update selected photos.
-     *
-     * @return mixed
-     */
+    // W pliku backend/controllers/PhotosController.php
+// Znajdź metodę actionBatchUpdate i zaktualizuj obsługę pól:
+
     public function actionBatchUpdate() {
         if (Yii::$app->request->isPost) {
             $ids = explode(',', Yii::$app->request->post('ids', ''));
-            $status = Yii::$app->request->post('status', '');
             $isPublic = Yii::$app->request->post('is_public', '');
+            $series = Yii::$app->request->post('series', '');
             $categories = Yii::$app->request->post('categories', []);
             $tags = Yii::$app->request->post('tags', []);
             $replace = (bool) Yii::$app->request->post('replace', false);
-            
+
             // Nowe pola stockowe i AI
             $uploadedToShutterstock = Yii::$app->request->post('uploaded_to_shutterstock', null);
             $uploadedToAdobeStock = Yii::$app->request->post('uploaded_to_adobe_stock', null);
@@ -764,8 +761,8 @@ class PhotosController extends Controller {
                 return $this->redirect(['index']);
             }
 
-            AuditLog::logSystemEvent("Rozpoczęto aktualizację wsadową " . count($ids) . " zdjęć", 
-                AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE);
+            AuditLog::logSystemEvent("Rozpoczęto aktualizację wsadową " . count($ids) . " zdjęć",
+                    AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE);
 
             $updatedCount = 0;
             $transaction = Yii::$app->db->beginTransaction();
@@ -776,21 +773,21 @@ class PhotosController extends Controller {
                     $oldAttributes = $model->attributes;
                     $changes = [];
 
-                    // Update status if provided
-                    if ($status !== '') {
-                        $oldStatus = $model->status;
-                        $model->status = (int) $status;
-                        if ($oldStatus != $model->status) {
-                            $changes[] = "status: {$oldStatus} → {$model->status}";
-                        }
-                    }
-
                     // Update visibility if provided
                     if ($isPublic !== '') {
                         $oldPublic = $model->is_public;
                         $model->is_public = (int) $isPublic;
                         if ($oldPublic != $model->is_public) {
                             $changes[] = "publiczne: " . ($oldPublic ? 'tak' : 'nie') . " → " . ($model->is_public ? 'tak' : 'nie');
+                        }
+                    }
+
+                    // Update series if provided
+                    if ($series !== '') {
+                        $oldSeries = $model->series;
+                        $model->series = $series;
+                        if ($oldSeries != $model->series) {
+                            $changes[] = "seria: " . ($oldSeries ?: 'brak') . " → " . ($model->series ?: 'brak');
                         }
                     }
 
@@ -878,28 +875,28 @@ class PhotosController extends Controller {
 
                     // Loguj zmiany dla tego zdjęcia
                     if (!empty($changes)) {
-                        AuditLog::logSystemEvent("Aktualizacja wsadowa zdjęcia {$model->search_code}: " . implode(', ', $changes), 
-                            AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE, [
-                                'model_class' => get_class($model),
-                                'model_id' => $model->id,
-                                'old_values' => $oldAttributes,
-                                'new_values' => $model->attributes
-                            ]);
+                        AuditLog::logSystemEvent("Aktualizacja wsadowa zdjęcia {$model->search_code}: " . implode(', ', $changes),
+                                AuditLog::SEVERITY_INFO, AuditLog::ACTION_UPDATE, [
+                            'model_class' => get_class($model),
+                            'model_id' => $model->id,
+                            'old_values' => $oldAttributes,
+                            'new_values' => $model->attributes
+                        ]);
                     }
 
                     $updatedCount++;
                 }
 
                 $transaction->commit();
-                
-                AuditLog::logSystemEvent("Zakończono aktualizację wsadową - zaktualizowano {$updatedCount} zdjęć", 
-                    AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_UPDATE);
-                
+
+                AuditLog::logSystemEvent("Zakończono aktualizację wsadową - zaktualizowano {$updatedCount} zdjęć",
+                        AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_UPDATE);
+
                 Yii::$app->session->setFlash('success', "Pomyślnie zaktualizowano $updatedCount zdjęć.");
             } catch (\Exception $e) {
                 $transaction->rollBack();
-                AuditLog::logSystemEvent("Błąd aktualizacji wsadowej: " . $e->getMessage(), 
-                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_UPDATE);
+                AuditLog::logSystemEvent("Błąd aktualizacji wsadowej: " . $e->getMessage(),
+                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_UPDATE);
                 Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas aktualizacji: ' . $e->getMessage());
             }
         }
@@ -922,8 +919,8 @@ class PhotosController extends Controller {
                 return $this->redirect(['queue']);
             }
 
-            AuditLog::logSystemEvent("Rozpoczęto zatwierdzanie wsadowe " . count($ids) . " zdjęć" . ($autoPublish ? " z publikacją" : ""), 
-                AuditLog::SEVERITY_INFO, AuditLog::ACTION_APPROVE);
+            AuditLog::logSystemEvent("Rozpoczęto zatwierdzanie wsadowe " . count($ids) . " zdjęć" . ($autoPublish ? " z publikacją" : ""),
+                    AuditLog::SEVERITY_INFO, AuditLog::ACTION_APPROVE);
 
             $approvedCount = 0;
             $errorCount = 0;
@@ -987,21 +984,21 @@ class PhotosController extends Controller {
                                     $model->save();
                                 } catch (\Exception $e) {
                                     // Log error but continue with next files
-                                    AuditLog::logSystemEvent("Błąd synchronizacji S3 dla zdjęcia ID {$id}: " . $e->getMessage(), 
-                                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYNC);
+                                    AuditLog::logSystemEvent("Błąd synchronizacji S3 dla zdjęcia ID {$id}: " . $e->getMessage(),
+                                            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYNC);
                                     $s3ErrorCount++;
                                 }
                             }
                         }
                     } else {
                         $errorCount++;
-                        AuditLog::logSystemEvent("Błąd zatwierdzania zdjęcia ID {$id}: " . json_encode($model->errors), 
-                            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_APPROVE);
+                        AuditLog::logSystemEvent("Błąd zatwierdzania zdjęcia ID {$id}: " . json_encode($model->errors),
+                                AuditLog::SEVERITY_ERROR, AuditLog::ACTION_APPROVE);
                     }
                 } catch (\Exception $e) {
                     $errorCount++;
-                    AuditLog::logSystemEvent("Wyjątek podczas zatwierdzania zdjęcia ID {$id}: " . $e->getMessage(), 
-                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_APPROVE);
+                    AuditLog::logSystemEvent("Wyjątek podczas zatwierdzania zdjęcia ID {$id}: " . $e->getMessage(),
+                            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_APPROVE);
                 }
             }
 
@@ -1011,9 +1008,9 @@ class PhotosController extends Controller {
                 $summaryMessage .= ", błędy S3: {$s3ErrorCount}";
             }
 
-            AuditLog::logSystemEvent($summaryMessage, 
-                $errorCount > 0 ? AuditLog::SEVERITY_WARNING : AuditLog::SEVERITY_SUCCESS, 
-                AuditLog::ACTION_APPROVE);
+            AuditLog::logSystemEvent($summaryMessage,
+                    $errorCount > 0 ? AuditLog::SEVERITY_WARNING : AuditLog::SEVERITY_SUCCESS,
+                    AuditLog::ACTION_APPROVE);
 
             if ($approvedCount > 0) {
                 $message = "Successfully approved $approvedCount photos.";
@@ -1051,8 +1048,8 @@ class PhotosController extends Controller {
                 return $this->redirect(['index']);
             }
 
-            AuditLog::logSystemEvent("Rozpoczęto usuwanie wsadowe " . count($ids) . " zdjęć", 
-                AuditLog::SEVERITY_INFO, AuditLog::ACTION_DELETE);
+            AuditLog::logSystemEvent("Rozpoczęto usuwanie wsadowe " . count($ids) . " zdjęć",
+                    AuditLog::SEVERITY_INFO, AuditLog::ACTION_DELETE);
 
             $transaction = Yii::$app->db->beginTransaction();
             $deletedCount = 0;
@@ -1128,15 +1125,15 @@ class PhotosController extends Controller {
                 }
 
                 $transaction->commit();
-                
-                AuditLog::logSystemEvent("Zakończono usuwanie wsadowe - usunięto {$deletedCount} zdjęć", 
-                    AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_DELETE);
-                
+
+                AuditLog::logSystemEvent("Zakończono usuwanie wsadowe - usunięto {$deletedCount} zdjęć",
+                        AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_DELETE);
+
                 Yii::$app->session->setFlash('success', "Successfully deleted $deletedCount photos.");
             } catch (\Exception $e) {
                 $transaction->rollBack();
-                AuditLog::logSystemEvent("Błąd usuwania wsadowego: " . $e->getMessage(), 
-                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_DELETE);
+                AuditLog::logSystemEvent("Błąd usuwania wsadowego: " . $e->getMessage(),
+                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_DELETE);
                 Yii::$app->session->setFlash('error', 'Error occurred while deleting photos: ' . $e->getMessage());
             }
         }

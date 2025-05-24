@@ -80,6 +80,14 @@ $statusOptions = [
                     ?>
 
                     <?=
+                    $form->field($model, 'english_description')->textarea([
+                        'rows' => 6,
+                        'class' => 'form-control',
+                        'placeholder' => 'Enter photo description in English...'
+                    ])->label('Opis w języku angielskim')
+                    ?>
+
+                    <?=
                     $form->field($model, 'status')->dropDownList($statusOptions, [
                         'class' => 'form-select'
                     ])->label('Status')
@@ -275,7 +283,11 @@ $statusOptions = [
                     <div class="table-responsive">
                         <table class="table table-sm">
                             <tr>
-                                <th style="width: 40%;">Nazwa pliku:</th>
+                                <th style="width: 40%;">Kod:</th>
+                                <td><code><?= Html::encode($model->search_code) ?></code></td>
+                            </tr>
+                            <tr>
+                                <th>Nazwa pliku:</th>
                                 <td><code><?= Html::encode($model->file_name) ?></code></td>
                             </tr>
                             <tr>
@@ -389,6 +401,12 @@ $statusOptions = [
                                 <i class="fas fa-file-alt me-1"></i>Generuj opis
                             </label>
                         </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="analyze_english_description" value="1" checked id="analyze-english-description">
+                            <label class="form-check-label" for="analyze-english-description">
+                                <i class="fas fa-globe me-1"></i>Generuj opis angielski
+                            </label>
+                        </div>
                     </div>
 
                     <div class="d-grid">
@@ -411,37 +429,39 @@ $statusOptions = [
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // Initialize Select2 for tags with tagging support
-        $('#photo-tags').select2({
-            tags: true,
-            tokenSeparators: [',', ' '],
-            placeholder: 'Wybierz lub wpisz tagi',
-            allowClear: true,
-            createTag: function (params) {
-                const term = params.term.trim();
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('#photo-tags').select2({
+                tags: true,
+                tokenSeparators: [',', ' '],
+                placeholder: 'Wybierz lub wpisz tagi',
+                allowClear: true,
+                createTag: function (params) {
+                    const term = params.term.trim();
 
-                if (term === '') {
-                    return null;
+                    if (term === '') {
+                        return null;
+                    }
+
+                    return {
+                        id: term,
+                        text: term,
+                        newTag: true
+                    };
+                },
+                templateResult: function (data) {
+                    if (data.newTag) {
+                        return $('<span><i class="fas fa-plus me-1"></i>Dodaj: <strong>' + data.text + '</strong></span>');
+                    }
+                    return data.text;
                 }
+            });
 
-                return {
-                    id: term,
-                    text: term,
-                    newTag: true
-                };
-            },
-            templateResult: function (data) {
-                if (data.newTag) {
-                    return $('<span><i class="fas fa-plus me-1"></i>Dodaj: <strong>' + data.text + '</strong></span>');
-                }
-                return data.text;
-            }
-        });
-
-        // Initialize Select2 for categories
-        $('#photo-categories').select2({
-            placeholder: 'Wybierz kategorie',
-            allowClear: true
-        });
+            // Initialize Select2 for categories
+            $('#photo-categories').select2({
+                placeholder: 'Wybierz kategorie',
+                allowClear: true
+            });
+        }
 
         // Handle AI checkbox toggle
         const aiCheckbox = document.getElementById('is-ai-generated');
@@ -481,20 +501,35 @@ $statusOptions = [
         }
 
         // Auto-resize textarea
-        const textarea = document.querySelector('textarea[name="Photo[description]"]');
-        if (textarea) {
+        const textareas = document.querySelectorAll('textarea');
+        textareas.forEach(textarea => {
             textarea.addEventListener('input', function () {
                 this.style.height = 'auto';
                 this.style.height = this.scrollHeight + 'px';
             });
-        }
-
-        const aiPromptTextarea = document.querySelector('textarea[name="Photo[ai_prompt]"]');
-        if (aiPromptTextarea) {
-            aiPromptTextarea.addEventListener('input', function () {
-                this.style.height = 'auto';
-                this.style.height = this.scrollHeight + 'px';
-            });
-        }
+        });
     });
+
+    function showToast(message, type = 'info') {
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed`;
+        toast.style.top = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '9999';
+        toast.innerHTML = `
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 3000);
+    }
 </script>

@@ -22,7 +22,7 @@ class PhotoSearch extends Photo
         return [
             [['id', 'file_size', 'status', 'is_public', 'width', 'height', 'created_at', 'updated_at', 'created_by'], 'integer'],
             [['uploaded_to_shutterstock', 'uploaded_to_adobe_stock', 'used_in_private_project', 'is_ai_generated'], 'boolean'],
-            [['title', 'description', 'series', 'file_name', 'mime_type', 's3_path', 'search_code', 'exif_data', 'ai_prompt', 'ai_generator_url'], 'safe'],
+            [['title', 'description', 'english_description', 'series', 'file_name', 'mime_type', 's3_path', 'search_code', 'exif_data', 'ai_prompt', 'ai_generator_url'], 'safe'],
             [['has_copyright', 'stock_filter'], 'safe'],
         ];
     }
@@ -85,6 +85,7 @@ class PhotoSearch extends Photo
 
         $query->andFilterWhere(['like', 'title', $this->title])
             ->andFilterWhere(['like', 'description', $this->description])
+            ->andFilterWhere(['like', 'english_description', $this->english_description])
             ->andFilterWhere(['like', 'series', $this->series])
             ->andFilterWhere(['like', 'file_name', $this->file_name])
             ->andFilterWhere(['like', 'mime_type', $this->mime_type])

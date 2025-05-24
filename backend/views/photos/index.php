@@ -15,12 +15,6 @@ $this->params['breadcrumbs'][] = $this->title;
 
 $tags = ArrayHelper::map(Tag::find()->orderBy(['name' => SORT_ASC])->all(), 'id', 'name');
 $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->all(), 'id', 'name');
-
-$statusOptions = [
-    \common\models\Photo::STATUS_QUEUE => 'W kolejce',
-    \common\models\Photo::STATUS_ACTIVE => 'Aktywne',
-    \common\models\Photo::STATUS_DELETED => 'Usunięte',
-];
 ?>
 <div class="photo-index">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -94,11 +88,6 @@ $statusOptions = [
                 }
             ],
             [
-                'attribute' => 'id',
-                'headerOptions' => ['style' => 'width: 80px;'],
-                'contentOptions' => ['class' => 'fw-bold'],
-            ],
-            [
                 'attribute' => 'search_code',
                 'label' => 'Kod',
                 'format' => 'raw',
@@ -137,46 +126,10 @@ $statusOptions = [
                 'attribute' => 'title',
                 'format' => 'raw',
                 'value' => function ($model) {
-                    $title = Html::a(Html::encode($model->title), ['view', 'id' => $model->id], [
+                    return Html::a(Html::encode($model->title), ['view', 'id' => $model->id], [
                         'class' => 'fw-bold text-decoration-none'
                     ]);
-                    
-                    // Dodaj ikony dla AI i stocków
-                    $badges = [];
-                    if ($model->isAiGenerated()) {
-                        $badges[] = '<span class="badge bg-warning text-dark ms-1" title="Wygenerowane przez AI"><i class="fas fa-robot"></i></span>';
-                    }
-                    if ($model->isUploadedToAnyStock()) {
-                        $platforms = [];
-                        if ($model->isUploadedToShutterstock()) $platforms[] = 'S';
-                        if ($model->isUploadedToAdobeStock()) $platforms[] = 'A';
-                        $badges[] = '<span class="badge bg-success ms-1" title="Przesłane na platformy stockowe: ' . implode(', ', $platforms) . '"><i class="fas fa-store"></i></span>';
-                    }
-                    if ($model->isUsedInPrivateProject()) {
-                        $badges[] = '<span class="badge bg-info ms-1" title="Użyte w prywatnym projekcie"><i class="fas fa-briefcase"></i></span>';
-                    }
-                    
-                    return $title . implode('', $badges);
                 },
-            ],
-            [
-                'attribute' => 'status',
-                'format' => 'raw',
-                'value' => function ($model) use ($statusOptions) {
-                    $status = $statusOptions[$model->status] ?? 'Nieznany';
-                    $badgeClass = match ($model->status) {
-                        \common\models\Photo::STATUS_QUEUE => 'bg-warning',
-                        \common\models\Photo::STATUS_ACTIVE => 'bg-success',
-                        \common\models\Photo::STATUS_DELETED => 'bg-danger',
-                        default => 'bg-secondary'
-                    };
-                    return '<span class="badge ' . $badgeClass . '">' . $status . '</span>';
-                },
-                'filter' => Html::activeDropDownList($searchModel, 'status', $statusOptions, [
-                    'class' => 'form-select',
-                    'prompt' => 'Wszystkie'
-                ]),
-                'headerOptions' => ['style' => 'width: 120px;'],
             ],
             [
                 'attribute' => 'is_public',
@@ -279,62 +232,19 @@ $statusOptions = [
                 'filter' => false,
             ],
             [
-                'label' => 'Copyright',
-                'format' => 'raw',
-                'value' => function ($model) {
-                    if ($model->hasCopyrightInfo()) {
-                        $copyrightInfo = $model->getCopyrightInfo();
-                        $tooltip = '';
-                        if (isset($copyrightInfo['copyright'])) {
-                            $tooltip .= 'Copyright: ' . Html::encode($copyrightInfo['copyright']) . "\n";
-                        }
-                        if (isset($copyrightInfo['artist'])) {
-                            $tooltip .= 'Autor: ' . Html::encode($copyrightInfo['artist']);
-                        }
-                        
-                        return '<span class="badge bg-danger" title="' . Html::encode($tooltip) . '">
-                                    <i class="fas fa-copyright me-1"></i>©
-                                </span>';
-                    }
-                    return '<span class="text-muted">-</span>';
-                },
-                'filter' => Html::activeDropDownList($searchModel, 'has_copyright', [
-                    1 => 'Z prawami autorskimi',
-                    0 => 'Bez praw autorskich'
-                ], [
-                    'class' => 'form-select',
-                    'prompt' => 'Wszystkie'
-                ]),
-                'headerOptions' => ['style' => 'width: 80px;'],
-                'contentOptions' => ['class' => 'text-center'],
-            ],
-            [
-                'attribute' => 'created_at',
-                'format' => 'raw',
-                'value' => function ($model) {
-                    return '<span title="' . date('Y-m-d H:i:s', $model->created_at) . '">' .
-                    Yii::$app->formatter->asRelativeTime($model->created_at) . '</span>';
-                },
-                'filter' => Html::activeTextInput($searchModel, 'created_at', [
-                    'class' => 'form-control',
-                    'placeholder' => 'YYYY-MM-DD'
-                ]),
-                'headerOptions' => ['style' => 'width: 140px;'],
-            ],
-            [
                 'class' => 'yii\grid\ActionColumn',
                 'template' => '{view} {update} {delete}',
                 'buttons' => [
                     'view' => function ($url, $model, $key) {
                         return Html::a('<i class="fas fa-eye"></i>', $url, [
-                            'class' => 'btn btn-sm btn-outline-primary',
+                            'class' => 'btn btn-sm btn-outline-primary me-1',
                             'title' => 'Zobacz',
                             'data-pjax' => 0,
                         ]);
                     },
                     'update' => function ($url, $model, $key) {
                         return Html::a('<i class="fas fa-edit"></i>', $url, [
-                            'class' => 'btn btn-sm btn-outline-secondary',
+                            'class' => 'btn btn-sm btn-outline-secondary me-1',
                             'title' => 'Edytuj',
                             'data-pjax' => 0,
                         ]);
@@ -349,8 +259,8 @@ $statusOptions = [
                         ]);
                     },
                 ],
-                'headerOptions' => ['style' => 'width: 120px;'],
-                'contentOptions' => ['class' => 'text-end'],
+                'headerOptions' => ['style' => 'width: 140px;'],
+                'contentOptions' => ['class' => 'text-nowrap'],
             ],
         ],
     ]);
@@ -384,8 +294,11 @@ $statusOptions = [
                 <div class="row">
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label class="form-label">Status</label>
-                            <?= Html::dropDownList('status', '', $statusOptions, [
+                            <label class="form-label">Widoczność</label>
+                            <?= Html::dropDownList('is_public', '', [
+                                0 => 'Prywatne',
+                                1 => 'Publiczne'
+                            ], [
                                 'class' => 'form-select',
                                 'prompt' => 'Bez zmian'
                             ]) ?>
@@ -393,11 +306,8 @@ $statusOptions = [
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
-                            <label class="form-label">Widoczność</label>
-                            <?= Html::dropDownList('is_public', '', [
-                                0 => 'Prywatne',
-                                1 => 'Publiczne'
-                            ], [
+                            <label class="form-label">Seria</label>
+                            <?= Html::dropDownList('series', '', array_combine(Photo::getAllSeries(), Photo::getAllSeries()), [
                                 'class' => 'form-select',
                                 'prompt' => 'Bez zmian'
                             ]) ?>
@@ -447,7 +357,7 @@ $statusOptions = [
 
                 <div class="mb-3">
                     <label class="form-label">Kategorie</label>
-                    <?= Html::dropDownList('categories', [], ArrayHelper::map($categories, 'id', 'name'), [
+                    <?= Html::dropDownList('categories', [], $categories, [
                         'class' => 'form-select',
                         'multiple' => true,
                         'id' => 'batch-categories'
@@ -456,7 +366,7 @@ $statusOptions = [
 
                 <div class="mb-3">
                     <label class="form-label">Tagi</label>
-                    <?= Html::dropDownList('tags', [], ArrayHelper::map($tags, 'id', 'name'), [
+                    <?= Html::dropDownList('tags', [], $tags, [
                         'class' => 'form-select',
                         'multiple' => true,
                         'id' => 'batch-tags'
@@ -614,9 +524,12 @@ $statusOptions = [
         }
 
         // Initialize Select2 for batch categories and tags
-        $('#batch-categories, #batch-tags').select2({
-            placeholder: 'Wybierz...',
-            allowClear: true
-        });
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('#batch-categories, #batch-tags').select2({
+                placeholder: 'Wybierz...',
+                allowClear: true,
+                dropdownParent: $('#batchUpdateModal')
+            });
+        }
     });
 </script>
