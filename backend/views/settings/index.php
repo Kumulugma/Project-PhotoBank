@@ -241,6 +241,9 @@ $this->params['breadcrumbs'][] = $this->title;
                         <li><i class="fas fa-envelope text-info me-2"></i><strong>Email:</strong> Konfiguracja SMTP do wysyłania wiadomości</li>
                         <li><i class="fas fa-upload text-success me-2"></i><strong>Przesyłanie:</strong> Ograniczenia i restrakcje przesyłania plików</li>
                         <li><i class="fas fa-images text-warning me-2"></i><strong>Galeria:</strong> Preferencje wyświetlania galerii frontend</li>
+                        <li><i class="fas fa-robot text-info me-2"></i><strong>AI:</strong> Integracja ze sztuczną inteligencją</li>
+                        <li><i class="fas fa-cloud text-primary me-2"></i><strong>S3:</strong> Magazyn w chmurze Amazon S3</li>
+                        <li><i class="fas fa-camera text-secondary me-2"></i><strong>EXIF:</strong> Metadane zdjęć</li>
                     </ul>
                 </div>
                 <div class="col-md-6">
@@ -259,8 +262,10 @@ $this->params['breadcrumbs'][] = $this->title;
                         <ul class="mb-0">
                             <li><?= Html::a('Ustawienia S3', ['/s3/index'], ['class' => 'alert-link']) ?></li>
                             <li><?= Html::a('Integracja AI', ['/ai/index'], ['class' => 'alert-link']) ?></li>
+                            <li><?= Html::a('Ustawienia EXIF', ['/exif/index'], ['class' => 'alert-link']) ?></li>
                             <li><?= Html::a('Ustawienia znaku wodnego', ['/watermark/index'], ['class' => 'alert-link']) ?></li>
                             <li><?= Html::a('Rozmiary miniatur', ['/thumbnails/index'], ['class' => 'alert-link']) ?></li>
+                            <li><?= Html::a('Kolejka zadań', ['/queue/index'], ['class' => 'alert-link']) ?></li>
                         </ul>
                     </div>
                 </div>

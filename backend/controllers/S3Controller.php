@@ -75,6 +75,7 @@ class S3Controller extends Controller
             $secretKey = Yii::$app->request->post('secret_key');
             $directory = Yii::$app->request->post('directory', 'photos');
             $deletedDirectory = Yii::$app->request->post('deleted_directory', 'deleted');
+            $monthlyLimit = (int) Yii::$app->request->post('monthly_limit', 10000);
             
             // Validate required fields
             if (empty($bucket) || empty($region)) {
@@ -88,6 +89,7 @@ class S3Controller extends Controller
                 // Update settings
                 $this->updateSetting('s3.bucket', $bucket, 'S3 bucket name');
                 $this->updateSetting('s3.region', $region, 'S3 region');
+                $this->updateSetting('s3.monthly_limit', (string)$monthlyLimit, 'Miesięczny limit operacji S3');
                 
                 // Update access key (only if not empty or masked)
                 if (!empty($accessKey) && $accessKey !== '********') {
@@ -113,7 +115,34 @@ class S3Controller extends Controller
         
         return $this->redirect(['index']);
     }
+    
+    /**
+     * Updates S3 counters
+     */
+    public function actionUpdateCounters()
+    {
+        if (Yii::$app->request->isPost) {
+            $resetS3Counter = (bool) Yii::$app->request->post('reset_s3_counter', false);
 
+            $transaction = Yii::$app->db->beginTransaction();
+            try {
+                // Reset licznika S3 jeśli wymagane
+                if ($resetS3Counter) {
+                    $this->updateSetting('s3.current_count', '0', 'Bieżąca liczba wykorzystanych operacji S3 w tym miesiącu');
+                    \common\models\AuditLog::logSystemEvent('Ręczny reset licznika S3', \common\models\AuditLog::SEVERITY_INFO, \common\models\AuditLog::ACTION_SETTINGS);
+                }
+
+                $transaction->commit();
+                Yii::$app->session->setFlash('success', 'Licznik S3 został zaktualizowany.');
+            } catch (\Exception $e) {
+                $transaction->rollBack();
+                Yii::$app->session->setFlash('error', 'Błąd aktualizacji licznika S3: ' . $e->getMessage());
+            }
+        }
+
+        return $this->redirect(['index']);
+    }
+    
     /**
      * Tests S3 connection.
      * @return mixed
@@ -169,7 +198,7 @@ class S3Controller extends Controller
         // Queue the synchronization task
         $task = new QueuedJob();
         $task->type = 's3_sync';
-        $task->params = json_encode(['delete_local' => $deleteLocal]);
+        $task->data = json_encode(['delete_local' => $deleteLocal]);
         $task->status = QueuedJob::STATUS_PENDING;
         $task->created_at = time();
         

@@ -343,7 +343,7 @@ $statusOptions = [
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">
-                        <i class="fas fa-robot me-2"></i>Operacje AI
+                        <i class="fas fa-robot me-2"></i>Operacje AI i EXIF
                     </h5>
                 </div>
                 <div class="card-body">
@@ -366,7 +366,7 @@ $statusOptions = [
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="analyze_description" value="1" checked id="analyze-description">
                             <label class="form-check-label" for="analyze-description">
-                                <i class="fas fa-file-alt me-1"></i>Generuj opis
+                                <i class="fas fa-file-alt me-1"></i>Generuj opis polski
                             </label>
                         </div>
                         <div class="form-check">
@@ -377,9 +377,12 @@ $statusOptions = [
                         </div>
                     </div>
 
-                    <div class="d-grid">
+                    <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-outline-primary">
                             <i class="fas fa-magic me-2"></i>Analizuj z AI
+                        </button>
+                        <button type="button" class="btn btn-outline-warning" id="set-exif-btn" data-photo-id="<?= $model->id ?>">
+                            <i class="fas fa-camera me-2"></i>Ustaw dane EXIF
                         </button>
                     </div>
 
@@ -393,3 +396,90 @@ $statusOptions = [
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Select2 for tags and categories
+    if (typeof $.fn.select2 !== 'undefined') {
+        $('#photo-tags').select2({
+            placeholder: 'Wybierz lub wpisz tagi...',
+            tags: true,
+            allowClear: true,
+            width: '100%'
+        });
+
+        $('#photo-categories').select2({
+            placeholder: 'Wybierz kategorie...',
+            allowClear: true,
+            width: '100%'
+        });
+    }
+
+    // Toggle AI fields visibility
+    const aiCheckbox = document.getElementById('is-ai-generated');
+    const aiFields = document.getElementById('ai-fields');
+    
+    if (aiCheckbox && aiFields) {
+        aiCheckbox.addEventListener('change', function() {
+            aiFields.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+    
+    // Obsługa przycisku ustawiania EXIF
+    const setExifBtn = document.getElementById('set-exif-btn');
+    if (setExifBtn) {
+        setExifBtn.addEventListener('click', function() {
+            const photoId = this.getAttribute('data-photo-id');
+            const button = this;
+            
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Ustawianie...';
+            
+            fetch('<?= \yii\helpers\Url::to(['/exif/set-artist']) ?>?id=' + photoId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': '<?= Yii::$app->request->csrfToken ?>'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('success', data.message);
+                } else {
+                    showAlert('error', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('error', 'Wystąpił błąd podczas ustawiania danych EXIF.');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-camera me-2"></i>Ustaw dane EXIF';
+            });
+        });
+    }
+    
+    function showAlert(type, message) {
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        const iconClass = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+        
+        const alert = document.createElement('div');
+        alert.className = `alert ${alertClass} alert-dismissible fade show`;
+        alert.innerHTML = `
+            <i class="fas ${iconClass} me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const container = document.querySelector('.photo-update');
+        container.insertBefore(alert, container.firstChild);
+        
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+});
+</script>

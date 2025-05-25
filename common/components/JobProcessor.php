@@ -63,6 +63,11 @@ class JobProcessor {
     }
 
     protected function syncWithS3($params) {
+        // Sprawdź limity S3
+        if (!$this->checkS3Limits()) {
+            throw new \Exception("Osiągnięto miesięczny limit operacji S3");
+        }
+
         if (!Yii::$app->has('s3')) {
             throw new \Exception("Komponent S3 nie jest skonfigurowany");
         }
@@ -107,6 +112,9 @@ class JobProcessor {
                     'ContentType' => $photo->mime_type
                 ]);
 
+                // Zwiększ licznik S3
+                $this->incrementS3Counter();
+
                 $photo->s3_path = $s3Key;
                 $photo->updated_at = time();
 
@@ -129,7 +137,7 @@ class JobProcessor {
 
         return true;
     }
-
+    
     protected function regenerateThumbnails($params) {
         $query = Photo::find()->where(['!=', 'status', Photo::STATUS_DELETED]);
 
@@ -239,6 +247,11 @@ class JobProcessor {
     }
 
     protected function analyzePhoto($params) {
+        // Sprawdź limity AI
+        if (!$this->checkAiLimits()) {
+            throw new \Exception("Osiągnięto miesięczny limit zapytań AI");
+        }
+
         if (empty($params['photo_id'])) {
             throw new \Exception("Nie podano ID zdjęcia do analizy");
         }
@@ -246,6 +259,7 @@ class JobProcessor {
         $photoId = $params['photo_id'];
         $analyzeTags = isset($params['analyze_tags']) ? (bool) $params['analyze_tags'] : true;
         $analyzeDescription = isset($params['analyze_description']) ? (bool) $params['analyze_description'] : true;
+        $analyzeEnglishDescription = isset($params['analyze_english_description']) ? (bool) $params['analyze_english_description'] : true;
 
         $photo = Photo::findOne($photoId);
         if (!$photo) {
@@ -295,30 +309,29 @@ class JobProcessor {
         $results = [];
 
         switch ($aiProvider) {
-            case 'aws':
-                $results = [
-                    'tags' => ['nature', 'landscape', 'sky', 'outdoor'],
-                    'description' => 'A beautiful outdoor landscape with a clear blue sky.'
-                ];
+            case 'openai':
+                $results = $this->analyzeWithOpenAI($filePath, $analyzeTags, $analyzeDescription, $analyzeEnglishDescription);
+                break;
+
+            case 'anthropic':
+                $results = $this->analyzeWithAnthropic($filePath, $analyzeTags, $analyzeDescription, $analyzeEnglishDescription);
                 break;
 
             case 'google':
-                $results = [
-                    'tags' => ['landscape', 'sky', 'nature', 'outdoor', 'cloud'],
-                    'description' => 'Outdoor landscape with blue sky and clouds.'
-                ];
-                break;
-
-            case 'openai':
-                $results = [
-                    'tags' => ['nature', 'landscape', 'mountains', 'sky', 'outdoor', 'scenic'],
-                    'description' => 'A serene landscape showing mountains against a blue sky, with natural elements creating a peaceful outdoor scene.'
-                ];
+                $results = $this->analyzeWithGoogle($filePath, $analyzeTags, $analyzeDescription, $analyzeEnglishDescription);
                 break;
 
             default:
-                throw new \Exception("Nieobsługiwany dostawca AI: {$aiProvider}");
+                // Zastępcza implementacja do testów
+                $results = [
+                    'tags' => ['nature', 'landscape', 'sky', 'outdoor'],
+                    'description' => 'Piękny krajobraz na świeżym powietrzu z błękitnym niebem.',
+                    'english_description' => 'A beautiful outdoor landscape with a clear blue sky.'
+                ];
         }
+
+        // Zwiększ licznik AI
+        $this->incrementAiCounter();
 
         if ($analyzeTags && !empty($results['tags'])) {
             $this->applyTags($photo, $results['tags']);
@@ -326,6 +339,14 @@ class JobProcessor {
 
         if ($analyzeDescription && !empty($results['description'])) {
             $photo->description = $results['description'];
+        }
+
+        if ($analyzeEnglishDescription && !empty($results['english_description'])) {
+            $photo->english_description = $results['english_description'];
+        }
+
+        if (($analyzeDescription && !empty($results['description'])) || 
+            ($analyzeEnglishDescription && !empty($results['english_description']))) {
             $photo->updated_at = time();
             $photo->save();
         }
@@ -336,7 +357,7 @@ class JobProcessor {
 
         return true;
     }
-
+    
     protected function analyzeBatch($params) {
         if (empty($params['photo_ids']) || !is_array($params['photo_ids'])) {
             throw new \Exception("Nie podano ID zdjęć do analizy");
@@ -811,5 +832,117 @@ class JobProcessor {
         $setting = Settings::findOne(['key' => $key]);
         return $setting ? $setting->value : $default;
     }
+    
+    protected function analyzeWithOpenAI($filePath, $analyzeTags, $analyzeDescription, $analyzeEnglishDescription) {
+        // Implementacja OpenAI - przykładowa
+        $results = [
+            'tags' => $analyzeTags ? ['nature', 'landscape', 'mountains', 'sky', 'outdoor', 'scenic'] : [],
+        ];
 
+        if ($analyzeDescription) {
+            $results['description'] = 'Spokojny krajobraz przedstawiający góry na tle błękitnego nieba, z naturalnymi elementami tworzącymi spokojną scenę na świeżym powietrzu.';
+        }
+
+        if ($analyzeEnglishDescription) {
+            $results['english_description'] = 'A serene landscape showing mountains against a blue sky, with natural elements creating a peaceful outdoor scene.';
+        }
+
+        return $results;
+    }
+    
+    protected function analyzeWithAnthropic($filePath, $analyzeTags, $analyzeDescription, $analyzeEnglishDescription) {
+        // Implementacja Anthropic - przykładowa
+        $results = [
+            'tags' => $analyzeTags ? ['landscape', 'sky', 'nature', 'outdoor', 'cloud'] : [],
+        ];
+
+        if ($analyzeDescription) {
+            $results['description'] = 'Krajobraz na świeżym powietrzu z błękitnym niebem i chmurami.';
+        }
+
+        if ($analyzeEnglishDescription) {
+            $results['english_description'] = 'Outdoor landscape with blue sky and clouds.';
+        }
+
+        return $results;
+    }
+
+    protected function analyzeWithGoogle($filePath, $analyzeTags, $analyzeDescription, $analyzeEnglishDescription) {
+        // Implementacja Google - przykładowa
+        $results = [
+            'tags' => $analyzeTags ? ['nature', 'landscape', 'sky', 'outdoor'] : [],
+        ];
+
+        if ($analyzeDescription) {
+            $results['description'] = 'Piękny krajobraz na świeżym powietrzu z czyste niebem.';
+        }
+
+        if ($analyzeEnglishDescription) {
+            $results['english_description'] = 'A beautiful outdoor landscape with clear sky.';
+        }
+
+        return $results;
+    }
+    
+    /**
+     * Sprawdza czy nie przekroczono limitów AI
+     */
+    protected function checkAiLimits() {
+        $this->resetCountersIfNeeded();
+        
+        $currentCount = (int) $this->getSettingValue('ai.current_count', 0);
+        $monthlyLimit = (int) $this->getSettingValue('ai.monthly_limit', 1000);
+        
+        return $currentCount < $monthlyLimit;
+    }
+
+    /**
+     * Sprawdza czy nie przekroczono limitów S3
+     */
+    protected function checkS3Limits() {
+        $this->resetCountersIfNeeded();
+        
+        $currentCount = (int) $this->getSettingValue('s3.current_count', 0);
+        $monthlyLimit = (int) $this->getSettingValue('s3.monthly_limit', 10000);
+        
+        return $currentCount < $monthlyLimit;
+    }
+
+    /**
+     * Zwiększa licznik AI
+     */
+    protected function incrementAiCounter() {
+        $currentCount = (int) $this->getSettingValue('ai.current_count', 0);
+        Settings::setSetting('ai.current_count', $currentCount + 1);
+    }
+
+    /**
+     * Zwiększa licznik S3
+     */
+    protected function incrementS3Counter() {
+        $currentCount = (int) $this->getSettingValue('s3.current_count', 0);
+        Settings::setSetting('s3.current_count', $currentCount + 1);
+    }
+
+    /**
+     * Resetuje liczniki jeśli minął miesiąc
+     */
+    protected function resetCountersIfNeeded() {
+        $currentMonth = date('Y-m-01');
+        
+        // Reset liczników AI
+        $aiResetDate = $this->getSettingValue('ai.reset_date', $currentMonth);
+        if ($aiResetDate !== $currentMonth) {
+            Settings::setSetting('ai.current_count', '0');
+            Settings::setSetting('ai.reset_date', $currentMonth);
+        }
+        
+        // Reset liczników S3
+        $s3ResetDate = $this->getSettingValue('s3.reset_date', $currentMonth);
+        if ($s3ResetDate !== $currentMonth) {
+            Settings::setSetting('s3.current_count', '0');
+            Settings::setSetting('s3.reset_date', $currentMonth);
+        }
+    }
+    
 }

@@ -625,12 +625,6 @@ class SettingsController extends Controller
         return $result;
     }
 
-    /**
-     * Get default value for a setting key
-     * 
-     * @param string $key
-     * @return mixed
-     */
     protected function getDefaultValue($key)
     {
         $defaults = [
@@ -638,6 +632,8 @@ class SettingsController extends Controller
             's3.region' => 'eu-central-1',
             's3.directory' => 'photos',
             's3.deleted_directory' => 'deleted',
+            's3.monthly_limit' => '10000',
+            's3.current_count' => '0',
             
             // Upload settings
             'upload.preserve_original_names' => '1',
@@ -653,6 +649,13 @@ class SettingsController extends Controller
             'ai.enabled' => '0',
             'ai.provider' => '',
             'ai.region' => 'us-east-1',
+            'ai.monthly_limit' => '1000',
+            'ai.current_count' => '0',
+            'ai.generate_english_descriptions' => '1',
+            
+            // EXIF settings
+            'exif.default_artist' => '',
+            'exif.default_copyright' => '',
             
             // Gallery settings
             'gallery.exif_show_copyright' => '1',

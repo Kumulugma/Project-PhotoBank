@@ -27,8 +27,7 @@
 
 /* === CONFIG SECTION === */
 .ai-config-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    color: black;
     border-radius: 12px;
     padding: 2rem;
     margin-bottom: 2rem;

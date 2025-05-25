@@ -42,48 +42,7 @@ $statusOptions = [
         </div>
     </div>
 
-    <!-- Stock and AI Status Display -->
-    <?php if ($model->isUploadedToAnyStock() || $model->isUsedInPrivateProject() || $model->isAiGenerated()): ?>
-        <div class="row mb-4">
-            <?php if ($model->isUploadedToAnyStock() || $model->isUsedInPrivateProject()): ?>
-                <div class="col-md-6">
-                    <div class="alert alert-success">
-                        <h6><i class="fas fa-store me-2"></i>Status stockowy</h6>
-                        <div class="d-flex flex-wrap gap-2">
-                            <?php if ($model->isUploadedToShutterstock()): ?>
-                                <span class="badge bg-success"><i class="fas fa-camera me-1"></i>Shutterstock</span>
-                            <?php endif; ?>
-                            <?php if ($model->isUploadedToAdobeStock()): ?>
-                                <span class="badge bg-primary"><i class="fab fa-adobe me-1"></i>Adobe Stock</span>
-                            <?php endif; ?>
-                            <?php if ($model->isUsedInPrivateProject()): ?>
-                                <span class="badge bg-info"><i class="fas fa-briefcase me-1"></i>Prywatny projekt</span>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($model->isAiGenerated()): ?>
-                <div class="col-md-6">
-                    <div class="alert alert-warning border-warning">
-                        <h6><i class="fas fa-robot me-2"></i>Zdjęcie AI</h6>
-                        <p class="mb-2"><strong>Wygenerowane przez sztuczną inteligencję</strong></p>
-                        <?php if ($model->hasAiPrompt()): ?>
-                            <small class="d-block"><strong>Prompt:</strong> <?= Html::encode(mb_substr($model->ai_prompt, 0, 100)) ?><?= mb_strlen($model->ai_prompt) > 100 ? '...' : '' ?></small>
-                        <?php endif; ?>
-                        <?php if ($model->hasAiGeneratorUrl()): ?>
-                            <small class="d-block mt-1">
-                                <a href="<?= Html::encode($model->ai_generator_url) ?>" target="_blank" class="alert-link">
-                                    <i class="fas fa-external-link-alt me-1"></i>Zobacz w generatorze
-                                </a>
-                            </small>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
+    
 
     <!-- Action buttons -->
     <div class="mb-4">
@@ -104,6 +63,13 @@ $statusOptions = [
                 'class' => 'btn btn-info',
                 'data-method' => 'post',
                 'title' => 'Uruchom analizę AI tego zdjęcia',
+            ]) ?>
+            
+            <?= Html::button('<i class="fas fa-camera me-2"></i>Ustaw dane EXIF', [
+                'class' => 'btn btn-warning',
+                'id' => 'set-exif-btn',
+                'data-photo-id' => $model->id,
+                'title' => 'Ustaw domyślne dane artysty/praw autorskich w EXIF',
             ]) ?>
         </div>
 
@@ -506,6 +472,49 @@ $statusOptions = [
     </div>
 </div>
 
+<!-- Stock and AI Status Display -->
+    <?php if ($model->isUploadedToAnyStock() || $model->isUsedInPrivateProject() || $model->isAiGenerated()): ?>
+        <div class="row mb-4">
+            <?php if ($model->isUploadedToAnyStock() || $model->isUsedInPrivateProject()): ?>
+                <div class="col-md-6">
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-store me-2"></i>Status stockowy</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <?php if ($model->isUploadedToShutterstock()): ?>
+                                <span class="badge bg-success"><i class="fas fa-camera me-1"></i>Shutterstock</span>
+                            <?php endif; ?>
+                            <?php if ($model->isUploadedToAdobeStock()): ?>
+                                <span class="badge bg-primary"><i class="fab fa-adobe me-1"></i>Adobe Stock</span>
+                            <?php endif; ?>
+                            <?php if ($model->isUsedInPrivateProject()): ?>
+                                <span class="badge bg-info"><i class="fas fa-briefcase me-1"></i>Prywatny projekt</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($model->isAiGenerated()): ?>
+                <div class="col-md-6">
+                    <div class="alert alert-warning border-warning">
+                        <h6><i class="fas fa-robot me-2"></i>Zdjęcie AI</h6>
+                        <p class="mb-2"><strong>Wygenerowane przez sztuczną inteligencję</strong></p>
+                        <?php if ($model->hasAiPrompt()): ?>
+                            <small class="d-block"><strong>Prompt:</strong> <?= Html::encode(mb_substr($model->ai_prompt, 0, 100)) ?><?= mb_strlen($model->ai_prompt) > 100 ? '...' : '' ?></small>
+                        <?php endif; ?>
+                        <?php if ($model->hasAiGeneratorUrl()): ?>
+                            <small class="d-block mt-1">
+                                <a href="<?= Html::encode($model->ai_generator_url) ?>" target="_blank" class="alert-link">
+                                    <i class="fas fa-external-link-alt me-1"></i>Zobacz w generatorze
+                                </a>
+                            </small>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
 <!-- Image Modal -->
 <div class="modal fade" id="imageModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -524,3 +533,95 @@ $statusOptions = [
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Copy search code functionality
+    const copyBtn = document.getElementById('copy-search-code');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+            const searchCode = document.getElementById('search-code').textContent;
+            navigator.clipboard.writeText(searchCode).then(function() {
+                // Change button text temporarily
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check me-1"></i>Skopiowano!';
+                copyBtn.classList.remove('btn-outline-primary');
+                copyBtn.classList.add('btn-success');
+                
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                    copyBtn.classList.remove('btn-success');
+                    copyBtn.classList.add('btn-outline-primary');
+                }, 2000);
+            });
+        });
+    }
+
+    // Obsługa przycisku ustawiania EXIF
+    const setExifBtn = document.getElementById('set-exif-btn');
+    if (setExifBtn) {
+        setExifBtn.addEventListener('click', function() {
+            const photoId = this.getAttribute('data-photo-id');
+            const button = this;
+            
+            // Wyłącz przycisk i pokaż loading
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Ustawianie...';
+            
+            fetch('<?= \yii\helpers\Url::to(['/exif/set-artist']) ?>?id=' + photoId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': '<?= Yii::$app->request->csrfToken ?>'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Pokaż komunikat sukcesu
+                    showAlert('success', data.message);
+                    
+                    // Opcjonalnie przeładuj stronę aby odświeżyć dane EXIF
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    showAlert('error', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('error', 'Wystąpił błąd podczas ustawiania danych EXIF.');
+            })
+            .finally(() => {
+                // Przywróć przycisk
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-camera me-2"></i>Ustaw dane EXIF';
+            });
+        });
+    }
+    
+    function showAlert(type, message) {
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        const iconClass = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+        
+        const alert = document.createElement('div');
+        alert.className = `alert ${alertClass} alert-dismissible fade show`;
+        alert.innerHTML = `
+            <i class="fas ${iconClass} me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Wstaw alert na górze strony
+        const container = document.querySelector('.photo-view');
+        container.insertBefore(alert, container.firstChild);
+        
+        // Automatycznie ukryj po 5 sekundach
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+});
+</script>

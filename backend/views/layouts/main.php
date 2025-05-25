@@ -1,4 +1,5 @@
 <?php
+
 use yii\helpers\Html;
 use yii\bootstrap5\Nav;
 use yii\bootstrap5\NavBar;
@@ -42,10 +43,10 @@ if (!Yii::$app->user->isGuest) {
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <?php $this->registerCsrfMetaTags() ?>
         <title><?= Html::encode($this->title) ?></title>
-        <?php $this->head() ?>
+<?php $this->head() ?>
     </head>
     <body class="d-flex flex-column h-100">
-        <?php $this->beginBody() ?>
+<?php $this->beginBody() ?>
 
         <header id="header">
             <?php
@@ -90,6 +91,7 @@ if (!Yii::$app->user->isGuest) {
                         ['label' => '<i class="fab fa-aws me-2"></i>Ustawienia S3', 'url' => ['/s3/index'], 'encode' => false],
                         ['label' => '<i class="fas fa-tint me-2"></i>Znak wodny', 'url' => ['/watermark/index'], 'encode' => false],
                         ['label' => '<i class="fas fa-robot me-2"></i>AI/Analiza', 'url' => ['/ai/index'], 'encode' => false],
+                        ['label' => '<i class="fas fa-camera me-2"></i>EXIF', 'url' => ['/exif/index'], 'encode' => false],
                         '<div class="dropdown-divider"></div>',
                         ['label' => '<i class="fas fa-cogs me-2"></i>Ustawienia', 'url' => ['/settings/index'], 'encode' => false],
                     ],
@@ -140,7 +142,7 @@ if (!Yii::$app->user->isGuest) {
 
                 <?= Alert::widget() ?>
 
-                <?= $content ?>
+<?= $content ?>
             </div>
         </main>
 
@@ -155,12 +157,12 @@ if (!Yii::$app->user->isGuest) {
         </footer>
 
         <!-- Globalne modale dla dziennika zdarzeń -->
-        <?php if (!Yii::$app->user->isGuest): ?>
+<?php if (!Yii::$app->user->isGuest): ?>
             <!-- Modal eksportu dziennika zdarzeń (globalny) -->
             <div class="modal fade" id="auditExportModal" tabindex="-1">
                 <div class="modal-dialog">
                     <div class="modal-content">
-                        <?= Html::beginForm(['/audit-log/export'], 'post') ?>
+    <?= Html::beginForm(['/audit-log/export'], 'post') ?>
                         <div class="modal-header">
                             <h5 class="modal-title">
                                 <i class="fas fa-download me-2"></i>Eksport dziennika zdarzeń
@@ -206,7 +208,7 @@ if (!Yii::$app->user->isGuest) {
                                 <i class="fas fa-download me-2"></i>Eksportuj
                             </button>
                         </div>
-                        <?= Html::endForm() ?>
+    <?= Html::endForm() ?>
                     </div>
                 </div>
             </div>
@@ -215,7 +217,7 @@ if (!Yii::$app->user->isGuest) {
             <div class="modal fade" id="auditCleanupModal" tabindex="-1">
                 <div class="modal-dialog">
                     <div class="modal-content">
-                        <?= Html::beginForm(['/audit-log/cleanup'], 'post') ?>
+    <?= Html::beginForm(['/audit-log/cleanup'], 'post') ?>
                         <div class="modal-header">
                             <h5 class="modal-title">
                                 <i class="fas fa-broom me-2"></i>Czyszczenie dziennika zdarzeń
@@ -256,26 +258,27 @@ if (!Yii::$app->user->isGuest) {
                                 <i class="fas fa-trash me-2"></i>Wyczyść dziennik
                             </button>
                         </div>
-                        <?= Html::endForm() ?>
+    <?= Html::endForm() ?>
                     </div>
                 </div>
             </div>
-        <?php endif; ?>
+<?php endif; ?>
 
         <!-- Powiadomienia o błędach dziennika (opcjonalnie) -->
-        <?php if (!Yii::$app->user->isGuest && $todayErrors > 0): ?>
+<?php if (!Yii::$app->user->isGuest && $todayErrors > 0): ?>
             <div class="alert alert-warning alert-dismissible fade show position-fixed" 
                  style="top: 80px; right: 20px; z-index: 1050; max-width: 350px;" role="alert">
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 <strong>Uwaga!</strong> W dzienniku zdarzeń odnotowano <?= $todayErrors ?> błędów/ostrzeżeń dzisiaj.
-                <?= Html::a('Zobacz szczegóły', ['/audit-log/index', 'AuditLogSearch[severity]' => 'error'],
+                <?=
+                Html::a('Zobacz szczegóły', ['/audit-log/index', 'AuditLogSearch[severity]' => 'error'],
                         ['class' => 'alert-link ms-2'])
                 ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif; ?>
 
-        <?php $this->endBody() ?>
+<?php $this->endBody() ?>
     </body>
 </html>
 <?php $this->endPage() ?>
