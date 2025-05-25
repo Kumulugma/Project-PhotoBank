@@ -23,10 +23,6 @@ return [
         ],
     ],
     
-    // Klucz JWT
-    'jwtSecretKey' => 'twoj_tajny_klucz_jwt',
-    'jwtExpire' => 86400, // 24 godziny
-    
     // Typy MIME
     'allowedImageTypes' => [
         'image/jpeg',
