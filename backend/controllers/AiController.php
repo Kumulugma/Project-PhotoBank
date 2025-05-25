@@ -95,6 +95,8 @@ class AiController extends Controller {
             $region = Yii::$app->request->post('region');
             $model = Yii::$app->request->post('model');
             $enabled = (bool) Yii::$app->request->post('enabled', false);
+            $aiMonthlyLimit = (int) Yii::$app->request->post('ai_monthly_limit', 1000);
+            $generateEnglish = (bool) Yii::$app->request->post('generate_english_descriptions', false);
 
             $openaiModel = Yii::$app->request->post('openai_model');
             $anthropicModel = Yii::$app->request->post('anthropic_model');
@@ -121,6 +123,8 @@ class AiController extends Controller {
                 $this->updateSetting('ai.region', $region, 'AI region (for AWS)');
                 $this->updateSetting('ai.model', $model, 'AI model (legacy)');
                 $this->updateSetting('ai.enabled', $enabled ? '1' : '0', 'AI integration enabled');
+                $this->updateSetting('ai.monthly_limit', (string)$aiMonthlyLimit, 'Miesięczny limit zapytań AI');
+                $this->updateSetting('ai.generate_english_descriptions', $generateEnglish ? '1' : '0', 'Czy generować opisy w języku angielskim przez AI');
 
                 if ($openaiModel) {
                     $this->updateSetting('ai.openai_model', $openaiModel, 'OpenAI model');
@@ -143,6 +147,34 @@ class AiController extends Controller {
         return $this->redirect(['index']);
     }
 
+    
+    /**
+     * Updates AI counters
+     */
+    public function actionUpdateCounters()
+    {
+        if (Yii::$app->request->isPost) {
+            $resetAiCounter = (bool) Yii::$app->request->post('reset_ai_counter', false);
+
+            $transaction = Yii::$app->db->beginTransaction();
+            try {
+                // Reset licznika AI jeśli wymagane
+                if ($resetAiCounter) {
+                    $this->updateSetting('ai.current_count', '0', 'Bieżąca liczba wykorzystanych zapytań AI w tym miesiącu');
+                    AuditLog::logSystemEvent('Ręczny reset licznika AI', AuditLog::SEVERITY_INFO, AuditLog::ACTION_SETTINGS);
+                }
+
+                $transaction->commit();
+                Yii::$app->session->setFlash('success', 'Licznik AI został zaktualizowany.');
+            } catch (\Exception $e) {
+                $transaction->rollBack();
+                Yii::$app->session->setFlash('error', 'Błąd aktualizacji licznika AI: ' . $e->getMessage());
+            }
+        }
+
+        return $this->redirect(['index']);
+    }
+    
     /**
      * Tests AI service connection.
      * @return mixed
@@ -241,6 +273,7 @@ class AiController extends Controller {
 
         $analyzeTags = (bool) Yii::$app->request->post('analyze_tags', true);
         $analyzeDescription = (bool) Yii::$app->request->post('analyze_description', true);
+        $analyzeEnglishDescription = (bool) Yii::$app->request->post('analyze_english_description', true);
 
         // Create a queued job for analysis
         $job = new QueuedJob();
@@ -248,7 +281,8 @@ class AiController extends Controller {
         $job->params = json_encode([
             'photo_id' => $id,
             'analyze_tags' => $analyzeTags,
-            'analyze_description' => $analyzeDescription
+            'analyze_description' => $analyzeDescription,
+            'analyze_english_description' => $analyzeEnglishDescription
         ]);
         $job->status = QueuedJob::STATUS_PENDING;
         $job->created_at = time();
@@ -262,7 +296,7 @@ class AiController extends Controller {
 
         return $this->redirect(['photos/view', 'id' => $id]);
     }
-
+    
     /**
      * Batch analyzes photos using AI service.
      * @return mixed
