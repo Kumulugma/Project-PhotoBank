@@ -355,3 +355,143 @@
     flex: 1;
     min-width: 120px;
 }
+
+/* === PAGINATION STYLES === */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 2rem 0;
+    padding: 0;
+    list-style: none;
+    gap: 0.25rem;
+}
+
+.pagination li {
+    margin: 0;
+}
+
+.pagination li a,
+.pagination li span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    color: #495057;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease-in-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.pagination li a:hover {
+    color: #fff;
+    background-color: #007bff;
+    border-color: #007bff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.pagination li.active a {
+    color: #fff;
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border-color: #007bff;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.4);
+    font-weight: 600;
+}
+
+.pagination li.active a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.pagination li.disabled a,
+.pagination li.disabled span {
+    color: #6c757d;
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.pagination li.disabled a:hover,
+.pagination li.disabled span:hover {
+    color: #6c757d;
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    transform: none;
+    box-shadow: none;
+}
+
+.pagination li.prev a,
+.pagination li.next a {
+    font-size: 1rem;
+    font-weight: 600;
+    min-width: 45px;
+}
+
+.pagination li.prev a {
+    border-radius: 0.5rem 0.375rem 0.375rem 0.5rem;
+}
+
+.pagination li.next a {
+    border-radius: 0.375rem 0.5rem 0.5rem 0.375rem;
+}
+
+.pagination li:first-child a,
+.pagination li:first-child span {
+    margin-left: 0;
+}
+
+.pagination li:last-child a,
+.pagination li:last-child span {
+    margin-right: 0;
+}
+
+/* Responsive pagination */
+@media (max-width: 576px) {
+    .pagination {
+        flex-wrap: wrap;
+        gap: 0.125rem;
+    }
+    
+    .pagination li a,
+    .pagination li span {
+        min-width: 35px;
+        height: 35px;
+        padding: 0.375rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .pagination li.prev a,
+    .pagination li.next a {
+        min-width: 40px;
+    }
+}
+
+/* Enhanced grid view summary */
+.grid-view .summary {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.grid-view .summary b {
+    color: #495057;
+    font-weight: 600;
+}

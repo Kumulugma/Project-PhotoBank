@@ -1,6 +1,4 @@
 <?php
-// backend/views/audit-log/dashboard.php
-
 use yii\helpers\Html;
 use yii\helpers\Url;
 use common\models\search\AuditLogSearch;
@@ -266,42 +264,6 @@ $this->params['breadcrumbs'][] = 'Dashboard';
         </div>
     </div>
 </div>
-<!-- Modal szybkiego eksportu -->
-<div class="modal fade" id="quickExportModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <?= Html::beginForm(['export'], 'post') ?>
-            <div class="modal-header">
-                <h5 class="modal-title">Szybki eksport</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Eksportuj:</label>
-                    <select name="quick_export" class="form-control">
-                        <option value="today">Zdarzenia z dzisiaj</option>
-                        <option value="week">Zdarzenia z tego tygodnia</option>
-                        <option value="month">Zdarzenia z tego miesiąca</option>
-                        <option value="errors">Wszystkie błędy</option>
-                        <option value="logins">Wszystkie logowania</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Format:</label>
-                    <select name="format" class="form-control">
-                        <option value="csv">CSV</option>
-                        <option value="json">JSON</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
-                <button type="submit" class="btn btn-info">Eksportuj</button>
-            </div>
-            <?= Html::endForm() ?>
-        </div>
-    </div>
-</div>
 
 <!-- Modal usuwania błędów -->
 <div class="modal fade" id="deleteErrorsModal" tabindex="-1">
@@ -343,44 +305,6 @@ $this->params['breadcrumbs'][] = 'Dashboard';
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// Wykres aktywności
-const ctx = document.getElementById('activityChart').getContext('2d');
-const activityChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: <?= json_encode(array_column($dailyActivity, 'formatted_date')) ?>,
-        datasets: [{
-            label: 'Liczba zdarzeń',
-            data: <?= json_encode(array_column($dailyActivity, 'count')) ?>,
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-            tension: 0.1,
-            fill: true
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    stepSize: 1
-                }
-            }
-        },
-        plugins: {
-            legend: {
-                display: false
-            }
-        }
-    }
-});
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-// Wykres aktywności
 const ctx = document.getElementById('activityChart').getContext('2d');
 const activityChart = new Chart(ctx, {
     type: 'line',
