@@ -54,30 +54,6 @@ use yii\bootstrap5\ActiveForm;
         </div>
         
         <div class="col-lg-6">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-info-circle me-2"></i>O kategoriach
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <p>Kategorie pomagają w organizacji zdjęć według tematów lub projektów.</p>
-                    
-                    <h6 class="fw-bold">Korzyści z kategorii:</h6>
-                    <ul class="list-unstyled">
-                        <li><i class="fas fa-check text-success me-2"></i>Ułatwiają nawigację po galerii</li>
-                        <li><i class="fas fa-check text-success me-2"></i>Poprawiają organizację zdjęć</li>
-                        <li><i class="fas fa-check text-success me-2"></i>Automatycznie generują URL na frontendzie</li>
-                        <li><i class="fas fa-check text-success me-2"></i>Umożliwiają filtrowanie zdjęć</li>
-                    </ul>
-                    
-                    <div class="alert alert-info">
-                        <h6><i class="fas fa-link me-2"></i>URL slug</h6>
-                        <p class="mb-0">Slug URL jest automatycznie generowany z nazwy kategorii. Zostanie użyty w adresach frontend galerii.</p>
-                    </div>
-                </div>
-            </div>
-            
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">

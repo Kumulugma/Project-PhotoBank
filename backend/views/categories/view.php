@@ -2,6 +2,7 @@
 
 use yii\helpers\Html;
 use yii\widgets\DetailView;
+use common\helpers\PathHelper;
 \backend\assets\AppAsset::registerControllerCss($this, 'categories');
 /* @var $this yii\web\View */
 /* @var $model common\models\Category */
@@ -152,9 +153,9 @@ $this->params['breadcrumbs'][] = $this->title;
                         <div class="row g-2">
                             <?php foreach ($recentPhotos as $photo): 
                                 $thumbnailSize = \common\models\ThumbnailSize::findOne(['name' => 'small']);
-                                if ($thumbnailSize) {
-                                    $thumbnailUrl = Yii::getAlias('@web/uploads/thumbnails/' . $thumbnailSize->name . '_' . $photo->file_name);
-                                }
+                                $thumbnailUrl = PathHelper::getAvailableThumbnail('medium', $photo->file_name);
+                                $thumbnailUrl = is_array($thumbnailUrl)? $thumbnailUrl['url']: null;
+                            
                             ?>
                                 <div class="col-4">
                                     <a href="<?= yii\helpers\Url::to(['/photos/view', 'id' => $photo->id]) ?>" 
