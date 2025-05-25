@@ -208,7 +208,7 @@ $this->params['breadcrumbs'][] = $this->title;
             ],
             [
                 'class' => 'yii\grid\ActionColumn',
-                'template' => '<div class="btn-group btn-group-sm" role="group">{view}{delete}</div>',
+                'template' => '<div class="btn-group-actions" role="group">{view}{delete}</div>',
                 'headerOptions' => ['style' => 'width: 80px'],
                 'buttons' => [
                     'view' => function ($url, $model, $key) {

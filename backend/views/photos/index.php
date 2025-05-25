@@ -233,8 +233,8 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
             ],
             [
                 'class' => 'yii\grid\ActionColumn',
-                'template' => '{view} {update} {delete}',
-                'buttons' => [
+                'template' => '<div class="btn-group-actions" role="group">{view}{update}{delete}</div>',
+                    'buttons' => [
                     'view' => function ($url, $model, $key) {
                         return Html::a('<i class="fas fa-eye"></i>', $url, [
                             'class' => 'btn btn-sm btn-outline-primary me-1',

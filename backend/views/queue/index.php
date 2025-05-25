@@ -222,8 +222,8 @@ $jobTypeOptions = [
             ],
             [
                 'class' => 'yii\grid\ActionColumn',
-                'template' => '{view} {retry} {process} {delete}',
-                'buttons' => [
+                'template' => '<div class="btn-group-actions" role="group">{view}{retry}{process}{delete}</div>',
+                    'buttons' => [
                     'view' => function ($url, $model, $key) {
                         return Html::a('<i class="fas fa-eye"></i>', $url, [
                             'class' => 'btn btn-sm btn-outline-primary',

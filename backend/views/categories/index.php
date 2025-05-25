@@ -115,7 +115,7 @@ $totalPhotos = \common\models\PhotoCategory::find()->count();
                             <span class="text-muted ms-2">• <?= $category->slug ?></span>
                         <?php endif; ?>
                     </div>
-                    <div class="btn-group btn-group-sm">
+                    <div class="btn-group-actions">
                         <?= Html::a('<i class="fas fa-eye"></i>', ['view', 'id' => $category->id], [
                             'class' => 'btn btn-outline-primary btn-sm',
                             'title' => 'Zobacz szczegóły'
@@ -238,7 +238,7 @@ $totalPhotos = \common\models\PhotoCategory::find()->count();
                 ],
                 [
                     'class' => 'yii\grid\ActionColumn',
-                    'template' => '<div class="btn-group btn-group-sm" role="group">{view}{update}{delete}</div>',
+                    'template' => '<div class="btn-group-actions" role="group">{view}{update}{delete}</div>',
                     'buttons' => [
                         'view' => function ($url, $model, $key) {
                             return Html::a('<i class="fas fa-eye"></i>', $url, [

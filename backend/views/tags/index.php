@@ -129,7 +129,7 @@ $popularTags = Tag::find()->orderBy(['frequency' => SORT_DESC])->limit(10)->all(
                                     'header' => 'Akcje',
                                     'headerOptions' => ['style' => 'width: 140px'],
                                     'contentOptions' => ['style' => 'white-space: nowrap;'],
-                                    'template' => '<div class="btn-group btn-group-sm" role="group">{view}{update}{delete}</div>',
+                                    'template' => '<div class="btn-group-actions" role="group">{view}{update}{delete}</div>',
                                     'buttons' => [
                                         'view' => function ($url, $model, $key) {
                                             return Html::a('<i class="fas fa-eye"></i>', $url, [
