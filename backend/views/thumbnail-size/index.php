@@ -71,7 +71,7 @@ $this->params['breadcrumbs'][] = $this->title;
 
                     [
                         'class' => 'yii\grid\ActionColumn',
-                        'template' => '{view} {update} {delete}',
+                        'template' => '<div class="btn-group btn-group-sm" role="group">{view}{update}{delete}</div>',
                         'buttons' => [
                             'delete' => function ($url, $model, $key) {
                                 return Html::a('<span class="fas fa-trash"></span>', $url, [
