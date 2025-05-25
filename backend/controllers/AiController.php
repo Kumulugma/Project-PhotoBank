@@ -18,13 +18,12 @@ use yii\helpers\FileHelper;
 /**
  * AIController handles AI integration for photo analysis.
  */
-class AiController extends Controller
-{
+class AiController extends Controller {
+
     /**
      * {@inheritdoc}
      */
-    public function behaviors()
-    {
+    public function behaviors() {
         return [
             'access' => [
                 'class' => AccessControl::class,
@@ -52,19 +51,36 @@ class AiController extends Controller
      * Displays AI settings page.
      * @return mixed
      */
-    public function actionIndex()
-    {
-        // Get AI settings
+    public function actionIndex() {
         $aiSettings = [
             'provider' => $this->getSettingValue('ai.provider', ''),
             'api_key' => $this->getSettingValue('ai.api_key') ? '********' : '',
             'region' => $this->getSettingValue('ai.region', ''),
             'model' => $this->getSettingValue('ai.model', ''),
-            'enabled' => (bool)$this->getSettingValue('ai.enabled', false)
+            'enabled' => (bool) $this->getSettingValue('ai.enabled', false),
+            'openai_model' => $this->getSettingValue('ai.openai_model', 'gpt-4-vision-preview'),
+            'anthropic_model' => $this->getSettingValue('ai.anthropic_model', 'claude-3-sonnet-20240229'),
+            'google_model' => $this->getSettingValue('ai.google_model', 'gemini-pro-vision')
         ];
-        
+
+        $providers = [
+            'openai' => [
+                'name' => 'OpenAI GPT-4 Vision',
+                'description' => 'Zaawansowana analiza obrazów z użyciem GPT-4'
+            ],
+            'anthropic' => [
+                'name' => 'Anthropic Claude 3',
+                'description' => 'Precyzyjna analiza wizualna Claude 3'
+            ],
+            'google' => [
+                'name' => 'Google Gemini Vision',
+                'description' => 'Wielojęzyczna analiza obrazów Gemini'
+            ]
+        ];
+
         return $this->render('index', [
-            'settings' => $aiSettings,
+                    'settings' => $aiSettings,
+                    'providers' => $providers,
         ]);
     }
 
@@ -72,46 +88,50 @@ class AiController extends Controller
      * Updates AI settings.
      * @return mixed
      */
-    public function actionUpdate()
-    {
+    public function actionUpdate() {
         if (Yii::$app->request->isPost) {
             $provider = Yii::$app->request->post('provider');
             $apiKey = Yii::$app->request->post('api_key');
             $region = Yii::$app->request->post('region');
             $model = Yii::$app->request->post('model');
-            $enabled = (bool)Yii::$app->request->post('enabled', false);
-            
-            // Validate provider
+            $enabled = (bool) Yii::$app->request->post('enabled', false);
+
+            $openaiModel = Yii::$app->request->post('openai_model');
+            $anthropicModel = Yii::$app->request->post('anthropic_model');
+            $googleModel = Yii::$app->request->post('google_model');
+
             if (empty($provider)) {
                 Yii::$app->session->setFlash('error', 'AI provider is required.');
                 return $this->redirect(['index']);
             }
-            
-            if (!in_array($provider, ['aws', 'google', 'openai'])) {
+
+            if (!in_array($provider, ['openai', 'anthropic', 'google'])) {
                 Yii::$app->session->setFlash('error', 'Invalid AI provider.');
                 return $this->redirect(['index']);
             }
-            
-            // Start transaction
+
             $transaction = Yii::$app->db->beginTransaction();
             try {
-                // Update settings
-                $this->updateSetting('ai.provider', $provider, 'AI provider (aws, google, openai)');
-                
-                // Update API key (only if not empty or masked)
+                $this->updateSetting('ai.provider', $provider, 'AI provider (openai, anthropic, google)');
+
                 if (!empty($apiKey) && $apiKey !== '********') {
                     $this->updateSetting('ai.api_key', $apiKey, 'AI API key');
                 }
-                
-                // Update region
+
                 $this->updateSetting('ai.region', $region, 'AI region (for AWS)');
-                
-                // Update model
-                $this->updateSetting('ai.model', $model, 'AI model (for OpenAI)');
-                
-                // Update enabled status
+                $this->updateSetting('ai.model', $model, 'AI model (legacy)');
                 $this->updateSetting('ai.enabled', $enabled ? '1' : '0', 'AI integration enabled');
-                
+
+                if ($openaiModel) {
+                    $this->updateSetting('ai.openai_model', $openaiModel, 'OpenAI model');
+                }
+                if ($anthropicModel) {
+                    $this->updateSetting('ai.anthropic_model', $anthropicModel, 'Anthropic model');
+                }
+                if ($googleModel) {
+                    $this->updateSetting('ai.google_model', $googleModel, 'Google model');
+                }
+
                 $transaction->commit();
                 Yii::$app->session->setFlash('success', 'AI settings updated successfully.');
             } catch (\Exception $e) {
@@ -119,7 +139,7 @@ class AiController extends Controller
                 Yii::$app->session->setFlash('error', 'Error updating AI settings: ' . $e->getMessage());
             }
         }
-        
+
         return $this->redirect(['index']);
     }
 
@@ -127,16 +147,15 @@ class AiController extends Controller
      * Tests AI service connection.
      * @return mixed
      */
-    public function actionTest()
-    {
+    public function actionTest() {
         Yii::$app->response->format = Response::FORMAT_JSON;
-        
+
         // Get AI settings
         $provider = $this->getSettingValue('ai.provider', '');
         $apiKey = $this->getSettingValue('ai.api_key', '');
         $region = $this->getSettingValue('ai.region', '');
         $model = $this->getSettingValue('ai.model', '');
-        
+
         // Validate required settings
         if (empty($provider) || empty($apiKey)) {
             return [
@@ -144,7 +163,7 @@ class AiController extends Controller
                 'message' => 'Missing AI settings. Please configure provider and API key.'
             ];
         }
-        
+
         try {
             // Test connection based on provider
             if ($provider === 'aws') {
@@ -161,7 +180,7 @@ class AiController extends Controller
                         ]
                     ]);
                 }
-                
+
                 // Test service (describe collection to check connection)
                 $rekognitionClient->listCollections(['MaxResults' => 1]);
                 $message = 'AWS Rekognition connection test successful.';
@@ -170,7 +189,7 @@ class AiController extends Controller
                 $visionClient = new \Google\Cloud\Vision\VisionClient([
                     'keyFilePath' => Yii::getAlias('@common/config/google-vision-key.json')
                 ]);
-                
+
                 // Test service
                 $visionClient->annotate('');
                 $message = 'Google Vision connection test successful.';
@@ -182,14 +201,14 @@ class AiController extends Controller
                         'Authorization' => 'Bearer ' . $apiKey
                     ]
                 ]);
-                
+
                 if ($response->getStatusCode() === 200) {
                     $message = 'OpenAI API connection test successful.';
                 } else {
                     throw new \Exception('API returned status code ' . $response->getStatusCode());
                 }
             }
-            
+
             return [
                 'success' => true,
                 'message' => $message
@@ -207,23 +226,22 @@ class AiController extends Controller
      * @param integer $id The photo ID
      * @return mixed
      */
-    public function actionAnalyzePhoto($id)
-    {
+    public function actionAnalyzePhoto($id) {
         $photo = Photo::findOne($id);
         if (!$photo) {
             throw new NotFoundHttpException('The requested photo does not exist.');
         }
-        
+
         // Check if AI is enabled
-        $aiEnabled = (bool)$this->getSettingValue('ai.enabled', false);
+        $aiEnabled = (bool) $this->getSettingValue('ai.enabled', false);
         if (!$aiEnabled) {
             Yii::$app->session->setFlash('error', 'AI integration is disabled. Please enable it in the settings.');
             return $this->redirect(['photos/view', 'id' => $id]);
         }
-        
-        $analyzeTags = (bool)Yii::$app->request->post('analyze_tags', true);
-        $analyzeDescription = (bool)Yii::$app->request->post('analyze_description', true);
-        
+
+        $analyzeTags = (bool) Yii::$app->request->post('analyze_tags', true);
+        $analyzeDescription = (bool) Yii::$app->request->post('analyze_description', true);
+
         // Create a queued job for analysis
         $job = new QueuedJob();
         $job->type = 'analyze_photo';
@@ -235,13 +253,13 @@ class AiController extends Controller
         $job->status = QueuedJob::STATUS_PENDING;
         $job->created_at = time();
         $job->updated_at = time();
-        
+
         if ($job->save()) {
             Yii::$app->session->setFlash('success', 'Photo analysis job queued successfully.');
         } else {
             Yii::$app->session->setFlash('error', 'Error queuing photo analysis job: ' . json_encode($job->errors));
         }
-        
+
         return $this->redirect(['photos/view', 'id' => $id]);
     }
 
@@ -249,26 +267,25 @@ class AiController extends Controller
      * Batch analyzes photos using AI service.
      * @return mixed
      */
-    public function actionAnalyzeBatch()
-    {
+    public function actionAnalyzeBatch() {
         $idsStr = Yii::$app->request->post('ids', '');
         $ids = explode(',', $idsStr);
-        
+
         if (empty($ids)) {
             Yii::$app->session->setFlash('error', 'No photos selected.');
             return $this->redirect(['photos/index']);
         }
-        
+
         // Check if AI is enabled
-        $aiEnabled = (bool)$this->getSettingValue('ai.enabled', false);
+        $aiEnabled = (bool) $this->getSettingValue('ai.enabled', false);
         if (!$aiEnabled) {
             Yii::$app->session->setFlash('error', 'AI integration is disabled. Please enable it in the settings.');
             return $this->redirect(['photos/index']);
         }
-        
-        $analyzeTags = (bool)Yii::$app->request->post('analyze_tags', true);
-        $analyzeDescription = (bool)Yii::$app->request->post('analyze_description', true);
-        
+
+        $analyzeTags = (bool) Yii::$app->request->post('analyze_tags', true);
+        $analyzeDescription = (bool) Yii::$app->request->post('analyze_description', true);
+
         // Create a queued job for batch analysis
         $job = new QueuedJob();
         $job->type = 'analyze_batch';
@@ -280,13 +297,13 @@ class AiController extends Controller
         $job->status = QueuedJob::STATUS_PENDING;
         $job->created_at = time();
         $job->updated_at = time();
-        
+
         if ($job->save()) {
             Yii::$app->session->setFlash('success', 'Batch photo analysis job queued successfully.');
         } else {
             Yii::$app->session->setFlash('error', 'Error queuing batch photo analysis job: ' . json_encode($job->errors));
         }
-        
+
         return $this->redirect(['photos/index']);
     }
 
@@ -294,20 +311,19 @@ class AiController extends Controller
      * Applies AI-suggested tags to a photo.
      * @return mixed
      */
-    public function actionApplyTags()
-    {
+    public function actionApplyTags() {
         Yii::$app->response->format = Response::FORMAT_JSON;
-        
+
         $photoId = Yii::$app->request->post('photo_id');
         $selectedTags = Yii::$app->request->post('selected_tags', []);
-        
+
         if (!$photoId || empty($selectedTags)) {
             return [
                 'success' => false,
                 'message' => 'Missing photo ID or tags.'
             ];
         }
-        
+
         $photo = Photo::findOne($photoId);
         if (!$photo) {
             return [
@@ -315,11 +331,11 @@ class AiController extends Controller
                 'message' => 'Photo not found.'
             ];
         }
-        
+
         $transaction = Yii::$app->db->beginTransaction();
         try {
             $tagsAdded = 0;
-            
+
             foreach ($selectedTags as $tagName) {
                 // Find or create tag
                 $tag = Tag::findOne(['name' => $tagName]);
@@ -329,43 +345,43 @@ class AiController extends Controller
                     $tag->frequency = 0;
                     $tag->created_at = time();
                     $tag->updated_at = time();
-                    
+
                     if (!$tag->save()) {
                         throw new \Exception('Error creating tag: ' . json_encode($tag->errors));
                     }
                 }
-                
+
                 // Check if relationship already exists
                 $existingLink = PhotoTag::findOne(['photo_id' => $photoId, 'tag_id' => $tag->id]);
                 if ($existingLink) {
                     continue; // Skip existing relationship
                 }
-                
+
                 // Create new relationship
                 $photoTag = new PhotoTag();
                 $photoTag->photo_id = $photoId;
                 $photoTag->tag_id = $tag->id;
-                
+
                 if (!$photoTag->save()) {
                     throw new \Exception('Error creating tag relationship: ' . json_encode($photoTag->errors));
                 }
-                
+
                 // Update tag frequency
                 $tag->frequency += 1;
                 $tag->save();
-                
+
                 $tagsAdded++;
             }
-            
+
             $transaction->commit();
-            
+
             return [
                 'success' => true,
                 'message' => $tagsAdded . ' tags applied successfully.'
             ];
         } catch (\Exception $e) {
             $transaction->rollBack();
-            
+
             return [
                 'success' => false,
                 'message' => 'Error applying tags: ' . $e->getMessage()
@@ -377,20 +393,19 @@ class AiController extends Controller
      * Applies AI-suggested description to a photo.
      * @return mixed
      */
-    public function actionApplyDescription()
-    {
+    public function actionApplyDescription() {
         Yii::$app->response->format = Response::FORMAT_JSON;
-        
+
         $photoId = Yii::$app->request->post('photo_id');
         $description = Yii::$app->request->post('description');
-        
+
         if (!$photoId || $description === null) {
             return [
                 'success' => false,
                 'message' => 'Missing photo ID or description.'
             ];
         }
-        
+
         $photo = Photo::findOne($photoId);
         if (!$photo) {
             return [
@@ -398,11 +413,11 @@ class AiController extends Controller
                 'message' => 'Photo not found.'
             ];
         }
-        
+
         try {
             $photo->description = $description;
             $photo->updated_at = time();
-            
+
             if ($photo->save()) {
                 return [
                     'success' => true,
@@ -429,8 +444,7 @@ class AiController extends Controller
      * @param mixed $default Default value
      * @return string Setting value or default
      */
-    protected function getSettingValue($key, $default = null)
-    {
+    protected function getSettingValue($key, $default = null) {
         $setting = Settings::findOne(['key' => $key]);
         return $setting ? $setting->value : $default;
     }
@@ -443,15 +457,14 @@ class AiController extends Controller
      * @param string $description Optional description
      * @return bool Success
      */
-    protected function updateSetting($key, $value, $description = null)
-    {
+    protected function updateSetting($key, $value, $description = null) {
         $setting = Settings::findOne(['key' => $key]);
-        
+
         if ($setting) {
             // Update existing setting
             $setting->value = $value;
             $setting->updated_at = time();
-            
+
             if ($description !== null) {
                 $setting->description = $description;
             }
@@ -464,7 +477,8 @@ class AiController extends Controller
             $setting->created_at = time();
             $setting->updated_at = time();
         }
-        
+
         return $setting->save();
     }
+
 }
