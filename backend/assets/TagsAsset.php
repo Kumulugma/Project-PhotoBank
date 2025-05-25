@@ -18,5 +18,6 @@ class TagsAsset extends AssetBundle
     
     public $depends = [
         'backend\assets\AppAsset',
+        'yii\web\JqueryAsset',
     ];
 }

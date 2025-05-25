@@ -18,5 +18,7 @@ class PhotosAsset extends AssetBundle
     
     public $depends = [
         'backend\assets\AppAsset',
+        'yii\web\JqueryAsset',
+        'yii\bootstrap5\BootstrapAsset',
     ];
 }

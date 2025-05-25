@@ -1,7 +1,3 @@
-/**
- * Console Commands JavaScript functionality
- */
-
 class ConsoleCommands {
     constructor() {
         this.init();
@@ -11,13 +7,9 @@ class ConsoleCommands {
         this.setupSearch();
         this.setupCopyButtons();
         this.setupSyntaxHighlighting();
-        this.setupCommandExecution();
         this.setupKeyboardShortcuts();
     }
 
-    /**
-     * Setup search functionality
-     */
     setupSearch() {
         const searchInput = document.getElementById('commandSearch');
         if (!searchInput) return;
@@ -31,7 +23,6 @@ class ConsoleCommands {
             }, 300);
         });
 
-        // Clear search button
         const clearBtn = document.createElement('button');
         clearBtn.className = 'btn btn-outline-secondary';
         clearBtn.type = 'button';
@@ -48,9 +39,6 @@ class ConsoleCommands {
         inputGroup.appendChild(clearWrapper);
     }
 
-    /**
-     * Filter commands based on search term
-     */
     filterCommands(searchTerm) {
         const cards = document.querySelectorAll('.command-card');
         const term = searchTerm.toLowerCase().trim();
@@ -64,13 +52,9 @@ class ConsoleCommands {
             if (isVisible) visibleCount++;
         });
 
-        // Update counter or show no results message
         this.updateSearchResults(visibleCount, cards.length);
     }
 
-    /**
-     * Update search results counter
-     */
     updateSearchResults(visible, total) {
         let counter = document.querySelector('.search-counter');
         
@@ -91,14 +75,10 @@ class ConsoleCommands {
         }
     }
 
-    /**
-     * Setup copy to clipboard functionality
-     */
     setupCopyButtons() {
         document.querySelectorAll('.command-code').forEach(codeBlock => {
             const command = codeBlock.textContent.trim();
             
-            // Remove existing copy button if any
             const existingBtn = codeBlock.querySelector('.copy-btn');
             if (existingBtn) existingBtn.remove();
             
@@ -117,14 +97,10 @@ class ConsoleCommands {
         });
     }
 
-    /**
-     * Copy text to clipboard with visual feedback
-     */
     async copyToClipboard(text, button) {
         try {
             await navigator.clipboard.writeText(text);
             
-            // Visual feedback
             const originalHTML = button.innerHTML;
             button.innerHTML = '<i class="fas fa-check me-1"></i>Skopiowano!';
             button.classList.remove('btn-outline-light');
@@ -136,7 +112,6 @@ class ConsoleCommands {
                 button.classList.add('btn-outline-light');
             }, 2000);
             
-            // Show toast notification
             this.showToast('Komenda skopiowana do schowka!', 'success');
             
         } catch (err) {
@@ -145,34 +120,22 @@ class ConsoleCommands {
         }
     }
 
-    /**
-     * Setup basic syntax highlighting
-     */
     setupSyntaxHighlighting() {
         document.querySelectorAll('.command-code').forEach(codeBlock => {
             let html = codeBlock.innerHTML;
             
-            // Skip if already highlighted or contains HTML
             if (html.includes('<span') || html.includes('<button')) return;
             
-            // Get text content for highlighting
             const text = codeBlock.textContent.trim();
             
-            // Basic syntax highlighting patterns
             let highlighted = text
-                // Highlight yii command
                 .replace(/\byii\b/g, '<span class="keyword">yii</span>')
-                // Highlight parameters
                 .replace(/--([a-zA-Z_]+)(=[^\s]*)?/g, '<span class="parameter">--$1</span><span class="string">$2</span>')
-                // Highlight numbers
                 .replace(/\b\d+\b/g, '<span class="number">$&</span>')
-                // Highlight quoted strings
                 .replace(/'([^']*)'/g, '<span class="string">\'$1\'</span>')
                 .replace(/"([^"]*)"/g, '<span class="string">"$1"</span>');
             
-            // Only update if we made changes
             if (highlighted !== text) {
-                // Preserve the copy button
                 const copyBtn = codeBlock.querySelector('.copy-btn');
                 codeBlock.innerHTML = highlighted;
                 if (copyBtn) {
@@ -182,34 +145,8 @@ class ConsoleCommands {
         });
     }
 
-    /**
-     * Setup command execution form
-     */
-    setupCommandExecution() {
-        const executeForm = document.querySelector('form[action*="execute"]');
-        if (!executeForm) return;
-
-        executeForm.addEventListener('submit', (e) => {
-            const submitBtn = executeForm.querySelector('button[type="submit"]');
-            const originalHTML = submitBtn.innerHTML;
-            
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Wykonywanie...';
-            submitBtn.disabled = true;
-            
-            // Re-enable after a delay (form will redirect anyway)
-            setTimeout(() => {
-                submitBtn.innerHTML = originalHTML;
-                submitBtn.disabled = false;
-            }, 5000);
-        });
-    }
-
-    /**
-     * Setup keyboard shortcuts
-     */
     setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
-            // Ctrl+K or Cmd+K to focus search
             if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
                 e.preventDefault();
                 const searchInput = document.getElementById('commandSearch');
@@ -219,7 +156,6 @@ class ConsoleCommands {
                 }
             }
             
-            // Escape to clear search
             if (e.key === 'Escape') {
                 const searchInput = document.getElementById('commandSearch');
                 if (searchInput && searchInput === document.activeElement) {
@@ -231,11 +167,7 @@ class ConsoleCommands {
         });
     }
 
-    /**
-     * Show toast notification
-     */
     showToast(message, type = 'info') {
-        // Remove existing toasts
         const existingToasts = document.querySelectorAll('.console-toast');
         existingToasts.forEach(toast => toast.remove());
         
@@ -260,16 +192,12 @@ class ConsoleCommands {
         
         document.body.appendChild(toast);
         
-        // Auto-dismiss after 3 seconds
         setTimeout(() => {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 150);
         }, 3000);
     }
 
-    /**
-     * Add command categories toggle
-     */
     setupCategoryToggle() {
         document.querySelectorAll('.command-header').forEach(header => {
             header.style.cursor = 'pointer';
@@ -290,12 +218,10 @@ class ConsoleCommands {
     }
 }
 
-// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     new ConsoleCommands();
 });
 
-// Add keyboard shortcut hint
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('commandSearch');
     if (searchInput) {

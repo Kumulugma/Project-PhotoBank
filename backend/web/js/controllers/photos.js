@@ -9,7 +9,6 @@ class PhotosController {
     }
 
     init() {
-        // Initialize based on current page
         this.initCommonFeatures();
         
         if (this.isIndexPage()) {
@@ -33,7 +32,6 @@ class PhotosController {
         }
     }
 
-    // Page detection methods
     isIndexPage() {
         return window.location.pathname.includes('/photos/index') || 
                window.location.pathname.endsWith('/photos');
@@ -55,21 +53,18 @@ class PhotosController {
         return window.location.pathname.includes('/photos/upload');
     }
 
-    // Common features for all photo pages
     initCommonFeatures() {
         this.initBatchOperations();
         this.initImagePreview();
         this.initTooltips();
     }
 
-    // Photos index page functionality
     initIndexPage() {
         this.initQuickSearch();
         this.initBatchUpdateModal();
         this.initFilters();
     }
 
-    // Quick search functionality
     initQuickSearch() {
         const quickSearchInput = document.getElementById('quick-search-code');
         const quickSearchBtn = document.getElementById('quick-search-btn');
@@ -77,7 +72,6 @@ class PhotosController {
 
         if (!quickSearchInput || !quickSearchBtn) return;
 
-        // Auto uppercase
         quickSearchInput.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
         });
@@ -101,7 +95,6 @@ class PhotosController {
             }
         });
 
-        // Visual feedback
         quickSearchInput.addEventListener('keyup', () => {
             const code = quickSearchInput.value.trim();
             this.updateSearchVisualFeedback(code, quickSearchBtn, searchStatus);
@@ -125,11 +118,9 @@ class PhotosController {
         if (filterInput) {
             filterInput.value = code;
             
-            // Clear other filters
             const titleFilter = document.querySelector('input[name="PhotoSearch[title]"]');
             if (titleFilter) titleFilter.value = '';
 
-            // Submit form
             const form = filterInput.closest('form');
             if (form) {
                 form.submit();
@@ -165,7 +156,6 @@ class PhotosController {
         }
     }
 
-    // Batch operations
     initBatchOperations() {
         const checkboxes = document.querySelectorAll('input[name="selection[]"]');
         const batchButtons = document.querySelectorAll('.batch-action-btn');
@@ -203,11 +193,9 @@ class PhotosController {
             });
         }
 
-        // Initialize Select2 if available
         this.initSelect2(['#batch-categories', '#batch-tags'], '#batchUpdateModal');
     }
 
-    // Photos queue page functionality
     initQueuePage() {
         this.initQueueBatchOperations();
     }
@@ -215,9 +203,8 @@ class PhotosController {
     initQueueBatchOperations() {
         const updateBatchButtons = this.initBatchOperations();
 
-        // Batch approve
         const batchApproveSubmit = document.getElementById('batch-approve-submit');
-        if (batchAppriveSubmit) {
+        if (batchApproveSubmit) {
             batchApproveSubmit.addEventListener('click', () => {
                 const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
                 const ids = Array.from(checkedBoxes).map(cb => cb.value);
@@ -226,7 +213,6 @@ class PhotosController {
             });
         }
 
-        // Batch delete
         const batchDeleteSubmit = document.getElementById('batch-delete-submit');
         if (batchDeleteSubmit) {
             batchDeleteSubmit.addEventListener('click', () => {
@@ -238,7 +224,6 @@ class PhotosController {
         }
     }
 
-    // Photos update page functionality
     initUpdatePage() {
         this.initUpdateForm();
         this.initAiFields();
@@ -247,7 +232,6 @@ class PhotosController {
     }
 
     initUpdateForm() {
-        // AI analysis form
         const aiAnalyzeForm = document.querySelector('.ai-analyze-form');
         if (aiAnalyzeForm) {
             aiAnalyzeForm.addEventListener('submit', (e) => {
@@ -284,7 +268,6 @@ class PhotosController {
         }
     }
 
-    // Photos view page functionality
     initViewPage() {
         this.initCopySearchCode();
         this.initImageModal();
@@ -331,17 +314,169 @@ class PhotosController {
         document.body.removeChild(textArea);
     }
 
-    // Photos upload page functionality
     initUploadPage() {
-        // Dropzone functionality would be initialized here
-        // Remove any unwanted file input wrappers
+        this.initDropzone();
+        this.cleanupUnwantedElements();
+    }
+
+    initDropzone() {
+        if (typeof Dropzone === 'undefined') {
+            console.error('Dropzone library not loaded');
+            return;
+        }
+
+        Dropzone.autoDiscover = false;
+
+        const uploadedPhotos = [];
+        const dropzoneElement = document.getElementById('my-dropzone');
+        
+        if (!dropzoneElement) {
+            console.error('Dropzone element not found');
+            return;
+        }
+
+        const myDropzone = new Dropzone('#my-dropzone', {
+            url: window.location.origin + '/photos/upload-ajax',
+            paramName: 'file',
+            maxFilesize: 20,
+            acceptedFiles: 'image/jpeg,image/png,image/gif',
+            chunking: true,
+            forceChunking: true,
+            chunkSize: 1000000,
+            parallelChunkUploads: false,
+            maxFiles: 100,
+            autoProcessQueue: false,
+            addRemoveLinks: true,
+            dictDefaultMessage: 'Przeciągnij i upuść pliki tutaj lub kliknij, aby przeglądać',
+            dictResponseError: 'Błąd wgrywania pliku!',
+            dictFallbackMessage: 'Twoja przeglądarka nie wspiera przeciągania i upuszczania plików.',
+            dictFileTooBig: 'Plik jest zbyt duży ({{filesize}}MB). Maksymalny rozmiar: {{maxFilesize}}MB.',
+            dictInvalidFileType: 'Nie możesz wgrać plików tego typu.',
+            dictRemoveFile: 'Usuń',
+            dictMaxFilesExceeded: 'Możesz wgrać maksymalnie {{maxFiles}} plików jednocześnie.',
+            dictCancelUpload: 'Anuluj wgrywanie',
+            params: function() {
+                const csrfToken = document.querySelector('input[name="_token"], input[name="YII_CSRF_TOKEN"]');
+                if (csrfToken) {
+                    const params = {};
+                    params[csrfToken.name] = csrfToken.value;
+                    return params;
+                }
+                return {};
+            }
+        });
+
+        const submitAllBtn = document.getElementById('submit-all');
+        
+        myDropzone.on('addedfile', function() {
+            if (submitAllBtn) {
+                submitAllBtn.style.display = 'inline-block';
+            }
+        });
+        
+        myDropzone.on('removedfile', function() {
+            if (myDropzone.files.length === 0 && submitAllBtn) {
+                submitAllBtn.style.display = 'none';
+            }
+        });
+        
+        if (submitAllBtn) {
+            submitAllBtn.addEventListener('click', () => {
+                submitAllBtn.disabled = true;
+                submitAllBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Wgrywanie...';
+                myDropzone.processQueue();
+            });
+        }
+        
+        myDropzone.on('success', (file, response) => {
+            if (response.success) {
+                uploadedPhotos.push(response.photo);
+                file.photoId = response.photo.id;
+                file.previewElement.classList.add('dz-success');
+            } else {
+                myDropzone.emit('error', file, response.message || 'Wgrywanie nie powiodło się');
+                file.previewElement.classList.add('dz-error');
+            }
+        });
+        
+        myDropzone.on('queuecomplete', () => {
+            if (submitAllBtn) {
+                submitAllBtn.disabled = false;
+                submitAllBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Wgraj wszystkie zdjęcia';
+            }
+            
+            if (uploadedPhotos.length > 0) {
+                this.showUploadedPhotos(uploadedPhotos);
+                this.initUploadMoreButton(myDropzone, uploadedPhotos);
+            }
+        });
+
+        myDropzone.on('error', (file, errorMessage) => {
+            console.error('Dropzone error:', errorMessage);
+            this.showToast(errorMessage, 'error');
+        });
+    }
+
+    showUploadedPhotos(uploadedPhotos) {
+        const uploadedPanel = document.getElementById('uploaded-photos-panel');
+        const container = document.getElementById('uploaded-photos-container');
+        
+        if (!uploadedPanel || !container) return;
+
+        let html = '';
+        uploadedPhotos.forEach(photo => {
+            const thumbnail = photo.thumbnails?.small || photo.thumbnails?.medium || Object.values(photo.thumbnails || {})[0];
+            
+            html += `
+                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <div class="thumbnail shadow-sm">
+                        <img src="${thumbnail || '/images/placeholder.jpg'}" alt="${photo.title}" class="img-fluid rounded">
+                        <div class="caption p-2 bg-light">
+                            <h6 class="mb-1 text-truncate">${photo.title}</h6>
+                            <div class="btn-group btn-group-sm d-flex">
+                                <a href="/photos/update?id=${photo.id}" class="btn btn-outline-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="/photos/view?id=${photo.id}" class="btn btn-outline-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        uploadedPanel.style.display = 'block';
+    }
+
+    initUploadMoreButton(dropzone, uploadedPhotos) {
+        const uploadMoreBtn = document.getElementById('upload-more-btn');
+        const uploadedPanel = document.getElementById('uploaded-photos-panel');
+        const container = document.getElementById('uploaded-photos-container');
+        const submitAllBtn = document.getElementById('submit-all');
+        
+        if (uploadMoreBtn) {
+            uploadMoreBtn.addEventListener('click', () => {
+                dropzone.removeAllFiles();
+                
+                if (uploadedPanel) uploadedPanel.style.display = 'none';
+                if (container) container.innerHTML = '';
+                if (submitAllBtn) submitAllBtn.style.display = 'none';
+                
+                uploadedPhotos.length = 0;
+            });
+        }
+    }
+
+    cleanupUnwantedElements() {
         setTimeout(() => {
             const unwantedElements = document.querySelectorAll('body > input[type="file"], body > .file-input-wrapper');
             unwantedElements.forEach(el => el.remove());
         }, 300);
     }
 
-    // Common utility methods
     initSelect2(selectors, modal) {
         if (typeof $ !== 'undefined' && $.fn.select2) {
             selectors.forEach(selector => {
@@ -414,7 +549,6 @@ class PhotosController {
         // Advanced filtering functionality could be added here
     }
 
-    // Toast notifications
     showToast(message, type = 'info') {
         const toast = document.createElement('div');
         toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed`;
@@ -435,7 +569,6 @@ class PhotosController {
     }
 }
 
-// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     new PhotosController();
 });
