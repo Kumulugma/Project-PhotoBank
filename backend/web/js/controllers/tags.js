@@ -1,28 +1,21 @@
 /**
- * Tags Controller JavaScript
- * Zasobnik B - Photo Management System
+ * Simple Tags Controller
+ * Podstawowe funkcje bez jQuery
  */
 
-class TagsController {
+class SimpleTagsController {
     constructor() {
         this.init();
     }
 
     init() {
-        if (this.isIndexPage()) {
-            this.initIndexPage();
-        }
+        this.initBasicFeatures();
         
         if (this.isFormPage()) {
-            this.initFormPage();
+            this.initFormFeatures();
         }
         
-        this.initCommonFeatures();
-    }
-
-    isIndexPage() {
-        return window.location.pathname.includes('/tags/index') || 
-               window.location.pathname.endsWith('/tags');
+        console.log('🏷️ Tags Controller initialized');
     }
 
     isFormPage() {
@@ -30,246 +23,250 @@ class TagsController {
                window.location.pathname.includes('/tags/update');
     }
 
-    initCommonFeatures() {
+    // ========================================
+    // Basic Features
+    // ========================================
+
+    initBasicFeatures() {
         this.initTooltips();
-        this.initTagCloud();
-    }
-
-    initIndexPage() {
-        this.initTagSearch();
         this.initPopularityBars();
-    }
-
-    initFormPage() {
-        this.initTagPreview();
-        this.initSlugGeneration();
-        this.initTagSuggestions();
-    }
-
-    initTagCloud() {
-        const tagItems = document.querySelectorAll('.tag-item');
-        tagItems.forEach(tag => {
-            tag.addEventListener('mouseenter', function() {
-                this.style.transform = 'translateY(-2px) scale(1.05)';
-            });
-            
-            tag.addEventListener('mouseleave', function() {
-                this.style.transform = 'translateY(0) scale(1)';
-            });
-        });
-    }
-
-    initTagSearch() {
-        const searchInput = document.querySelector('#tag-search');
-        if (!searchInput) return;
-
-        let searchTimeout;
-        
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                this.filterTags(e.target.value);
-            }, 300);
-        });
-    }
-
-    filterTags(searchTerm) {
-        const tags = document.querySelectorAll('.tag-item');
-        const term = searchTerm.toLowerCase().trim();
-        
-        tags.forEach(tag => {
-            const tagName = tag.textContent.toLowerCase();
-            const isVisible = term === '' || tagName.includes(term);
-            tag.style.display = isVisible ? 'inline-block' : 'none';
-        });
-
-        this.updateSearchResults(searchTerm);
-    }
-
-    updateSearchResults(searchTerm) {
-        const visibleTags = document.querySelectorAll('.tag-item:not([style*="display: none"])');
-        const counter = document.querySelector('.search-counter');
-        
-        if (counter) {
-            if (searchTerm && visibleTags.length === 0) {
-                counter.textContent = 'Nie znaleziono tagów';
-                counter.className = 'search-counter text-warning';
-            } else if (searchTerm) {
-                counter.textContent = `Znaleziono ${visibleTags.length} tagów`;
-                counter.className = 'search-counter text-info';
-            } else {
-                counter.textContent = '';
-            }
-        }
-    }
-
-    initPopularityBars() {
-        const popularityBars = document.querySelectorAll('.popularity-bar');
-        
-        popularityBars.forEach(bar => {
-            const fill = bar.querySelector('.popularity-fill');
-            if (fill) {
-                const width = fill.dataset.width || '0';
-                
-                // Animate the bar
-                setTimeout(() => {
-                    fill.style.width = width + '%';
-                }, 100);
-            }
-        });
-    }
-
-    initTagPreview() {
-        const nameInput = document.querySelector('input[name="Tag[name]"]');
-        const preview = document.querySelector('.tag-preview .badge');
-        
-        if (nameInput && preview) {
-            const updatePreview = () => {
-                const name = nameInput.value.trim();
-                preview.textContent = name || 'Podgląd tagu';
-                
-                // Update preview style based on length
-                if (name.length > 20) {
-                    preview.className = 'badge bg-warning';
-                } else if (name.length > 0) {
-                    preview.className = 'badge bg-primary';
-                } else {
-                    preview.className = 'badge bg-secondary';
-                }
-            };
-
-            nameInput.addEventListener('input', updatePreview);
-            updatePreview(); // Initial update
-        }
-    }
-
-    initSlugGeneration() {
-        const nameInput = document.querySelector('input[name="Tag[name]"]');
-        const slugDisplay = document.querySelector('#tag-slug-preview');
-        
-        if (nameInput && slugDisplay) {
-            nameInput.addEventListener('input', function() {
-                const slug = this.value
-                    .toLowerCase()
-                    .trim()
-                    .replace(/[^a-z0-9\s-]/g, '')
-                    .replace(/\s+/g, '-')
-                    .replace(/-+/g, '-')
-                    .replace(/^-+|-+$/g, '');
-                
-                slugDisplay.textContent = slug || 'tag-slug';
-            });
-        }
-    }
-
-    initTagSuggestions() {
-        const nameInput = document.querySelector('input[name="Tag[name]"]');
-        if (!nameInput) return;
-
-        let suggestionsContainer = document.querySelector('.tag-suggestions');
-        
-        if (!suggestionsContainer) {
-            suggestionsContainer = document.createElement('div');
-            suggestionsContainer.className = 'tag-suggestions';
-            nameInput.parentNode.appendChild(suggestionsContainer);
-        }
-
-        let suggestionTimeout;
-        
-        nameInput.addEventListener('input', (e) => {
-            clearTimeout(suggestionTimeout);
-            suggestionTimeout = setTimeout(() => {
-                this.fetchTagSuggestions(e.target.value, suggestionsContainer);
-            }, 300);
-        });
-
-        // Hide suggestions when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!nameInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
-                suggestionsContainer.style.display = 'none';
-            }
-        });
-    }
-
-    async fetchTagSuggestions(query, container) {
-        if (query.length < 2) {
-            container.style.display = 'none';
-            return;
-        }
-
-        try {
-            const response = await fetch(`/tags/suggestions?q=${encodeURIComponent(query)}`, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-
-            if (response.ok) {
-                const suggestions = await response.json();
-                this.displaySuggestions(suggestions, container);
-            }
-        } catch (error) {
-            console.error('Error fetching tag suggestions:', error);
-        }
-    }
-
-    displaySuggestions(suggestions, container) {
-        if (suggestions.length === 0) {
-            container.style.display = 'none';
-            return;
-        }
-
-        container.innerHTML = suggestions.map(suggestion => 
-            `<div class="tag-suggestion" data-tag="${suggestion.name}">
-                <strong>${suggestion.name}</strong>
-                <small class="text-muted ms-2">${suggestion.count} zdjęć</small>
-            </div>`
-        ).join('');
-
-        // Add click handlers
-        container.querySelectorAll('.tag-suggestion').forEach(item => {
-            item.addEventListener('click', () => {
-                const tagName = item.dataset.tag;
-                document.querySelector('input[name="Tag[name]"]').value = tagName;
-                container.style.display = 'none';
-                
-                // Trigger input event to update preview
-                const event = new Event('input', { bubbles: true });
-                document.querySelector('input[name="Tag[name]"]').dispatchEvent(event);
-            });
-        });
-
-        container.style.display = 'block';
+        this.initTagHoverEffects();
     }
 
     initTooltips() {
+        // Initialize Bootstrap tooltips if available
         if (typeof bootstrap !== 'undefined') {
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
         }
     }
 
+    initPopularityBars() {
+        const popularityBars = document.querySelectorAll('.popularity-fill');
+        
+        popularityBars.forEach((bar, index) => {
+            const targetWidth = bar.style.width;
+            bar.style.width = '0%';
+            
+            setTimeout(() => {
+                bar.style.width = targetWidth;
+            }, index * 100 + 300);
+        });
+    }
+
+    initTagHoverEffects() {
+        const tagItems = document.querySelectorAll('.tag-item');
+        
+        tagItems.forEach(tag => {
+            tag.addEventListener('mouseenter', () => {
+                tag.style.transform = 'translateY(-2px)';
+            });
+            
+            tag.addEventListener('mouseleave', () => {
+                tag.style.transform = 'translateY(0)';
+            });
+        });
+    }
+
+    // ========================================
+    // Form Features
+    // ========================================
+
+    initFormFeatures() {
+        this.initLivePreview();
+        this.initBasicValidation();
+        this.initExampleTags();
+    }
+
+    initLivePreview() {
+        const nameInput = document.querySelector('#tag-name-input');
+        const preview = document.querySelector('#preview-text');
+        const previewBadge = document.querySelector('#preview-badge');
+        
+        if (!nameInput || !preview) return;
+
+        nameInput.addEventListener('input', (e) => {
+            const value = e.target.value;
+            const cleanName = this.cleanTagName(value);
+            const displayName = cleanName || 'wprowadź-nazwę';
+            
+            preview.textContent = displayName;
+            this.updatePreviewBadge(previewBadge, cleanName);
+        });
+    }
+
+    cleanTagName(name) {
+        return name
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-ąćęłńóśźż]/g, '')
+            .replace(/[ąćęłńóśźż]/g, (match) => {
+                const map = {
+                    'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l',
+                    'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z'
+                };
+                return map[match] || match;
+            })
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
+
+    updatePreviewBadge(badge, name) {
+        if (!badge) return;
+        
+        // Reset classes
+        badge.className = 'badge fs-4';
+        
+        if (!name) {
+            badge.classList.add('bg-secondary');
+        } else if (name.length > 20) {
+            badge.classList.add('bg-danger');
+        } else if (name.length > 15) {
+            badge.classList.add('bg-warning');
+        } else if (name.length >= 3) {
+            badge.classList.add('bg-success');
+        } else {
+            badge.classList.add('bg-info');
+        }
+    }
+
+    initBasicValidation() {
+        const nameInput = document.querySelector('#tag-name-input');
+        if (!nameInput) return;
+
+        nameInput.addEventListener('input', (e) => {
+            const value = e.target.value;
+            const cleanName = this.cleanTagName(value);
+            
+            // Simple validation feedback
+            if (cleanName.length < 2 && cleanName.length > 0) {
+                nameInput.style.borderColor = '#ffc107';
+            } else if (cleanName.length > 25) {
+                nameInput.style.borderColor = '#dc3545';
+            } else if (cleanName.length >= 2) {
+                nameInput.style.borderColor = '#28a745';
+            } else {
+                nameInput.style.borderColor = '#e9ecef';
+            }
+        });
+    }
+
+    initExampleTags() {
+        const exampleTags = document.querySelectorAll('.example-tag');
+        const nameInput = document.querySelector('#tag-name-input');
+        
+        if (!nameInput) return;
+        
+        exampleTags.forEach(tag => {
+            tag.addEventListener('click', (e) => {
+                e.preventDefault();
+                const name = tag.getAttribute('data-name');
+                nameInput.value = name;
+                nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+                nameInput.focus();
+            });
+        });
+    }
+
+    // ========================================
+    // Utility Functions
+    // ========================================
+
     showToast(message, type = 'info') {
+        // Simple toast notification
         const toast = document.createElement('div');
-        toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed`;
+        toast.className = `alert alert-${this.getAlertClass(type)} position-fixed`;
         toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
         toast.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>
+            <i class="fas fa-${this.getIcon(type)} me-2"></i>
             ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close ms-auto" onclick="this.parentElement.remove()"></button>
         `;
         
         document.body.appendChild(toast);
         
+        // Auto remove after 3 seconds
         setTimeout(() => {
             if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
+                toast.remove();
             }
         }, 3000);
+    }
+
+    getAlertClass(type) {
+        const map = {
+            'success': 'success',
+            'error': 'danger',
+            'warning': 'warning',
+            'info': 'info'
+        };
+        return map[type] || 'info';
+    }
+
+    getIcon(type) {
+        const map = {
+            'success': 'check-circle',
+            'error': 'exclamation-circle',
+            'warning': 'exclamation-triangle',
+            'info': 'info-circle'
+        };
+        return map[type] || 'info-circle';
     }
 }
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    new TagsController();
+    new SimpleTagsController();
 });
+
+// Copy to clipboard function (for view page)
+function copyToClipboard(text) {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => {
+            showSimpleToast('Tekst skopiowany do schowka', 'success');
+        });
+    } else {
+        // Fallback
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showSimpleToast('Tekst skopiowany do schowka', 'success');
+    }
+}
+
+// Simple toast function for global use
+function showSimpleToast(message, type = 'info') {
+    const alertClass = {
+        'success': 'success',
+        'error': 'danger',
+        'warning': 'warning',
+        'info': 'info'
+    }[type] || 'info';
+    
+    const icon = {
+        'success': 'check-circle',
+        'error': 'exclamation-circle',
+        'warning': 'exclamation-triangle',
+        'info': 'info-circle'
+    }[type] || 'info-circle';
+    
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${alertClass} position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        <i class="fas fa-${icon} me-2"></i>
+        ${message}
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 3000);
+}
