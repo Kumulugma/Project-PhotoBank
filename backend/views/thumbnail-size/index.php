@@ -275,6 +275,7 @@ $totalSizes = $dataProvider->getTotalCount();
         <?= GridView::widget([
             'dataProvider' => $dataProvider,
             'filterModel' => $searchModel,
+            'summary' => 'Wyświetlono <b>{begin}-{end}</b> z <b>{totalCount}</b> wpisów',
             'layout' => '{items}{pager}',
             'tableOptions' => ['class' => 'table table-hover mb-0'],
             'columns' => [

@@ -77,6 +77,7 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
     <?= GridView::widget([
         'dataProvider' => $dataProvider,
         'filterModel' => $searchModel,
+        'summary' => 'Wyświetlono <b>{begin}-{end}</b> z <b>{totalCount}</b> wpisów',
         'options' => ['class' => 'table-responsive'],
         'tableOptions' => ['class' => 'table table-striped table-hover'],
         'columns' => [

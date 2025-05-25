@@ -88,8 +88,8 @@ $this->params['breadcrumbs'][] = $this->title;
                         <i class="fas fa-save me-2"></i>Zapisz ustawienia
                     </button>
                     <button type="button" class="btn btn-outline-light" id="test-ai-btn">
-                        <i class="fas fa-vial me-2"></i>Test AI
-                    </button>
+    <i class="fas fa-vial me-2"></i>Testuj AI
+</button>
                 </div>
 
                 <?php ActiveForm::end(); ?>

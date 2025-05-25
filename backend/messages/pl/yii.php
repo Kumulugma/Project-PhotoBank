@@ -1,0 +1,22 @@
+<?php
+return [
+    'Showing <b>{begin, number}-{end, number}</b> of <b>{totalCount, number}</b> {totalCount, plural, one{item} other{items}}.' => 'Wyświetlono <b>{begin, number}-{end, number}</b> z <b>{totalCount, number}</b> {totalCount, plural, one{elementu} few{elementów} many{elementów} other{elementów}}.',
+    'No results found.' => 'Nie znaleziono wyników.',
+    'Page' => 'Strona',
+    'First' => 'Pierwsza',
+    'Last' => 'Ostatnia',
+    'Previous' => 'Poprzednia',
+    'Next' => 'Następna',
+    'View' => 'Zobacz',
+    'Update' => 'Edytuj',
+    'Delete' => 'Usuń',
+    'Create' => 'Utwórz',
+    'Save' => 'Zapisz',
+    'Submit' => 'Wyślij',
+    'Reset' => 'Resetuj',
+    'Search' => 'Szukaj',
+    'Total {count, number} {count, plural, one{item} other{items}}.' => 'Łącznie {count, number} {count, plural, one{element} few{elementy} many{elementów} other{elementów}}.',
+    'Select all' => 'Zaznacz wszystkie',
+    'Unselect all' => 'Odznacz wszystkie',
+    'Are you sure you want to delete this item?' => 'Czy na pewno chcesz usunąć ten element?',
+];

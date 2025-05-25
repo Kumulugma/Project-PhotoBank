@@ -1,0 +1,25 @@
+<?php
+return [
+    'Photo' => 'Zdjęcie',
+    'Photos' => 'Zdjęcia',
+    'Category' => 'Kategoria',
+    'Categories' => 'Kategorie',
+    'Tag' => 'Tag',
+    'Tags' => 'Tagi',
+    'User' => 'Użytkownik',
+    'Users' => 'Użytkownicy',
+    'Dashboard' => 'Panel',
+    'Settings' => 'Ustawienia',
+    'Queue' => 'Kolejka',
+    'Job' => 'Zadanie',
+    'Jobs' => 'Zadania',
+    'Upload' => 'Prześlij',
+    'Import' => 'Importuj',
+    'Export' => 'Eksportuj',
+    'Thumbnail' => 'Miniatura',
+    'Thumbnails' => 'Miniatury',
+    'Audit Log' => 'Dziennik zdarzeń',
+    'Console' => 'Konsola',
+    'Commands' => 'Komendy',
+];
+?>

@@ -15,6 +15,8 @@ return [
     'bootstrap' => ['log'],
     'defaultRoute' => 'site/dashboard',
     'modules' => [],
+    'language' => 'pl-PL',
+    'sourceLanguage' => 'en-US',
     'components' => [
         'request' => [
             'csrfParam' => '_csrf-backend',

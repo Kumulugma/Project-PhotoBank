@@ -81,6 +81,7 @@ $popularTags = Tag::find()->orderBy(['frequency' => SORT_DESC])->limit(10)->all(
                         <?= GridView::widget([
                             'dataProvider' => $dataProvider,
                             'filterModel' => $searchModel,
+                            'summary' => 'Wyświetlono <b>{begin}-{end}</b> z <b>{totalCount}</b> wpisów',
                             'tableOptions' => ['class' => 'table table-hover mb-0'],
                             'columns' => [
                                 [

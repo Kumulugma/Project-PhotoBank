@@ -7,7 +7,7 @@ use yii\widgets\DetailView;
 /* @var $this yii\web\View */
 /* @var $model common\models\QueuedJob */
 
-$this->title = 'Job #' . $model->id;
+$this->title = 'Zadanie #' . $model->id;
 $this->params['breadcrumbs'][] = ['label' => 'Kolejka zadań', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 
@@ -34,37 +34,37 @@ $jobTypeOptions = [
 
     <p>
         <?php if ($model->status === \common\models\QueuedJob::STATUS_FAILED): ?>
-            <?= Html::a('Retry', ['retry', 'id' => $model->id], [
-                'class' => 'btn btn-primary',
-                'data' => [
-                    'confirm' => 'Are you sure you want to retry this job?',
-                    'method' => 'post',
-                ],
-            ]) ?>
+            <?= Html::a('Ponów', ['retry', 'id' => $model->id], [
+    'class' => 'btn btn-primary',
+    'data' => [
+        'confirm' => 'Czy na pewno chcesz ponowić to zadanie?',
+        'method' => 'post',
+    ],
+]) ?>
         <?php elseif ($model->status === \common\models\QueuedJob::STATUS_PENDING): ?>
-            <?= Html::a('Process Now', ['process', 'id' => $model->id], [
-                'class' => 'btn btn-primary',
-                'data' => [
-                    'confirm' => 'Are you sure you want to process this job now?',
-                    'method' => 'post',
-                ],
-            ]) ?>
+            <?= Html::a('Przetwórz teraz', ['process', 'id' => $model->id], [
+    'class' => 'btn btn-primary',
+    'data' => [
+        'confirm' => 'Czy na pewno chcesz przetworzyć to zadanie teraz?',
+        'method' => 'post',
+    ],
+]) ?>
         <?php endif; ?>
         
-        <?= Html::a('Delete', ['delete', 'id' => $model->id], [
-            'class' => 'btn btn-danger',
-            'data' => [
-                'confirm' => 'Are you sure you want to delete this job?',
-                'method' => 'post',
-            ],
-        ]) ?>
+        <?= Html::a('Usuń', ['delete', 'id' => $model->id], [
+    'class' => 'btn btn-danger',
+    'data' => [
+        'confirm' => 'Czy na pewno chcesz usunąć to zadanie?',
+        'method' => 'post',
+    ],
+]) ?>
     </p>
 
     <div class="row">
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Job Details</h5>
+                    <h5 class="card-title mb-0">Szczegóły zadania</h5>
                 </div>
                 <div class="card-body">
                     <?= DetailView::widget([
@@ -110,11 +110,11 @@ $jobTypeOptions = [
                             ],
                             [
                                 'attribute' => 'started_at',
-                                'value' => $model->started_at ? date('Y-m-d H:i:s', $model->started_at) : 'Not started',
+                                'value' => $model->started_at ? date('Y-m-d H:i:s', $model->started_at) : 'Nie rozpoczęto',
                             ],
                             [
                                 'attribute' => 'finished_at',
-                                'value' => $model->finished_at ? date('Y-m-d H:i:s', $model->finished_at) : 'Not completed',
+                                'value' => $model->finished_at ? date('Y-m-d H:i:s', $model->finished_at) : 'Nie zakończono',
                             ],
                         ],
                     ]) ?>
@@ -125,20 +125,20 @@ $jobTypeOptions = [
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">Job Parameters</h5>
+                    <h5 class="card-title mb-0">Parametry zadania</h5>
                 </div>
                 <div class="card-body">
                     <?php
                     $params = json_decode($model->data, true);
                     if (empty($params)): ?>
-                        <p class="text-muted">No parameters provided</p>
+                        <p class="text-muted mb-0">Brak parametrów</p>
                     <?php else: ?>
                         <div class="table-responsive">
                             <table class="table table-striped job-params-table">
                                 <thead>
                                     <tr>
-                                        <th>Parameter</th>
-                                        <th>Value</th>
+                                        <th>Parametr</th>
+<th>Wartość</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -164,7 +164,7 @@ $jobTypeOptions = [
             <?php if ($model->status === \common\models\QueuedJob::STATUS_FAILED && !empty($model->error_message)): ?>
                 <div class="card border-danger">
                     <div class="card-header bg-danger text-white">
-                        <h5 class="card-title mb-0">Error Message</h5>
+                        <h5 class="card-title mb-0">Komunikat błędu</h5>
                     </div>
                     <div class="card-body">
                         <pre class="job-error-message"><?= Html::encode($model->error_message) ?></pre>

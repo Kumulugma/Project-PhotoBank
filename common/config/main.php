@@ -1,8 +1,9 @@
 <?php
+
 return [
     'aliases' => [
         '@bower' => '@vendor/bower-asset',
-        '@npm'   => '@vendor/npm-asset',
+        '@npm' => '@vendor/npm-asset',
     ],
     'vendorPath' => dirname(dirname(__DIR__)) . '/vendor',
     'components' => [
@@ -31,6 +32,15 @@ return [
             'thousandSeparator' => ' ',
             'decimalSeparator' => ',',
             'currencyCode' => 'PLN',
+        ],
+        'i18n' => [
+            'translations' => [
+                'yii' => [
+                    'class' => 'yii\i18n\PhpMessageSource',
+                    'sourceLanguage' => 'en',
+                    'basePath' => '@app/messages',
+                ],
+            ],
         ],
     ],
     // Moduły powinny być zdefiniowane na poziomie aplikacji, nie tutaj

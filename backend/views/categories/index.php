@@ -163,6 +163,7 @@ $totalPhotos = \common\models\PhotoCategory::find()->count();
         <?= GridView::widget([
             'dataProvider' => $dataProvider,
             'filterModel' => $searchModel,
+            'summary' => 'Wyświetlono <b>{begin}-{end}</b> z <b>{totalCount}</b> wpisów',
             'options' => ['class' => 'table-responsive'],
             'tableOptions' => ['class' => 'table table-striped table-hover'],
             'summary' => '<div class="summary mb-3">Wyświetlono <b>{begin}-{end}</b> z <b>{totalCount}</b> kategorii</div>',
