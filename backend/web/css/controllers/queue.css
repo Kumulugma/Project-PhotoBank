@@ -1,68 +1,136 @@
+/* Queue Controller Styles - Modern CSS Design System */
+
+/* === STATISTICS CARDS === */
 .queue-stats-cards .stat-card {
     background: white;
-    border-radius: 0.5rem;
+    border-radius: 12px;
     padding: 1.5rem;
     text-align: center;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: all 0.3s ease;
     border-left: 4px solid;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .queue-stats-cards .stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
 }
 
 .queue-stats-cards .stat-card.pending {
-    border-left-color: var(--warning-color);
+    border-left: 4px solid;
+    border-image: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) 1;
 }
 
 .queue-stats-cards .stat-card.processing {
-    border-left-color: var(--primary-color);
+    border-left: 4px solid;
+    border-image: linear-gradient(135deg, #007bff 0%, #0056b3 100%) 1;
 }
 
 .queue-stats-cards .stat-card.completed {
-    border-left-color: var(--success-color);
+    border-left: 4px solid;
+    border-image: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) 1;
 }
 
 .queue-stats-cards .stat-card.failed {
-    border-left-color: var(--danger-color);
+    border-left: 4px solid;
+    border-image: linear-gradient(135deg, #dc3545 0%, #bd2130 100%) 1;
 }
 
+/* === JOB STATUS BADGES === */
 .job-status-badge {
     font-size: 0.875rem;
     padding: 0.375rem 0.75rem;
-    border-radius: 0.5rem;
+    border-radius: 20px;
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
 }
 
+.job-status-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Status-specific badge gradients */
+.badge.bg-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%) !important;
+    color: #212529 !important;
+}
+
+.badge.bg-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    color: white !important;
+}
+
+.badge.bg-success {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
+    color: white !important;
+}
+
+.badge.bg-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #bd2130 100%) !important;
+    color: white !important;
+}
+
+.badge.bg-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
+    color: white !important;
+}
+
+/* === JOB TYPE ICONS === */
 .job-type-icon {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     font-size: 0.75rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
 }
 
-.job-type-icon.s3-sync { background: #ff9800; color: white; }
-.job-type-icon.regenerate { background: #2196f3; color: white; }
-.job-type-icon.analyze { background: #9c27b0; color: white; }
-.job-type-icon.import { background: #4caf50; color: white; }
+.job-type-icon:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
 
+.job-type-icon.s3-sync { 
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white; 
+}
+
+.job-type-icon.regenerate { 
+    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+    color: white; 
+}
+
+.job-type-icon.analyze { 
+    background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+    color: white; 
+}
+
+.job-type-icon.import { 
+    background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+    color: white; 
+}
+
+/* === PROGRESS BAR === */
 .job-progress {
     position: relative;
-    background: #e9ecef;
-    border-radius: 0.25rem;
-    height: 20px;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    border-radius: 8px;
+    height: 24px;
     overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .job-progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, var(--primary-color) 0%, var(--info-color) 100%);
+    background: linear-gradient(90deg, #007bff 0%, #17a2b8 100%);
     transition: width 0.3s ease;
     display: flex;
     align-items: center;
@@ -70,61 +138,132 @@
     color: white;
     font-size: 0.75rem;
     font-weight: 600;
+    position: relative;
+    overflow: hidden;
 }
 
+.job-progress-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* === DURATION INDICATORS === */
 .job-duration {
-    font-family: 'Courier New', monospace;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-size: 0.875rem;
     font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    display: inline-block;
 }
 
-.job-duration.fast { color: var(--success-color); }
-.job-duration.medium { color: var(--warning-color); }
-.job-duration.slow { color: var(--danger-color); }
+.job-duration.fast { 
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(30, 126, 52, 0.1) 100%);
+    color: #1e7e34;
+    border: 1px solid rgba(40, 167, 69, 0.2);
+}
 
+.job-duration.medium { 
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(224, 168, 0, 0.1) 100%);
+    color: #e0a800;
+    border: 1px solid rgba(255, 193, 7, 0.2);
+}
+
+.job-duration.slow { 
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(189, 33, 48, 0.1) 100%);
+    color: #bd2130;
+    border: 1px solid rgba(220, 53, 69, 0.2);
+}
+
+/* === QUEUE ACTIONS === */
 .queue-actions {
-    background: var(--light-color);
-    padding: 1rem;
-    border-radius: 0.5rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1.5rem;
+    border-radius: 12px;
     margin-bottom: 1.5rem;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+/* === PROCESSOR INFO === */
 .queue-processor-info {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     padding: 1.5rem;
-    border-radius: 0.5rem;
+    border-radius: 12px;
     margin-bottom: 1.5rem;
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.queue-processor-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.05)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.05)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>') repeat;
+    pointer-events: none;
 }
 
 .queue-processor-info code {
     background: rgba(255, 255, 255, 0.2);
     color: white;
     padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
+    border-radius: 6px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+    backdrop-filter: blur(10px);
 }
 
+/* === MODAL STYLES === */
 .job-details-modal .modal-body {
     max-height: 60vh;
     overflow-y: auto;
 }
 
 .job-params-table {
-    font-family: 'Courier New', monospace;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-size: 0.875rem;
 }
 
+.job-params-table th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 2px solid #dee2e6;
+}
+
+.job-params-table tr:hover {
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.05) 0%, rgba(0, 86, 179, 0.05) 100%);
+    transform: translateX(2px);
+    transition: all 0.2s ease;
+}
+
+/* === ERROR MESSAGE === */
 .job-error-message {
-    background: #ffe6e6;
-    border: 1px solid #ffcccc;
-    border-radius: 0.375rem;
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(189, 33, 48, 0.1) 100%);
+    border: 1px solid rgba(220, 53, 69, 0.2);
+    border-radius: 8px;
     padding: 1rem;
-    color: var(--danger-color);
+    color: #bd2130;
     white-space: pre-wrap;
-    font-family: 'Courier New', monospace;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
     font-size: 0.875rem;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.1);
 }
 
+/* === ANIMATIONS === */
 .spinning-icon {
     animation: spin 1s linear infinite;
 }
@@ -133,3 +272,179 @@
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
+/* Pulse animation for updating values */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* === BUTTON IMPROVEMENTS === */
+.btn {
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 123, 255, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #1e7e34 0%, #155724 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(40, 167, 69, 0.4);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #bd2130 100%);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #bd2130 0%, #a71e2a 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(220, 53, 69, 0.4);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #e0a800 0%, #d39e00 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(255, 193, 7, 0.4);
+    color: #212529;
+}
+
+.btn-outline-primary {
+    border: 2px solid #007bff;
+    background: transparent;
+    color: #007bff;
+}
+
+.btn-outline-primary:hover {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 123, 255, 0.4);
+}
+
+/* === CARD IMPROVEMENTS === */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem 1.5rem;
+}
+
+/* === TABLE IMPROVEMENTS === */
+.table {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.table thead th {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.05) 0%, rgba(0, 86, 179, 0.05) 100%);
+    transform: translateX(4px);
+}
+
+/* === RESPONSIVE ADJUSTMENTS === */
+@media (max-width: 576px) {
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+    
+    .card:hover {
+        transform: translateY(-1px);
+    }
+    
+    .queue-stats-cards .stat-card:hover {
+        transform: translateY(-1px);
+    }
+    
+    .table tbody tr:hover {
+        transform: translateX(2px);
+    }
+}
+
+/* === GLASS MORPHISM EFFECTS === */
+.glass-effect {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* === SYNTAX HIGHLIGHTING FOR JSON === */
+.json-viewer .string { color: #28a745; }
+.json-viewer .number { color: #007bff; }
+.json-viewer .boolean { color: #dc3545; }
+.json-viewer .null { color: #6c757d; }
+.json-viewer .key { color: #495057; font-weight: bold; }
