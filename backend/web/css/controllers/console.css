@@ -1,23 +1,25 @@
-/* Console Commands Styling */
+/* === UNIFIED CONSOLE COMMANDS STYLES === */
 
 .console-commands {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* === COMMAND CARDS === */
 .command-card {
     margin-bottom: 2rem;
     border: 1px solid #e1e8f0;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
 }
 
 .command-card:hover {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8 16px rgba(0, 0, 0, 0.15);
     transform: translateY(-2px);
 }
 
+/* === COMMAND HEADER === */
 .command-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -56,24 +58,25 @@
     z-index: 2;
 }
 
+/* === COMMAND BODY === */
 .command-body {
     padding: 2rem;
-    background: #fafbfc;
+    background: linear-gradient(135deg, #fafbfc 0%, #f1f3f4 100%);
 }
 
 .command-item {
     margin-bottom: 2rem;
     padding: 1.5rem;
     background: white;
-    border-left: 4px solid #007bff;
-    border-radius: 8px;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+    border-left: 4px solid #0d6efd;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
 }
 
 .command-item:hover {
-    border-left-color: #0056b3;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+    border-left-color: #0b5ed7;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
     transform: translateX(5px);
 }
 
@@ -87,6 +90,7 @@
     margin-bottom: 0.75rem;
 }
 
+/* === COMMAND CODE === */
 .command-code {
     background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
     color: #ecf0f1;
@@ -120,7 +124,7 @@
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: white;
-    border-radius: 4px;
+    border-radius: 6px;
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
 }
@@ -131,6 +135,7 @@
     transform: scale(1.05);
 }
 
+/* === PARAMETER LIST === */
 .param-list {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     padding: 1.5rem;
@@ -163,13 +168,14 @@
     line-height: 1.4;
 }
 
+/* === EXECUTE SECTION === */
 .execute-section {
     background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
     color: white;
     padding: 2rem;
     border-radius: 12px;
     margin-top: 3rem;
-    box-shadow: 0 4px 20px rgba(86, 171, 47, 0.3);
+    box-shadow: 0 8px 16px rgba(86, 171, 47, 0.3);
 }
 
 .execute-section h4 {
@@ -177,6 +183,7 @@
     margin-bottom: 1.5rem;
 }
 
+/* === WARNING BOX === */
 .warning-box {
     background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
     border: 1px solid #ffeaa7;
@@ -187,6 +194,7 @@
     font-weight: 500;
 }
 
+/* === OUTPUT BOX === */
 .output-box {
     background: #1e1e1e;
     color: #d4d4d4;
@@ -214,6 +222,7 @@
     border-radius: 4px;
 }
 
+/* === COMMAND SEARCH === */
 .command-search {
     margin-bottom: 2rem;
 }
@@ -228,6 +237,7 @@
     border-left: none;
     font-size: 1.1rem;
     padding: 0.75rem 1rem;
+    border-radius: 0 8px 8px 0;
 }
 
 .command-search .form-control:focus {
@@ -235,7 +245,12 @@
     border-color: #667eea;
 }
 
-/* Syntax highlighting dla komend */
+.command-search .btn {
+    height: 100%;
+    border-radius: 0 8px 8px 0;
+}
+
+/* === SYNTAX HIGHLIGHTING === */
 .command-code .keyword {
     color: #569cd6;
     font-weight: 600;
@@ -258,7 +273,110 @@
     color: #9cdcfe;
 }
 
-/* Responsywność */
+/* === STATUS BADGES === */
+.status-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-safe {
+    background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+    color: white;
+}
+
+.status-caution {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    color: #212529;
+}
+
+.status-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+}
+
+/* === UNIFIED BUTTONS === */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+    box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0b5ed7 0%, #0a58ca 100%);
+    color: white;
+    box-shadow: 0 6px 12px rgba(13, 110, 253, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #198754 0%, #157347 100%);
+    color: white;
+    box-shadow: 0 4px 8px rgba(25, 135, 84, 0.3);
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #157347 0%, #146c43 100%);
+    color: white;
+    box-shadow: 0 6px 12px rgba(25, 135, 84, 0.4);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+    color: white;
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #b02a37 0%, #a02834 100%);
+    color: white;
+    box-shadow: 0 6px 12px rgba(220, 53, 69, 0.4);
+}
+
+.copy-btn {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* === RESPONSIVE === */
 @media (max-width: 768px) {
     .command-header {
         padding: 1rem;
@@ -286,9 +404,21 @@
     .execute-section {
         padding: 1.5rem;
     }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+    
+    .command-card:hover {
+        transform: translateY(-1px);
+    }
+    
+    .command-item:hover {
+        transform: translateX(3px);
+    }
 }
 
-/* Animacje */
+/* === ANIMATIONS === */
 @keyframes fadeInUp {
     from {
         opacity: 0;
@@ -308,136 +438,3 @@
 .command-card:nth-child(3) { animation-delay: 0.2s; }
 .command-card:nth-child(4) { animation-delay: 0.3s; }
 .command-card:nth-child(5) { animation-delay: 0.4s; }
-
-/* Status badges */
-.status-badge {
-    font-size: 0.7rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.status-safe {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-}
-
-.status-caution {
-    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-    color: #212529;
-}
-
-.status-danger {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-    color: white;
-}
-
-/* Styles from console/index.php - dodane z wbudowanych stylów */
-.command-card {
-    margin-bottom: 2rem;
-    border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    overflow: hidden;
-}
-
-.command-header {
-    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-    color: white;
-    padding: 1rem 1.5rem;
-}
-
-.command-body {
-    padding: 1.5rem;
-}
-
-.command-item {
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-left: 4px solid #007bff;
-    border-radius: 0.25rem;
-}
-
-.command-item:last-child {
-    margin-bottom: 0;
-}
-
-.command-code {
-    background: #212529;
-    color: #f8f9fa;
-    padding: 0.75rem 1rem;
-    border-radius: 0.25rem;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    font-size: 0.9rem;
-    margin: 0.5rem 0;
-    border: 1px solid #495057;
-}
-
-.param-list {
-    background: #e9ecef;
-    padding: 1rem;
-    border-radius: 0.25rem;
-    margin-top: 0.5rem;
-}
-
-.param-list dt {
-    font-weight: 600;
-    color: #495057;
-}
-
-.param-list dd {
-    margin-bottom: 0.5rem;
-    color: #6c757d;
-}
-
-.execute-section {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-    padding: 2rem;
-    border-radius: 0.5rem;
-    margin-top: 2rem;
-}
-
-.warning-box {
-    background: #fff3cd;
-    border: 1px solid #ffeaa7;
-    color: #856404;
-    padding: 1rem;
-    border-radius: 0.25rem;
-    margin-bottom: 1rem;
-}
-
-.output-box {
-    background: #212529;
-    color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 0.25rem;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    font-size: 0.85rem;
-    white-space: pre-wrap;
-    max-height: 400px;
-    overflow-y: auto;
-    border: 1px solid #495057;
-}
-
-.copy-btn {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-}
-
-.command-search {
-    margin-bottom: 2rem;
-}
-
-@media (max-width: 768px) {
-    .command-code {
-        font-size: 0.75rem;
-        word-break: break-all;
-    }
-}
-
-.command-search .btn{
-    height: 100%;
-}

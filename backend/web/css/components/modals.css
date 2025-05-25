@@ -1,258 +1,274 @@
-/**
- * Modal Components JavaScript
- */
+.modal {
+    z-index: 1060;
+}
 
-class ModalsComponent {
-    constructor() {
-        this.init();
+.modal-backdrop {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.modal-dialog {
+    margin: 2rem auto;
+    max-width: 600px;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.95);
     }
-
-    init() {
-        this.initModalTriggers();
-        this.initModalEvents();
-        this.initConfirmDialogs();
-        this.initImageModals();
-    }
-
-    initModalTriggers() {
-        document.querySelectorAll('[data-bs-toggle="modal"]').forEach(trigger => {
-            trigger.addEventListener('click', (e) => {
-                const targetModal = document.querySelector(trigger.getAttribute('data-bs-target'));
-                if (targetModal) {
-                    this.prepareModal(targetModal, trigger);
-                }
-            });
-        });
-    }
-
-    initModalEvents() {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('shown.bs.modal', () => {
-                const firstInput = modal.querySelector('input:not([type="hidden"]), textarea, select');
-                if (firstInput && !firstInput.disabled && !firstInput.readOnly) {
-                    firstInput.focus();
-                }
-            });
-
-            // Handle escape key
-            modal.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    const bsModal = bootstrap.Modal.getInstance(modal);
-                    if (bsModal) {
-                        bsModal.hide();
-                    }
-                }
-            });
-        });
-    }
-
-    initConfirmDialogs() {
-        document.querySelectorAll('[data-confirm]').forEach(element => {
-            element.addEventListener('click', (e) => {
-                const message = element.getAttribute('data-confirm');
-                if (!confirm(message)) {
-                    e.preventDefault();
-                    return false;
-                }
-            });
-        });
-    }
-
-    initImageModals() {
-        // Create image preview modal for thumbnails
-        const imageModal = document.createElement('div');
-        imageModal.className = 'modal fade';
-        imageModal.id = 'imagePreviewModal';
-        imageModal.innerHTML = `
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Podgląd obrazu</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body text-center p-0">
-                        <img src="" alt="" class="img-fluid" id="imagePreviewImg">
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(imageModal);
-
-        // Handle image clicks
-        document.addEventListener('click', (e) => {
-            if (e.target.matches('.img-thumbnail, .preview-image, [data-image-preview]')) {
-                e.preventDefault();
-                const img = document.getElementById('imagePreviewImg');
-                const modal = new bootstrap.Modal(document.getElementById('imagePreviewModal'));
-                
-                img.src = e.target.src || e.target.dataset.src;
-                img.alt = e.target.alt || 'Podgląd obrazu';
-                
-                modal.show();
-            }
-        });
-    }
-
-    prepareModal(modal, trigger) {
-        // Modal-specific preparation based on trigger data
-        const dataId = trigger.getAttribute('data-id');
-        if (dataId) {
-            const idInput = modal.querySelector('input[name="id"]');
-            if (idInput) {
-                idInput.value = dataId;
-            }
-        }
-
-        // Handle data attributes
-        Object.keys(trigger.dataset).forEach(key => {
-            if (key.startsWith('modal')) {
-                const inputName = key.replace('modal', '').toLowerCase();
-                const input = modal.querySelector(`input[name="${inputName}"], select[name="${inputName}"], textarea[name="${inputName}"]`);
-                if (input) {
-                    input.value = trigger.dataset[key];
-                }
-            }
-        });
-    }
-
-    static showConfirmDialog(message, title = 'Potwierdzenie', options = {}) {
-        return new Promise((resolve) => {
-            const modal = document.createElement('div');
-            modal.className = 'modal fade';
-            modal.innerHTML = `
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">${title}</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-question-circle fa-2x text-warning me-3"></i>
-                                <div>${message}</div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                ${options.cancelText || 'Anuluj'}
-                            </button>
-                            <button type="button" class="btn btn-${options.confirmType || 'primary'}" id="confirm-btn">
-                                ${options.confirmText || 'Potwierdź'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            const confirmBtn = modal.querySelector('#confirm-btn');
-            const cancelBtns = modal.querySelectorAll('[data-bs-dismiss="modal"]');
-            
-            confirmBtn.addEventListener('click', () => {
-                resolve(true);
-                if (typeof bootstrap !== 'undefined') {
-                    bootstrap.Modal.getInstance(modal).hide();
-                }
-            });
-            
-            cancelBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    resolve(false);
-                });
-            });
-            
-            modal.addEventListener('hidden.bs.modal', () => {
-                modal.remove();
-            });
-            
-            if (typeof bootstrap !== 'undefined') {
-                const bsModal = new bootstrap.Modal(modal);
-                bsModal.show();
-            } else {
-                modal.style.display = 'block';
-                modal.classList.add('show');
-            }
-        });
-    }
-
-    static showAlert(message, type = 'info', options = {}) {
-        const alert = document.createElement('div');
-        alert.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-        alert.style.cssText = `
-            top: 20px; 
-            right: 20px; 
-            z-index: 9999; 
-            min-width: 300px;
-            max-width: 500px;
-            animation: slideInRight 0.4s ease-out;
-        `;
-        
-        const iconMap = {
-            success: 'check-circle',
-            error: 'exclamation-circle',
-            warning: 'exclamation-triangle',
-            info: 'info-circle',
-            danger: 'exclamation-circle'
-        };
-        
-        alert.innerHTML = `
-            <div class="d-flex align-items-start">
-                <i class="fas fa-${iconMap[type] || 'info-circle'} me-2 mt-1"></i>
-                <div class="flex-grow-1">${message}</div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `;
-        
-        document.body.appendChild(alert);
-        
-        // Auto-hide after duration
-        const duration = options.duration || 5000;
-        if (duration > 0) {
-            setTimeout(() => {
-                if (alert.parentNode) {
-                    alert.style.animation = 'slideOutRight 0.4s ease-out';
-                    setTimeout(() => alert.remove(), 400);
-                }
-            }, duration);
-        }
-        
-        return alert;
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
     }
 }
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    new ModalsComponent();
-});
+.modal-content {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
 
-// Global functions
-window.showConfirmDialog = ModalsComponent.showConfirmDialog;
-window.showAlert = ModalsComponent.showAlert;
+.modal-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0b5ed7 100%);
+    color: white;
+    border-bottom: none;
+    padding: 1.5rem 2rem;
+    position: relative;
+}
 
-// Add CSS animations
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from {
-            opacity: 0;
-            transform: translateX(100%);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
+.modal-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 100%);
+}
+
+.modal-header.bg-danger {
+    background: linear-gradient(135deg, var(--danger-color) 0%, #b02a37 100%);
+}
+
+.modal-header.bg-success {
+    background: linear-gradient(135deg, var(--success-color) 0%, #157347 100%);
+}
+
+.modal-header.bg-warning {
+    background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%);
+    color: #000;
+}
+
+.modal-header.bg-info {
+    background: linear-gradient(135deg, var(--info-color) 0%, #0bb5d6 100%);
+    color: #000;
+}
+
+.modal-title {
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modal-body {
+    padding: 2rem;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.modal-footer {
+    background: var(--light-color);
+    border-top: 1px solid #e9ecef;
+    padding: 1.5rem 2rem;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.modal-sm .modal-dialog {
+    max-width: 400px;
+}
+
+.modal-lg .modal-dialog {
+    max-width: 900px;
+}
+
+.modal-xl .modal-dialog {
+    max-width: 1200px;
+}
+
+.modal-fullscreen .modal-dialog {
+    width: 100vw;
+    max-width: none;
+    height: 100vh;
+    margin: 0;
+}
+
+.modal-fullscreen .modal-content {
+    height: 100vh;
+    border-radius: 0;
+}
+
+.modal-confirmation {
+    text-align: center;
+}
+
+.modal-confirmation .modal-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.modal-confirmation.danger .modal-icon {
+    color: var(--danger-color);
+}
+
+.modal-confirmation.success .modal-icon {
+    color: var(--success-color);
+}
+
+.modal-confirmation.warning .modal-icon {
+    color: var(--warning-color);
+}
+
+.modal-confirmation.info .modal-icon {
+    color: var(--info-color);
+}
+
+.modal-image-preview {
+    padding: 0;
+    background: #000;
+}
+
+.modal-image-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.modal-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+}
+
+.modal-loading .spinner {
+    width: 3rem;
+    height: 3rem;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.modal-tabs .nav-tabs {
+    border-bottom: 1px solid #e9ecef;
+    margin: -2rem -2rem 2rem -2rem;
+    padding: 0 2rem;
+    background: var(--light-color);
+}
+
+.modal-tabs .nav-link {
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: #6c757d;
+    padding: 1rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.modal-tabs .nav-link:hover {
+    color: var(--primary-color);
+    border-bottom-color: rgba(13, 110, 253, 0.3);
+}
+
+.modal-tabs .nav-link.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    background: white;
+}
+
+.modal-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.modal-alert {
+    margin: -2rem -2rem 2rem -2rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: currentColor;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+    padding: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-close:hover {
+    opacity: 1;
+}
+
+.btn-close-white {
+    color: white;
+}
+
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 1rem;
+        max-width: calc(100% - 2rem);
     }
     
-    @keyframes slideOutRight {
-        from {
-            opacity: 1;
-            transform: translateX(0);
-        }
-        to {
-            opacity: 0;
-            transform: translateX(100%);
-        }
+    .modal-body {
+        padding: 1rem;
     }
-`;
-document.head.appendChild(style);
+    
+    .modal-footer {
+        padding: 1rem;
+        flex-direction: column;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .modal-footer .btn:last-child {
+        margin-bottom: 0;
+    }
+}

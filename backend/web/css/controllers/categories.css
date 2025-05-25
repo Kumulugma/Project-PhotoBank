@@ -1,6 +1,6 @@
-/* Categories CSS - Simplified & Working Version */
+/* === UNIFIED CATEGORIES CONTROLLER STYLES === */
 
-/* ===== STATYSTYKI HEADER ===== */
+/* ===== STATISTICS HEADER ===== */
 .category-header-section {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     border-radius: 16px;
@@ -22,10 +22,10 @@
     padding: 1.5rem 1rem;
     background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     position: relative;
-    border-top: 3px solid #007bff;
+    border-top: 3px solid #0d6efd;
 }
 
 .stat-item:hover {
@@ -34,7 +34,7 @@
 }
 
 .stat-item.success {
-    border-top-color: #28a745;
+    border-top-color: #198754;
 }
 
 .stat-item.warning {
@@ -42,18 +42,18 @@
 }
 
 .stat-item.info {
-    border-top-color: #17a2b8;
+    border-top-color: #0dcaf0;
 }
 
 .stat-number {
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 0.5rem;
-    color: #007bff;
+    color: #0d6efd;
 }
 
 .stat-item.success .stat-number {
-    color: #28a745;
+    color: #198754;
 }
 
 .stat-item.warning .stat-number {
@@ -61,7 +61,7 @@
 }
 
 .stat-item.info .stat-number {
-    color: #17a2b8;
+    color: #0dcaf0;
 }
 
 .stat-label {
@@ -164,72 +164,103 @@
 }
 
 .photo-count i {
-    color: #007bff;
+    color: #0d6efd;
 }
 
-/* ===== BUTTONS ===== */
-.btn-success {
-    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
-    border: none !important;
+/* ===== UNIFIED BUTTONS ===== */
+.btn {
     border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
     transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #198754 0%, #157347 100%);
+    color: white;
+    box-shadow: 0 4px 8px rgba(25, 135, 84, 0.3);
 }
 
 .btn-success:hover {
-    background: linear-gradient(135deg, #1e7e34 0%, #155724 100%) !important;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(40, 167, 69, 0.4);
+    background: linear-gradient(135deg, #157347 0%, #146c43 100%);
+    color: white;
+    box-shadow: 0 6px 12px rgba(25, 135, 84, 0.4);
 }
 
 .btn-outline-primary {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
-    color: white !important;
-    border: none !important;
-    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
 }
 
 .btn-outline-primary:hover {
-    background: linear-gradient(135deg, #0056b3 0%, #004085 100%) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.4);
-    color: white !important;
+    background: linear-gradient(135deg, #0b5ed7 0%, #0a58ca 100%);
+    color: white;
+    box-shadow: 0 6px 12px rgba(13, 110, 253, 0.4);
 }
 
 .btn-outline-secondary {
-    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%) !important;
-    color: white !important;
-    border: none !important;
-    box-shadow: 0 2px 4px rgba(108, 117, 125, 0.3);
+    background: linear-gradient(135deg, #6c757d 0%, #5c636a 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
 }
 
 .btn-outline-secondary:hover {
-    background: linear-gradient(135deg, #5a6268 0%, #495057 100%) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.4);
-    color: white !important;
+    background: linear-gradient(135deg, #5c636a 0%, #565e64 100%);
+    color: white;
+    box-shadow: 0 6px 12px rgba(108, 117, 125, 0.4);
 }
 
 .btn-outline-danger {
-    background: linear-gradient(135deg, #dc3545 0%, #bd2130 100%) !important;
-    color: white !important;
-    border: none !important;
-    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+    background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
 }
 
 .btn-outline-danger:hover {
-    background: linear-gradient(135deg, #bd2130 0%, #a71e2a 100%) !important;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.4);
-    color: white !important;
+    background: linear-gradient(135deg, #b02a37 0%, #a02834 100%);
+    color: white;
+    box-shadow: 0 6px 12px rgba(220, 53, 69, 0.4);
 }
 
 .btn-group-sm .btn {
-    border-radius: 8px;
+    border-radius: 6px;
     transition: all 0.3s ease;
 }
 
-/* ===== TABLE ===== */
+/* ===== UNIFIED TABLE ===== */
 .table {
     background: white;
     border-radius: 12px;
@@ -252,23 +283,39 @@
 }
 
 .table tbody tr:hover {
-    background-color: rgba(0, 123, 255, 0.05);
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.05) 0%, rgba(11, 94, 215, 0.05) 100%);
     transform: translateX(2px);
     transition: all 0.2s ease;
 }
 
-/* Badges */
-.badge.bg-primary {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
-    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+/* === UNIFIED BADGES === */
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.375rem 0.625rem;
     border-radius: 20px;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.badge.bg-primary {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%) !important;
+    color: white;
 }
 
 .badge.bg-light {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
-    color: #6c757d;
+    color: #495057;
     border: 1px solid #dee2e6;
-    border-radius: 20px;
 }
 
 /* Code */
@@ -277,7 +324,7 @@ code {
     border: 1px solid #dee2e6;
     border-radius: 6px;
     padding: 0.25rem 0.5rem;
-    color: #007bff;
+    color: #0d6efd;
     font-weight: 500;
 }
 
