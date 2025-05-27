@@ -84,12 +84,35 @@ class SiteController extends Controller
                 ->count(),
         ];
         
+        // Pobieranie kosztów AWS
+        $awsCosts = null;
+        if (Yii::$app->has('awsCost')) {
+            try {
+                $currentCosts = Yii::$app->awsCost->getCurrentMonthCosts();
+                $forecast = Yii::$app->awsCost->getMonthEndForecast();
+                $lastMonth = Yii::$app->awsCost->getLastMonthCosts();
+                $s3Costs = Yii::$app->awsCost->getS3Costs();
+                
+                $awsCosts = [
+                    'current' => $currentCosts,
+                    'forecast' => $forecast,
+                    'lastMonth' => $lastMonth,
+                    's3' => $s3Costs
+                ];
+            } catch (\Exception $e) {
+                AuditLog::logSystemEvent('Błąd pobierania kosztów AWS: ' . $e->getMessage(), 
+                    AuditLog::SEVERITY_WARNING, AuditLog::ACTION_SYSTEM);
+                $awsCosts = ['error' => true, 'message' => $e->getMessage()];
+            }
+        }
+        
         return $this->render('dashboard', [
             'totalPhotos' => $totalPhotos,
             'queuedPhotos' => $queuedPhotos,
             'totalCategories' => $totalCategories,
             'totalTags' => $totalTags,
             'auditStats' => $auditStats,
+            'awsCosts' => $awsCosts,
         ]);
     }
 

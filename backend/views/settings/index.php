@@ -90,6 +90,37 @@ $this->params['breadcrumbs'][] = $this->title;
                             <i class="fas fa-info-circle me-2"></i>Brak skonfigurowanych ustawień email
                         </div>
 <?php endif; ?>
+                    
+    <h5 class="text-danger mb-3 mt-4">
+        <i class="fab fa-aws me-2"></i>Ustawienia AWS
+    </h5>
+
+    <?php if (isset($settings['aws']) && !empty($settings['aws'])): ?>
+        <?php foreach ($settings['aws'] as $key => $setting): ?>
+            <div class="mb-3">
+                <label class="form-label"><?= ucwords(str_replace('_', ' ', $key)) ?></label>
+                <?php if ($key === 'cost_secret_access_key'): ?>
+                    <input type="password" class="form-control" name="Settings[<?= $setting['key'] ?>]" 
+                           value="<?= !empty($setting['value']) ? '********' : '' ?>" 
+                           placeholder="<?= empty($setting['value']) ? 'Wprowadź secret key' : 'Zachowaj obecny klucz' ?>">
+                <?php elseif (is_bool($setting['value']) || $setting['value'] === '0' || $setting['value'] === '1'): ?>
+                    <select name="Settings[<?= $setting['key'] ?>]" class="form-select">
+                        <option value="1" <?= $setting['value'] == 1 ? 'selected' : '' ?>>Włączone</option>
+                        <option value="0" <?= $setting['value'] == 0 ? 'selected' : '' ?>>Wyłączone</option>
+                    </select>
+                <?php else: ?>
+                    <input type="text" class="form-control" name="Settings[<?= $setting['key'] ?>]" value="<?= Html::encode($setting['value']) ?>">
+                <?php endif; ?>
+                <?php if (!empty($setting['description'])): ?>
+                    <div class="form-text"><?= Html::encode($setting['description']) ?></div>
+                <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
+    <?php else: ?>
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>Brak skonfigurowanych ustawień AWS
+        </div>
+    <?php endif; ?>
                 </div>
 
                 <div class="col-lg-6">

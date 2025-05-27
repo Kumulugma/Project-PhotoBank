@@ -42,12 +42,9 @@ return [
                 ],
             ],
         ],
+        'awsCost' => [
+            'class' => 'common\components\AwsCostComponent',
+        ],
     ],
-    // Moduły powinny być zdefiniowane na poziomie aplikacji, nie tutaj
-    // 'modules' => [
-    //     'api' => [
-    //         'class' => 'common\modules\api\Module',
-    //     ],
-    // ],
     'bootstrap' => ['log'],
 ];

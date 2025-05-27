@@ -68,6 +68,8 @@ return [
                 'ai/<action>' => 'ai/<action>',
                 'ai/<action>/<id:\d+>' => 'ai/<action>',
                 'queue' => 'queue/index',
+                'aws-cost' => 'aws-cost/index',
+                'aws-cost/<action>' => 'aws-cost/<action>',
             ],
         ],
         'view' => [

@@ -107,6 +107,185 @@ $this->params['breadcrumbs'][] = $this->title;
     </div>
 </div>
 
+<?php if ($awsCosts && !isset($awsCosts['error'])): ?>
+<!-- AWS Costs Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h4 class="text-primary mb-3">
+            <i class="fab fa-aws me-2"></i>Koszty AWS - <?= date('F Y') ?>
+        </h4>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Current Month Costs -->
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-start border-primary border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-primary">
+                            <i class="fas fa-dollar-sign fa-2x"></i>
+                        </div>
+                        <div class="mt-3">
+                            <h3 class="mb-0">$<?= number_format($awsCosts['current']['total'], 2) ?></h3>
+                            <p class="text-muted mb-0">Aktualny koszt</p>
+                            <small class="text-muted">
+                                <?= date('1') ?>-<?= date('j') ?> <?= date('M') ?>
+                            </small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <?php if (isset($awsCosts['lastMonth']) && !isset($awsCosts['lastMonth']['error'])): ?>
+                            <?php 
+                            $currentTotal = $awsCosts['current']['total'];
+                            $lastMonthTotal = $awsCosts['lastMonth']['total'];
+                            $percentChange = $lastMonthTotal > 0 ? (($currentTotal - $lastMonthTotal) / $lastMonthTotal) * 100 : 0;
+                            $isIncrease = $percentChange > 0;
+                            ?>
+                            <small class="<?= $isIncrease ? 'text-danger' : 'text-success' ?>">
+                                <i class="fas fa-arrow-<?= $isIncrease ? 'up' : 'down' ?> me-1"></i>
+                                <?= abs(round($percentChange, 1)) ?>%
+                            </small>
+                            <br>
+                            <small class="text-muted">vs ubiegły miesiąc</small>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forecasted Costs -->
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-start border-warning border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-warning">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                        <div class="mt-3">
+                            <h3 class="mb-0">$<?= number_format($awsCosts['forecast']['total'], 2) ?></h3>
+                            <p class="text-muted mb-0">Prognoza na koniec</p>
+                            <small class="text-muted">
+                                <?= date('t') ?> <?= date('M') ?>
+                            </small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <?php 
+                        $confidence = $awsCosts['forecast']['confidence'] ?? 'MEDIUM';
+                        $confidenceClass = [
+                            'HIGH' => 'text-success',
+                            'MEDIUM' => 'text-warning', 
+                            'LOW' => 'text-danger'
+                        ][$confidence] ?? 'text-muted';
+                        ?>
+                        <span class="badge bg-light <?= $confidenceClass ?>">
+                            <?= $confidence ?>
+                        </span>
+                        <br>
+                        <small class="text-muted">pewność</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- S3 Costs -->
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-start border-info border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-info">
+                            <i class="fas fa-cloud fa-2x"></i>
+                        </div>
+                        <div class="mt-3">
+                            <h3 class="mb-0">$<?= number_format($awsCosts['s3']['total'], 2) ?></h3>
+                            <p class="text-muted mb-0">Amazon S3</p>
+                            <small class="text-muted">
+                                Storage & Transfer
+                            </small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <?php 
+                        $s3Percentage = $awsCosts['current']['total'] > 0 ? 
+                            ($awsCosts['s3']['total'] / $awsCosts['current']['total']) * 100 : 0;
+                        ?>
+                        <span class="badge bg-info">
+                            <?= round($s3Percentage, 1) ?>%
+                        </span>
+                        <br>
+                        <small class="text-muted">całkowitych kosztów</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Last Month -->
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card border-start border-secondary border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-secondary">
+                            <i class="fas fa-history fa-2x"></i>
+                        </div>
+                        <div class="mt-3">
+                            <?php if (isset($awsCosts['lastMonth']) && !isset($awsCosts['lastMonth']['error'])): ?>
+                                <h3 class="mb-0">$<?= number_format($awsCosts['lastMonth']['total'], 2) ?></h3>
+                                <p class="text-muted mb-0">Ubiegły miesiąc</p>
+                                <small class="text-muted">
+                                    <?= date('M Y', strtotime('-1 month')) ?>
+                                </small>
+                            <?php else: ?>
+                                <h3 class="mb-0 text-muted">N/A</h3>
+                                <p class="text-muted mb-0">Ubiegły miesiąc</p>
+                                <small class="text-muted">Brak danych</small>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php elseif ($awsCosts && isset($awsCosts['error'])): ?>
+<!-- AWS Error State -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning d-flex align-items-center" role="alert">
+            <i class="fab fa-aws me-3"></i>
+            <div>
+                <strong>Błąd pobierania kosztów AWS</strong><br>
+                <?= Html::encode($awsCosts['message'] ?? 'Nieznany błąd') ?>
+                <br><small class="text-muted">Sprawdź konfigurację AWS Cost Explorer w ustawieniach</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php elseif (!$awsCosts): ?>
+<!-- AWS Not Configured -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info d-flex align-items-center" role="alert">
+            <i class="fab fa-aws me-3"></i>
+            <div>
+                <strong>Integracja AWS Cost Explorer</strong><br>
+                Skonfiguruj AWS Cost Explorer aby wyświetlać koszty w dashboardzie.
+                <br><a href="<?= Url::to(['settings/index']) ?>" class="alert-link">Przejdź do ustawień</a>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="row">
     <!-- Quick Actions -->
     <div class="col-lg-6 mb-4">
@@ -260,3 +439,4 @@ $this->params['breadcrumbs'][] = $this->title;
     </div>
 </div>
 <?php endif; ?>
+

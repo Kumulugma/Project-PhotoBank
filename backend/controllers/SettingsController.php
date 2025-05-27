@@ -551,7 +551,22 @@ class SettingsController extends Controller
                     $result = true; // Assume success if no exception
                     $message = 'Konfiguracja email wygląda poprawnie.';
                     break;
-                    
+                case 'aws':
+                case 'awscost':
+                    if (Yii::$app->has('awsCost')) {
+                        $awsCost = Yii::$app->get('awsCost');
+                        try {
+                            $testResult = $awsCost->testConnection();
+                            $result = $testResult === true;
+                            $message = $result ? 'Połączenie z AWS Cost Explorer działa poprawnie.' : $testResult;
+                        } catch (\Exception $e) {
+                            $result = false;
+                            $message = 'Błąd połączenia z AWS: ' . $e->getMessage();
+                        }
+                    } else {
+                        $message = 'Komponent AWS Cost Explorer nie jest skonfigurowany.';
+                    }
+                    break;    
                 default:
                     $message = "Test połączenia dla kategorii '{$category}' nie jest obsługiwany.";
             }
@@ -669,6 +684,15 @@ class SettingsController extends Controller
             'gallery.exif_show_software' => '0',
             'gallery.exif_show_technical' => '0',
             'gallery.exif_show_author_info' => '1',
+            
+            // AWS Cost Explorer settings
+            'aws.cost_access_key_id' => '',
+            'aws.cost_secret_access_key' => '',
+            'aws.cost_region' => 'us-east-1',
+            'aws.cost_enabled' => '0',
+            'aws.cost_cache_duration' => '3600',
+            'aws.cost_monthly_budget' => '100',
+            'aws.cost_alert_threshold' => '80',
         ];
         
         return $defaults[$key] ?? null;
