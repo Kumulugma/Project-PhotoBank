@@ -70,6 +70,15 @@ class AwsCostComponent extends Component {
 
             $startDate = date('Y-m-01'); // Pierwszy dzień miesiąca
             $endDate = date('Y-m-d'); // Dzisiaj
+            // Jeśli jest pierwszy dzień miesiąca, ustaw endDate na następny dzień
+            if ($startDate === $endDate) {
+                $endDate = date('Y-m-d', strtotime('+1 day'));
+            }
+
+            // Alternatywnie, jeśli jest pierwszy dzień, pobierz dane z poprzedniego miesiąca jako fallback
+            if (date('j') == 1) {
+                return $this->getFirstDayFallback();
+            }
 
             $result = $client->getCostAndUsage([
                 'TimePeriod' => [
@@ -99,6 +108,11 @@ class AwsCostComponent extends Component {
             AuditLog::logSystemEvent('Błąd pobierania kosztów AWS: ' . $e->getMessage(),
                     AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYSTEM);
 
+            // Jeśli jest pierwszy dzień miesiąca, spróbuj fallback
+            if (date('j') == 1) {
+                return $this->getFirstDayFallback();
+            }
+
             return [
                 'error' => true,
                 'message' => 'Nie udało się pobrać kosztów AWS',
@@ -109,18 +123,39 @@ class AwsCostComponent extends Component {
     }
 
     /**
+     * Fallback dla pierwszego dnia miesiąca
+     * Zwraca zerowe koszty z odpowiednią informacją
+     * 
+     * @return array
+     */
+    private function getFirstDayFallback() {
+        AuditLog::logSystemEvent('Pierwszy dzień miesiąca - brak danych kosztów AWS do wyświetlenia',
+                AuditLog::SEVERITY_INFO, AuditLog::ACTION_SYSTEM);
+
+        return [
+            'total' => 0,
+            'currency' => 'USD',
+            'services' => [],
+            'period' => [
+                'start' => date('Y-m-01'),
+                'end' => date('Y-m-d')
+            ],
+            'note' => 'Pierwszy dzień miesiąca - brak danych do wyświetlenia'
+        ];
+    }
+
+    /**
      * Pobiera prognozę na podstawie danych historycznych
      * 
      * @return array
      */
-    private function getForecastFromHistoricalData()
-    {
+    private function getForecastFromHistoricalData() {
         $client = $this->initClient();
-        
+
         // Pobierz dane z ostatnich 3 miesięcy
         $endDate = date('Y-m-01'); // Pierwszy dzień tego miesiąca
         $startDate = date('Y-m-01', strtotime('-3 months')); // 3 miesiące temu
-        
+
         $result = $client->getCostAndUsage([
             'TimePeriod' => [
                 'Start' => $startDate,
@@ -129,11 +164,11 @@ class AwsCostComponent extends Component {
             'Granularity' => 'MONTHLY',
             'Metrics' => ['BlendedCost'],
         ]);
-        
+
         if (!isset($result['ResultsByTime']) || count($result['ResultsByTime']) < 2) {
             throw new \Exception('Insufficient historical data for forecast');
         }
-        
+
         // Oblicz średnią z ostatnich miesięcy
         $monthlyCosts = [];
         foreach ($result['ResultsByTime'] as $timeResult) {
@@ -141,14 +176,14 @@ class AwsCostComponent extends Component {
                 $monthlyCosts[] = (float) $timeResult['Total']['BlendedCost']['Amount'];
             }
         }
-        
+
         if (empty($monthlyCosts)) {
             throw new \Exception('No valid cost data found');
         }
-        
+
         // Prosta prognoza na podstawie średniej
         $averageMonthlyCost = array_sum($monthlyCosts) / count($monthlyCosts);
-        
+
         // Dodaj trend (jeśli ostatni miesiąc był droższy/tańszy)
         $trendMultiplier = 1.0;
         if (count($monthlyCosts) >= 2) {
@@ -160,50 +195,63 @@ class AwsCostComponent extends Component {
                 $trendMultiplier = max(0.5, min(2.0, $trendMultiplier));
             }
         }
-        
+
         $projectedCost = $averageMonthlyCost * $trendMultiplier;
-        
+
         return [
             'total' => round($projectedCost, 2),
             'currency' => 'USD',
             'confidence' => 'MEDIUM',
             'method' => 'historical_data',
-            'includes_current' => true, // Już zawiera pełny miesiąc
+            'includes_current' => true,
             'period' => [
                 'start' => date('Y-m-01'),
                 'end' => date('Y-m-t')
             ]
         ];
     }
-    
+
     /**
      * Pobiera prognozę kosztów na koniec miesiąca
      * 
      * @return array
      */
-    public function getMonthEndForecast()
-    {
+    public function getMonthEndForecast() {
         $cacheKey = 'aws_month_end_forecast_' . date('Y-m');
         $cached = Yii::$app->cache->get($cacheKey);
-        
+
         if ($cached !== false) {
             return $cached;
         }
-        
+
+        // Jeśli jest pierwszy dzień miesiąca, użyj prognozy historycznej
+        if (date('j') == 1) {
+            try {
+                return $this->getForecastFromHistoricalData();
+            } catch (\Exception $e) {
+                return [
+                    'total' => 0,
+                    'currency' => 'USD',
+                    'confidence' => 'LOW',
+                    'method' => 'first_day_fallback',
+                    'note' => 'Pierwszy dzień miesiąca - prognoza niedostępna'
+                ];
+            }
+        }
+
         try {
             $client = $this->initClient();
-            
+
             $startDate = date('Y-m-d'); // Dzisiaj
             $endDate = date('Y-m-t'); // Ostatni dzień miesiąca
-            
             // Jeśli jesteśmy już na końcu miesiąca, zwróć aktualne koszty
             if ($startDate === $endDate) {
                 return $this->getCurrentMonthCosts();
             }
-            
+
             // Próbuj różne metody API
             $forecast = null;
-            
+
             // Metoda 1: GetCostAndUsageForecast (jeśli istnieje)
             try {
                 $result = $client->getCostAndUsageForecast([
@@ -237,42 +285,40 @@ class AwsCostComponent extends Component {
                     }
                 }
             }
-            
+
             if ($forecast) {
                 // Dodaj aktualne koszty do prognozy (jeśli to prognoza tylko na pozostałe dni)
                 $currentCosts = $this->getCurrentMonthCosts();
                 if (!isset($currentCosts['error']) && !isset($forecast['includes_current'])) {
                     $forecast['total'] += $currentCosts['total'];
                 }
-                
+
                 // Cache na 1 godzinę
                 Yii::$app->cache->set($cacheKey, $forecast, $this->cacheDuration);
-                
-                AuditLog::logSystemEvent('Pobrano prognozę kosztów AWS', 
-                    AuditLog::SEVERITY_INFO, AuditLog::ACTION_SYSTEM);
-                
+
+                AuditLog::logSystemEvent('Pobrano prognozę kosztów AWS',
+                        AuditLog::SEVERITY_INFO, AuditLog::ACTION_SYSTEM);
+
                 return $forecast;
             }
-            
         } catch (\Exception $e) {
             // Fallback do prostej kalkulacji
             return $this->getSimpleForecast($e);
         }
-        
+
         return $this->getSimpleForecast();
     }
-    
+
     /**
      * Prosta prognoza na podstawie obecnych kosztów
      * 
      * @param \Exception $originalError
      * @return array
      */
-    private function getSimpleForecast($originalError = null)
-    {
+    private function getSimpleForecast($originalError = null) {
         try {
             $currentCosts = $this->getCurrentMonthCosts();
-            
+
             if (isset($currentCosts['error'])) {
                 return [
                     'error' => true,
@@ -281,41 +327,55 @@ class AwsCostComponent extends Component {
                     'confidence' => 'LOW'
                 ];
             }
-            
+
+            // Jeśli jest pierwszy dzień miesiąca, nie rób prognozy z zerowych kosztów
+            if (date('j') == 1) {
+                try {
+                    return $this->getForecastFromHistoricalData();
+                } catch (\Exception $e) {
+                    return [
+                        'total' => 0,
+                        'currency' => 'USD',
+                        'confidence' => 'LOW',
+                        'method' => 'first_day_no_data',
+                        'note' => 'Pierwszy dzień miesiąca - brak danych do prognozy'
+                    ];
+                }
+            }
+
             // Prosta kalkulacja: obecne koszty / dzień miesiąca * dni w miesiącu
             $currentDay = (int) date('j');
             $daysInMonth = (int) date('t');
-            
+
             if ($currentDay === 0) {
                 $currentDay = 1; // Zabezpieczenie
             }
-            
+
             $dailyAverage = $currentCosts['total'] / $currentDay;
             $projectedTotal = $dailyAverage * $daysInMonth;
-            
+
             // Dodaj trochę bufora na wzrost kosztów pod koniec miesiąca
             $projectedTotal *= 1.05; // 5% buffer
-            
+
             $errorMsg = $originalError ? $originalError->getMessage() : 'API forecast niedostępne';
-            AuditLog::logSystemEvent('Użyto prostej prognozy kosztów AWS (fallback): ' . $errorMsg, 
-                AuditLog::SEVERITY_WARNING, AuditLog::ACTION_SYSTEM);
-            
+            AuditLog::logSystemEvent('Użyto prostej prognozy kosztów AWS (fallback): ' . $errorMsg,
+                    AuditLog::SEVERITY_WARNING, AuditLog::ACTION_SYSTEM);
+
             return [
                 'total' => round($projectedTotal, 2),
                 'currency' => 'USD',
                 'confidence' => 'LOW',
                 'method' => 'simple_calculation',
-                'includes_current' => true, // Już zawiera obecne koszty
+                'includes_current' => true,
                 'period' => [
                     'start' => date('Y-m-01'),
                     'end' => date('Y-m-t')
                 ]
             ];
-            
         } catch (\Exception $e) {
-            AuditLog::logSystemEvent('Błąd prostej prognozy kosztów AWS: ' . $e->getMessage(), 
-                AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYSTEM);
-            
+            AuditLog::logSystemEvent('Błąd prostej prognozy kosztów AWS: ' . $e->getMessage(),
+                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_SYSTEM);
+
             return [
                 'error' => true,
                 'message' => 'Nie udało się pobrać prognozy kosztów AWS',
@@ -343,7 +403,7 @@ class AwsCostComponent extends Component {
             $client = $this->initClient();
 
             $startDate = date('Y-m-01', strtotime('-1 month'));
-            $endDate = date('Y-m-t', strtotime('-1 month'));
+            $endDate = date('Y-m-01'); // Pierwszy dzień TEGO miesiąca (koniec okresu poprzedniego)
 
             $result = $client->getCostAndUsage([
                 'TimePeriod' => [
@@ -359,8 +419,14 @@ class AwsCostComponent extends Component {
             // Cache na 24 godziny (dane historyczne się nie zmieniają)
             Yii::$app->cache->set($cacheKey, $costs, 86400);
 
+            AuditLog::logSystemEvent('Pobrano koszty za poprzedni miesiąc: ' . $lastMonth,
+                    AuditLog::SEVERITY_INFO, AuditLog::ACTION_SYSTEM);
+
             return $costs;
         } catch (\Exception $e) {
+            AuditLog::logSystemEvent('Błąd pobierania kosztów za poprzedni miesiąc: ' . $e->getMessage(),
+                    AuditLog::SEVERITY_WARNING, AuditLog::ACTION_SYSTEM);
+
             return [
                 'error' => true,
                 'message' => 'Nie udało się pobrać kosztów z poprzedniego miesiąca',
@@ -387,6 +453,18 @@ class AwsCostComponent extends Component {
 
             $startDate = date('Y-m-01');
             $endDate = date('Y-m-d');
+
+            // Jeśli jest pierwszy dzień miesiąca, zwróć zerowe koszty
+            if ($startDate === $endDate) {
+                return [
+                    'storage' => 0,
+                    'requests' => 0,
+                    'transfer' => 0,
+                    'total' => 0,
+                    'currency' => 'USD',
+                    'note' => 'Pierwszy dzień miesiąca - brak danych S3'
+                ];
+            }
 
             $result = $client->getCostAndUsage([
                 'TimePeriod' => [
@@ -420,7 +498,8 @@ class AwsCostComponent extends Component {
                 'message' => 'Nie udało się pobrać kosztów S3',
                 'storage' => 0,
                 'requests' => 0,
-                'transfer' => 0
+                'transfer' => 0,
+                'total' => 0
             ];
         }
     }
