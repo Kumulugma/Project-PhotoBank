@@ -391,3 +391,112 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
         </div>
     </div>
 </div>
+<script>
+// Pomocniczy skrypt specjalnie dla strony photos/index
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Photos index page loaded');
+    
+    // Funkcja inicjalizacji operacji wsadowych
+    function initBatchOperations() {
+        console.log('Initializing batch operations...');
+        
+        const checkboxes = document.querySelectorAll('input[name="selection[]"]');
+        const batchButtons = document.querySelectorAll('.batch-action-btn');
+        const selectAllCheckbox = document.querySelector('input[name="selection_all"]');
+
+        // Funkcja aktualizacji przycisków
+        function updateBatchButtons() {
+            const checkedCount = document.querySelectorAll('input[name="selection[]"]:checked').length;
+            console.log('Checked count:', checkedCount);
+            
+            batchButtons.forEach(btn => {
+                if (checkedCount > 0) {
+                    btn.style.display = 'inline-block';
+                    btn.classList.remove('d-none');
+                } else {
+                    btn.style.display = 'none';
+                    btn.classList.add('d-none');
+                }
+            });
+        }
+
+        // Obsługa pojedynczych checkboxów
+        checkboxes.forEach(checkbox => {
+            // Usuń poprzednie listenery (important!)
+            checkbox.removeEventListener('change', updateBatchButtons);
+            // Dodaj nowy listener
+            checkbox.addEventListener('change', updateBatchButtons);
+        });
+
+        // Obsługa "zaznacz wszystkie"
+        if (selectAllCheckbox) {
+            selectAllCheckbox.removeEventListener('change', handleSelectAll);
+            selectAllCheckbox.addEventListener('change', handleSelectAll);
+        }
+
+        function handleSelectAll(e) {
+            console.log('Select all clicked:', e.target.checked);
+            checkboxes.forEach(cb => {
+                cb.checked = e.target.checked;
+            });
+            updateBatchButtons();
+        }
+
+        // Obsługa kliknięć w przyciski wsadowe
+        batchButtons.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
+                const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
+                
+                // Znajdź odpowiedni modal i wypełnij pole ids
+                const targetModal = this.getAttribute('data-bs-target');
+                if (targetModal) {
+                    const modal = document.querySelector(targetModal);
+                    if (modal) {
+                        const idsInput = modal.querySelector('input[name="ids"]');
+                        if (idsInput) {
+                            idsInput.value = selectedIds.join(',');
+                        }
+                    }
+                }
+            });
+        });
+
+        // Inicjalna aktualizacja
+        updateBatchButtons();
+    }
+
+    // Inicjalizacja przy załadowaniu strony
+    initBatchOperations();
+
+    // Obsługa PJAX - KLUCZOWE!
+    $(document).on('pjax:complete', '#photos-grid-pjax', function() {
+        console.log('PJAX completed - reinitializing batch operations');
+        // Małe opóźnienie żeby DOM się ustabilizował
+        setTimeout(function() {
+            initBatchOperations();
+        }, 100);
+    });
+
+    // Dodatkowa obsługa dla różnych eventów PJAX
+    $(document).on('pjax:end', '#photos-grid-pjax', function() {
+        console.log('PJAX ended - reinitializing batch operations');
+        setTimeout(function() {
+            initBatchOperations();
+        }, 50);
+    });
+
+    // Obsługa formularzy wsadowych
+    $('#batch-update-submit').on('click', function() {
+        const checkedBoxes = document.querySelectorAll('input[name="selection[]"]:checked');
+        if (checkedBoxes.length === 0) {
+            alert('Nie wybrano żadnych zdjęć do aktualizacji.');
+            return false;
+        }
+        
+        const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
+        $('#batch-update-photo-ids').val(selectedIds.join(','));
+        $('#batch-update-form').submit();
+    });
+});
+</script>
