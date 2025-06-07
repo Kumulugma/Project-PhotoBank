@@ -124,6 +124,22 @@
     max-width: 200px;
 }
 
+
+.summary {
+    padding: 10px 16px;
+    margin: 12px 0;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.summary b {
+    font-weight: 700;
+}
+
+.summary:empty {
+    display: none;
+}
+
 /* === GRID VIEW SUMMARY === */
 .grid-view .summary {
     color: #6c757d;
