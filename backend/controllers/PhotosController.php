@@ -652,29 +652,102 @@ class PhotosController extends Controller {
     }
 
     /**
-     * Imports photos from default FTP directory.
-     *
-     * @return mixed
-     */
-    public function actionImportFromFtp() {
-        // Get default import directory from settings
-        $importDirectory = Settings::findOne(['key' => 'upload.import_directory']);
-        $directory = $importDirectory ? $importDirectory->value : 'uploads/import';
+ * Imports photos from default FTP directory in batches.
+ *
+ * @return mixed
+ */
+public function actionImportFromFtp() {
+    // Get default import directory from settings
+    $importDirectory = Settings::findOne(['key' => 'upload.import_directory']);
+    $directory = $importDirectory ? $importDirectory->value : 'uploads/import';
 
-        // Additional options
-        $recursive = (bool) Yii::$app->request->post('recursive', true);
-        $deleteOriginals = (bool) Yii::$app->request->post('delete_originals', false);
-        $runNow = (bool) Yii::$app->request->post('run_now', false);
+    // Additional options
+    $recursive = (bool) Yii::$app->request->post('recursive', true);
+    $deleteOriginals = (bool) Yii::$app->request->post('delete_originals', false);
+    $runNow = (bool) Yii::$app->request->post('run_now', false);
+    $batchSize = (int) Yii::$app->request->post('batch_size', 10); // Nowy parametr
 
-        // Loguj rozpoczęcie importu
-        AuditLog::logSystemEvent("Rozpoczęto import zdjęć z katalogu: {$directory} (rekursywnie: " . ($recursive ? 'tak' : 'nie') . ", usuń oryginały: " . ($deleteOriginals ? 'tak' : 'nie') . ")",
-                AuditLog::SEVERITY_INFO, AuditLog::ACTION_IMPORT);
+    // Sprawdź możliwe ścieżki do katalogu importu
+    $possiblePaths = [
+        Yii::getAlias('@webroot/' . $directory),
+        Yii::getAlias('@app/../' . $directory),
+        $directory,
+        Yii::getAlias('@webroot') . '/' . $directory
+    ];
 
-        // Create background job for processing
+    $foundPath = null;
+    foreach ($possiblePaths as $path) {
+        if (is_dir($path) && is_readable($path)) {
+            $foundPath = $path;
+            break;
+        }
+    }
+
+    if (!$foundPath) {
+        $errorMsg = "Katalog importu nie istnieje lub nie jest dostępny: {$directory}";
+        AuditLog::logSystemEvent($errorMsg, AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
+        Yii::$app->session->setFlash('error', $errorMsg);
+        return $this->redirect(['import']);
+    }
+
+    // Znajdź wszystkie pliki graficzne
+    $options = [
+        'only' => ['*.jpg', '*.jpeg', '*.png', '*.gif', '*.JPG', '*.JPEG', '*.PNG', '*.GIF'],
+        'recursive' => $recursive,
+    ];
+
+    try {
+        $files = \yii\helpers\FileHelper::findFiles($foundPath, $options);
+    } catch (\Exception $e) {
+        $errorMsg = "Błąd podczas wyszukiwania plików: " . $e->getMessage();
+        AuditLog::logSystemEvent($errorMsg, AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
+        Yii::$app->session->setFlash('error', $errorMsg);
+        return $this->redirect(['import']);
+    }
+
+    if (empty($files)) {
+        $warnMsg = "Nie znaleziono plików graficznych w katalogu {$foundPath}";
+        AuditLog::logSystemEvent($warnMsg, AuditLog::SEVERITY_WARNING, AuditLog::ACTION_IMPORT);
+        Yii::$app->session->setFlash('warning', $warnMsg);
+        return $this->redirect(['import']);
+    }
+
+    // Walidacja batch size
+    $batchSize = max(1, min(50, $batchSize)); // Od 1 do 50 plików na partię
+
+    // Podziel pliki na partie z pełnymi ścieżkami względem katalogu importu
+    $relativeFiles = [];
+    foreach ($files as $file) {
+        // Przekonwertuj bezwzględną ścieżkę na względną w stosunku do katalogu importu
+        $relativeFiles[] = str_replace($foundPath . DIRECTORY_SEPARATOR, '', $file);
+    }
+
+    $batches = array_chunk($relativeFiles, $batchSize);
+    $totalBatches = count($batches);
+
+    // Loguj rozpoczęcie importu
+    AuditLog::logSystemEvent("Rozpoczęto import zdjęć z katalogu: {$directory} - {$totalBatches} partii po {$batchSize} plików (łącznie " . count($files) . " plików)", 
+        AuditLog::SEVERITY_INFO, AuditLog::ACTION_IMPORT, [
+            'directory' => $directory,
+            'recursive' => $recursive,
+            'delete_originals' => $deleteOriginals,
+            'batch_size' => $batchSize,
+            'total_batches' => $totalBatches,
+            'total_files' => count($files)
+        ]);
+
+    // Utwórz zadania dla każdej partii
+    foreach ($batches as $index => $batch) {
+        $batchNumber = $index + 1;
+        
+        // Utwórz zadanie dla partii
         $job = new QueuedJob();
-        $job->type = 'import_photos';
+        $job->type = 'import_photos_batch';
         $job->data = json_encode([
             'directory' => $directory,
+            'files' => $batch, // Tylko pliki z tej partii
+            'batch_number' => $batchNumber,
+            'total_batches' => $totalBatches,
             'recursive' => $recursive,
             'delete_originals' => $deleteOriginals,
             'created_by' => Yii::$app->user->id,
@@ -684,49 +757,66 @@ class PhotosController extends Controller {
         $job->created_at = time();
         $job->updated_at = time();
 
-        if ($job->save()) {
-            AuditLog::logSystemEvent("Utworzono zadanie importu ID: {$job->id}",
-                    AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_IMPORT);
-
-            if ($runNow) {
-                try {
-                    AuditLog::logSystemEvent("Rozpoczynam natychmiastowe przetwarzanie zadania importu ID: {$job->id}",
-                            AuditLog::SEVERITY_INFO, AuditLog::ACTION_IMPORT);
-
-                    $jobProcessor = new \common\components\JobProcessor();
-                    $job->markAsStarted();
-
-                    if ($jobProcessor->processJob($job)) {
-                        $job->markAsFinished();
-                        AuditLog::logSystemEvent("Import zdjęć zakończony pomyślnie - zadanie ID: {$job->id}",
-                                AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_IMPORT);
-                        Yii::$app->session->setFlash('success', 'Import zdjęć zakończony pomyślnie. Sprawdź szczegóły w widoku zadania.');
-                    } else {
-                        $job->markAsFailed('Błąd podczas przetwarzania zadania importu');
-                        AuditLog::logSystemEvent("Import zdjęć nieudany - zadanie ID: {$job->id}",
-                                AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
-                        Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu zdjęć. Sprawdź szczegóły w widoku zadania.');
-                    }
-
-                    return $this->redirect(['queue/view', 'id' => $job->id]);
-                } catch (\Exception $e) {
-                    AuditLog::logSystemEvent("Błąd podczas importu zdjęć - zadanie ID {$job->id}: " . $e->getMessage(),
-                            AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
-                    $job->markAsFailed($e->getMessage());
-                    Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas importu: ' . $e->getMessage());
-                    return $this->redirect(['queue/view', 'id' => $job->id]);
-                }
-            } else {
-                Yii::$app->session->setFlash('success', 'Zadanie importu zostało dodane do kolejki. Zdjęcia pojawią się w poczekalni po przetworzeniu.');
-                return $this->redirect(['queue/index']);
-            }
-        } else {
-            $errorMsg = 'Nie udało się utworzyć zadania importu: ' . json_encode($job->errors);
+        if (!$job->save()) {
+            $errorMsg = 'Nie udało się utworzyć zadania importu partii ' . $batchNumber . ': ' . json_encode($job->errors);
             AuditLog::logSystemEvent($errorMsg, AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
             Yii::$app->session->setFlash('error', $errorMsg);
             return $this->redirect(['import']);
         }
+
+        AuditLog::logSystemEvent("Utworzono zadanie importu partii {$batchNumber}/{$totalBatches} - ID: {$job->id}",
+            AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_IMPORT);
     }
+
+    if ($runNow && $totalBatches > 0) {
+        // Uruchom pierwszą partię natychmiast
+        $firstJob = QueuedJob::find()
+            ->where(['type' => 'import_photos_batch'])
+            ->andWhere(['status' => QueuedJob::STATUS_PENDING])
+            ->orderBy(['created_at' => SORT_ASC])
+            ->one();
+            
+        if ($firstJob) {
+            try {
+                AuditLog::logSystemEvent("Rozpoczynam natychmiastowe przetwarzanie pierwszej partii - zadanie ID: {$firstJob->id}",
+                    AuditLog::SEVERITY_INFO, AuditLog::ACTION_IMPORT);
+
+                $jobProcessor = new \common\components\JobProcessor();
+                $firstJob->markAsStarted();
+
+                if ($jobProcessor->processJob($firstJob)) {
+                    $firstJob->markAsFinished();
+                    AuditLog::logSystemEvent("Pierwsza partia importu zakończona pomyślnie - zadanie ID: {$firstJob->id}",
+                        AuditLog::SEVERITY_SUCCESS, AuditLog::ACTION_IMPORT);
+                } else {
+                    $firstJob->markAsFailed('Błąd podczas przetwarzania pierwszej partii importu');
+                    AuditLog::logSystemEvent("Pierwsza partia importu nieudana - zadanie ID: {$firstJob->id}",
+                        AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
+                }
+
+                Yii::$app->session->setFlash('success', 
+                    "Utworzono {$totalBatches} zadań importu w partiach po {$batchSize} plików. " .
+                    "Pierwsza partia została przetworzona natychmiast. Pozostałe będą przetwarzane w tle.");
+                    
+                return $this->redirect(['queue/view', 'id' => $firstJob->id]);
+                
+            } catch (\Exception $e) {
+                AuditLog::logSystemEvent("Błąd podczas natychmiastowego przetwarzania pierwszej partii - zadanie ID {$firstJob->id}: " . $e->getMessage(),
+                    AuditLog::SEVERITY_ERROR, AuditLog::ACTION_IMPORT);
+                $firstJob->markAsFailed($e->getMessage());
+                Yii::$app->session->setFlash('warning', 
+                    "Utworzono {$totalBatches} zadań importu, ale wystąpił błąd podczas przetwarzania pierwszej partii: " . $e->getMessage());
+                return $this->redirect(['queue/view', 'id' => $firstJob->id]);
+            }
+        }
+    }
+
+    Yii::$app->session->setFlash('success', 
+        "Utworzono {$totalBatches} zadań importu w partiach po {$batchSize} plików. " .
+        "Import będzie przetwarzany w tle. Sprawdź postęp w kolejce zadań.");
+    
+    return $this->redirect(['queue/index']);
+}
 
     /**
      * Renders the import form.

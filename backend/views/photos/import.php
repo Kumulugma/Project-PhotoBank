@@ -77,55 +77,75 @@ $thumbsDirWritable = $thumbsDirExists && is_writable($thumbsDirPath);
             <?= Html::a('<i class="fas fa-images me-2"></i>Poczekalnia', ['queue'], [
                 'class' => 'btn btn-outline-primary'
             ]) ?>
+            <?= Html::a('<i class="fas fa-list me-2"></i>Kolejka zadań', ['queue/index'], [
+                'class' => 'btn btn-outline-warning'
+            ]) ?>
             <?= Html::a('<i class="fas fa-cogs me-2"></i>Ustawienia', ['settings/index'], [
                 'class' => 'btn btn-outline-secondary'
             ]) ?>
         </div>
     </div>
-
-    <!-- DEBUG: Informacje o ścieżkach -->
-    <div class="card mb-4 border-info">
-        <div class="card-header bg-info text-white">
+    <!-- Status katalogu importu -->
+    <div class="card mb-4">
+        <div class="card-header">
             <h5 class="card-title mb-0">
-                <i class="fas fa-bug me-2"></i>Informacje diagnostyczne
+                <i class="fas fa-folder me-2"></i>Status katalogu importu
             </h5>
         </div>
         <div class="card-body">
-            <h6>Sprawdzane ścieżki:</h6>
-            <ul class="list-group list-group-flush">
-                <?php foreach ($possiblePaths as $path): ?>
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <code><?= Html::encode($path) ?></code>
-                    <?php if (is_dir($path)): ?>
-                        <span class="badge bg-success">Istnieje</span>
-                    <?php else: ?>
-                        <span class="badge bg-danger">Nie istnieje</span>
+            <?php if ($directoryExists && $directoryReadable && $imageCount > 0): ?>
+                <div class="alert alert-success">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6><i class="fas fa-check-circle me-2"></i>Katalog gotowy do importu</h6>
+                            <p class="mb-2">
+                                <strong>Katalog:</strong> <code><?= Html::encode($actualPath) ?></code><br>
+                                <strong>Znaleziono plików:</strong> <?= $imageCount ?> obrazów (<?= $fileCount ?> łącznie)
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="d-flex align-items-center justify-content-end">
+                                <div class="me-3">
+                                    <i class="fas fa-images fa-3x text-success"></i>
+                                </div>
+                                <div>
+                                    <div class="h2 mb-0 text-success"><?= $imageCount ?></div>
+                                    <small class="text-muted">plików</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-exclamation-triangle me-2"></i>Problem z katalogiem importu</h6>
+                    
+                    <?php if (!$directoryExists): ?>
+                        <p>Katalog nie istnieje. Sprawdzono ścieżki:</p>
+                        <ul class="small mb-2">
+                            <?php foreach ($possiblePaths as $path): ?>
+                                <li><code><?= Html::encode($path) ?></code></li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <p class="mb-0"><strong>Rozwiązanie:</strong> Utwórz katalog <code><?= Html::encode($possiblePaths[0]) ?></code></p>
+                    <?php elseif (!$directoryReadable): ?>
+                        <p><strong>Katalog istnieje ale brak uprawnień:</strong> <code><?= Html::encode($actualPath) ?></code></p>
+                        <p class="mb-0"><strong>Rozwiązanie:</strong> <code>chmod 755 <?= Html::encode($actualPath) ?></code></p>
+                    <?php elseif ($imageCount === 0): ?>
+                        <p><strong>Katalog jest pusty</strong> (<?= $fileCount ?> plików, ale żaden nie jest obrazem)</p>
+                        <p class="mb-0"><strong>Obsługiwane formaty:</strong> JPG, JPEG, PNG, GIF</p>
                     <?php endif; ?>
-                </li>
-                <?php endforeach; ?>
-            </ul>
-            
-            <?php if ($directoryExists): ?>
-            <div class="mt-3">
-                <strong>Aktywna ścieżka:</strong> <code><?= Html::encode($actualPath) ?></code><br>
-                <strong>Uprawnienia:</strong> 
-                <?php if ($directoryReadable): ?>
-                    <span class="badge bg-success">Odczyt OK</span>
-                <?php else: ?>
-                    <span class="badge bg-danger">Brak uprawnień</span>
-                <?php endif; ?>
-            </div>
+                </div>
             <?php endif; ?>
         </div>
     </div>
-
     <div class="row">
         <!-- Formularz importu -->
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
                     <h5 class="card-title mb-0">
-                        <i class="fas fa-file-import me-2"></i>Import zdjęć z FTP
+                        <i class="fas fa-file-import me-2"></i>Import zdjęć z FTP (w partiach)
                     </h5>
                 </div>
                 <div class="card-body">
@@ -215,10 +235,28 @@ $thumbsDirWritable = $thumbsDirExists && is_writable($thumbsDirPath);
                             <div class="form-text text-success">Katalogi docelowe są dostępne i zapisywalne.</div>
                         <?php endif; ?>
                     </div>
-                    
                     <hr class="my-4">
 
                     <h6 class="mb-3"><i class="fas fa-cog me-2"></i>Opcje importu</h6>
+                    
+                    <!-- NOWA OPCJA: Rozmiar partii -->
+                    <div class="mb-3">
+                        <label class="form-label">Rozmiar partii</label>
+                        <?= Html::dropDownList('batch_size', 10, [
+                            5 => '5 plików na partię (bardzo bezpieczne)',
+                            10 => '10 plików na partię (zalecane)',
+                            15 => '15 plików na partię',
+                            20 => '20 plików na partię',
+                            25 => '25 plików na partię',
+                            30 => '30 plików na partię (ryzykowne)'
+                        ], ['class' => 'form-select', 'id' => 'batch-size-select']) ?>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Mniejsze partie = mniejsze ryzyko timeout, ale więcej zadań w kolejce.
+                            <span id="batch-estimation" class="fw-bold text-primary"></span>
+                        </div>
+                    </div>
+                    
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <div class="form-check mb-2">
@@ -243,17 +281,17 @@ $thumbsDirWritable = $thumbsDirExists && is_writable($thumbsDirPath);
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="run_now" id="run-now" value="1">
                         <label class="form-check-label" for="run-now">
-                            <i class="fas fa-play-circle me-1"></i> Uruchom zadanie natychmiast
+                            <i class="fas fa-play-circle me-1"></i> Uruchom pierwszą partię natychmiast
                         </label>
-                        <div class="form-text">Importuj zdjęcia od razu, zamiast dodawać zadanie do kolejki</div>
+                        <div class="form-text">Pierwsze zadanie zostanie uruchomione od razu, pozostałe będą w kolejce</div>
                     </div>
 
                     <div class="mt-4">
-                        <?= Html::submitButton('<i class="fas fa-file-import me-2"></i>Rozpocznij import', [
+                        <?= Html::submitButton('<i class="fas fa-file-import me-2"></i>Rozpocznij import w partiach', [
                             'class' => 'btn btn-primary',
                             'disabled' => !($directoryExists && $directoryReadable) || !$tempDirWritable || !$thumbsDirWritable || $imageCount === 0,
                             'data' => [
-                                'confirm' => 'Czy na pewno chcesz rozpocząć import zdjęć z wybranego katalogu?',
+                                'confirm' => 'Czy na pewno chcesz rozpocząć import zdjęć w partiach z wybranego katalogu?',
                             ],
                         ]) ?>
                     </div>
@@ -262,66 +300,59 @@ $thumbsDirWritable = $thumbsDirExists && is_writable($thumbsDirPath);
                 </div>
             </div>
         </div>
-        
         <!-- Informacje o imporcie -->
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header bg-info text-white">
                     <h5 class="card-title mb-0">
-                        <i class="fas fa-info-circle me-2"></i>Informacje o procesie importu
+                        <i class="fas fa-info-circle me-2"></i>Import w partiach - jak działa?
                     </h5>
                 </div>
                 <div class="card-body">
-                    <h6 class="mb-3">Przebieg importu zdjęć</h6>
+                    <h6 class="mb-3">Korzyści importu w partiach:</h6>
+                    <ul class="mb-4">
+                        <li><strong>Brak timeout</strong> - każda partia jest przetwarzana osobno</li>
+                        <li><strong>Równoległa praca</strong> - wiele partii może być przetwarzanych jednocześnie</li>
+                        <li><strong>Odporność na błędy</strong> - błąd w jednej partii nie zatrzymuje całego importu</li>
+                        <li><strong>Monitoring</strong> - szczegółowe logi dla każdej partii w kolejce zadań</li>
+                        <li><strong>Elastyczność</strong> - możliwość dostosowania rozmiaru partii</li>
+                    </ul>
+                    
+                    <h6 class="mb-3">Przebieg importu w partiach:</h6>
                     <ol class="mb-4">
-                        <li>System wyszukuje pliki graficzne (.jpg, .jpeg, .png, .gif) w katalogu importu</li>
-                        <li>Każdy plik jest kopiowany do katalogu tymczasowego <code>uploads/temp</code></li>
-                        <li>Dla każdego pliku tworzone są miniatury we wszystkich skonfigurowanych rozmiarach</li>
-                        <li>Zdjęcia są dodawane do poczekalni (status: oczekujące) - wymagają zatwierdzenia</li>
-                        <li>Jeśli wybrano opcję usuwania oryginałów, pliki źródłowe są usuwane</li>
+                        <li>System skanuje katalog i znajduje wszystkie pliki graficzne</li>
+                        <li>Pliki są dzielone na partie według wybranego rozmiaru</li>
+                        <li>Dla każdej partii tworzone jest osobne zadanie w kolejce</li>
+                        <li>Każda partia jest przetwarzana niezależnie</li>
+                        <li>Zaimportowane zdjęcia trafiają do poczekalni</li>
+                        <li>Po imporcie oryginalne pliki są usuwane (jeśli wybrano opcję)</li>
                     </ol>
                     
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i> <strong>Uwaga:</strong> Duże pliki mogą wymagać długiego czasu przetwarzania. Zalecamy używanie opcji dodania zadania do kolejki (nie zaznaczając opcji "Uruchom zadanie natychmiast") i pozostawienie przetwarzania mechanizmowi cron.
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-lightbulb me-2"></i>Zalecenia:</h6>
+                        <ul class="mb-0">
+                            <li><strong>10-15 plików na partię</strong> - optymalna wydajność</li>
+                            <li><strong>Monitoruj postęp</strong> w sekcji "Kolejka zadań"</li>
+                            <li><strong>Nie dodawaj nowych plików</strong> podczas importu</li>
+                            <li><strong>Sprawdzaj logi</strong> w przypadku błędów</li>
+                        </ul>
                     </div>
                     
-                    <h6 class="mb-3">Dostępne formaty plików</h6>
-                    <div class="row">
-                        <div class="col-md-3 text-center mb-3">
-                            <div class="p-3 bg-light rounded">
-                                <i class="fas fa-file-image fa-2x text-primary mb-2"></i>
-                                <div>JPEG (.jpg, .jpeg)</div>
+                    <?php if ($imageCount > 0): ?>
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-calculator me-2"></i>Szacowanie dla Twoich plików:</h6>
+                            <div id="batch-calculation">
+                                <!-- Dynamicznie aktualizowane przez JavaScript -->
+                                <p class="mb-1">
+                                    <strong>Plików do importu:</strong> <?= $imageCount ?><br>
+                                    <strong>Partii przy 10 plikach:</strong> <?= ceil($imageCount / 10) ?><br>
+                                    <strong>Szacowany czas:</strong> <?= ceil($imageCount / 10) * 1 ?> - <?= ceil($imageCount / 10) * 2 ?> minut
+                                </p>
                             </div>
                         </div>
-                        <div class="col-md-3 text-center mb-3">
-                            <div class="p-3 bg-light rounded">
-                                <i class="fas fa-file-image fa-2x text-success mb-2"></i>
-                                <div>PNG (.png)</div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 text-center mb-3">
-                            <div class="p-3 bg-light rounded">
-                                <i class="fas fa-file-image fa-2x text-warning mb-2"></i>
-                                <div>GIF (.gif)</div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 text-center mb-3">
-                            <div class="p-3 bg-light rounded">
-                                <i class="fas fa-times-circle fa-2x text-danger mb-2"></i>
-                                <div>Inne (pominięte)</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <?php if ($directoryExists && $directoryReadable && $imageCount > 0): ?>
-                    <div class="alert alert-success mt-3">
-                        <h6><i class="fas fa-images me-2"></i>Znalezione pliki</h6>
-                        <p class="mb-0">W katalogu <code><?= Html::encode($actualPath) ?></code> znaleziono <strong><?= $imageCount ?></strong> plików graficznych gotowych do importu.</p>
-                    </div>
                     <?php endif; ?>
                 </div>
             </div>
-            
             <!-- Status systemu -->
             <div class="card">
                 <div class="card-header bg-secondary text-white">
@@ -367,7 +398,7 @@ $thumbsDirWritable = $thumbsDirExists && is_writable($thumbsDirPath);
                         </div>
                         
                         <div class="col-md-6">
-                            <h6 class="mb-2">Uruchamianie importu</h6>
+                            <h6 class="mb-2">Automatyczne przetwarzanie</h6>
                             <p class="small">
                                 Aby automatycznie przetwarzać zadania, skonfiguruj cron:
                             </p>
@@ -385,3 +416,64 @@ $thumbsDirWritable = $thumbsDirExists && is_writable($thumbsDirPath);
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const batchSizeSelect = document.getElementById('batch-size-select');
+    const batchEstimation = document.getElementById('batch-estimation');
+    const totalFiles = <?= $imageCount ?>;
+    
+    function updateBatchEstimation() {
+        if (!batchSizeSelect || !batchEstimation || totalFiles === 0) return;
+        
+        const batchSize = parseInt(batchSizeSelect.value);
+        const totalBatches = Math.ceil(totalFiles / batchSize);
+        const estimatedTimeMin = totalBatches * 1; // 1 minuta na partię minimum
+        const estimatedTimeMax = totalBatches * 2; // 2 minuty na partię maksimum
+        
+        batchEstimation.innerHTML = `Utworzy ${totalBatches} zadań (czas: ${estimatedTimeMin}-${estimatedTimeMax} min)`;
+        
+        // Aktualizuj także szczegółowe obliczenia jeśli istnieją
+        const batchCalculation = document.getElementById('batch-calculation');
+        if (batchCalculation) {
+            batchCalculation.innerHTML = `
+                <p class="mb-1">
+                    <strong>Plików do importu:</strong> ${totalFiles}<br>
+                    <strong>Partii przy ${batchSize} plikach:</strong> ${totalBatches}<br>
+                    <strong>Szacowany czas:</strong> ${estimatedTimeMin} - ${estimatedTimeMax} minut
+                </p>
+            `;
+        }
+    }
+    
+    // Inicjalna aktualizacja
+    updateBatchEstimation();
+    
+    // Aktualizacja przy zmianie rozmiaru partii
+    if (batchSizeSelect) {
+        batchSizeSelect.addEventListener('change', updateBatchEstimation);
+    }
+    
+    // Potwierdzenie przed wysłaniem formularza
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (totalFiles === 0) {
+                e.preventDefault();
+                alert('Brak plików do importu w katalogu.');
+                return false;
+            }
+            
+            const batchSize = parseInt(batchSizeSelect.value);
+            const totalBatches = Math.ceil(totalFiles / batchSize);
+            
+            if (totalBatches > 20) {
+                if (!confirm(`Zostanie utworzonych ${totalBatches} zadań. To może być dużo zadań w kolejce. Czy kontynuować?`)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+    }
+});
+</script>
