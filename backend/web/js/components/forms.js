@@ -291,7 +291,7 @@ if (typeof window.FormsComponent !== 'undefined') {
                         if (shouldShow) {
                             container.style.display = 'block';
                             container.style.opacity = '0';
-                            container.style.transform = 'translateY(-10px)';
+//                            container.style.transform = 'translateY(-10px)';
                             
                             setTimeout(() => {
                                 container.style.transition = 'all 0.3s ease';
@@ -301,7 +301,7 @@ if (typeof window.FormsComponent !== 'undefined') {
                         } else {
                             container.style.transition = 'all 0.3s ease';
                             container.style.opacity = '0';
-                            container.style.transform = 'translateY(-10px)';
+//                            container.style.transform = 'translateY(-10px)';
                             
                             setTimeout(() => {
                                 container.style.display = 'none';

@@ -38,6 +38,8 @@ class QueueController extends Controller
                     'process' => ['POST'],
                     'clear-completed' => ['POST'],
                     'clear-failed' => ['POST'],
+                    'clear-processing' => ['POST'],
+                    'run-processor' => ['POST'],
                 ],
             ],
         ];
@@ -90,10 +92,11 @@ class QueueController extends Controller
     public function actionDelete($id)
     {
         $this->findModel($id)->delete();
-        Yii::$app->session->setFlash('success', 'Job deleted successfully.');
+        Yii::$app->session->setFlash('success', Yii::t('app', 'Job deleted successfully.'));
 
         return $this->redirect(['index']);
     }
+
     /**
      * Retries a failed job.
      * @param integer $id
@@ -116,9 +119,9 @@ class QueueController extends Controller
         $model->updated_at = time();
         
         if ($model->save()) {
-            Yii::$app->session->setFlash('success', 'Job has been queued for retry.');
+            Yii::$app->session->setFlash('success', Yii::t('app', 'Job has been queued for retry.'));
         } else {
-            Yii::$app->session->setFlash('error', 'Error resetting job: ' . json_encode($model->errors));
+            Yii::$app->session->setFlash('error', Yii::t('app', 'Error resetting job: {error}', ['error' => json_encode($model->errors)]));
         }
         
         return $this->redirect(['view', 'id' => $id]);
@@ -135,12 +138,12 @@ class QueueController extends Controller
         $model = $this->findModel($id);
         
         if ($model->status === QueuedJob::STATUS_PROCESSING) {
-            Yii::$app->session->setFlash('error', 'This job is already being processed.');
+            Yii::$app->session->setFlash('error', Yii::t('app', 'This job is already being processed.'));
             return $this->redirect(['view', 'id' => $id]);
         }
         
         if ($model->status === QueuedJob::STATUS_COMPLETED) {
-            Yii::$app->session->setFlash('error', 'This job has already been completed.');
+            Yii::$app->session->setFlash('error', Yii::t('app', 'This job has already been completed.'));
             return $this->redirect(['view', 'id' => $id]);
         }
         
@@ -150,7 +153,7 @@ class QueueController extends Controller
         $model->updated_at = time();
         
         if (!$model->save()) {
-            Yii::$app->session->setFlash('error', 'Error updating job status: ' . json_encode($model->errors));
+            Yii::$app->session->setFlash('error', Yii::t('app', 'Error updating job status: {error}', ['error' => json_encode($model->errors)]));
             return $this->redirect(['view', 'id' => $id]);
         }
         
@@ -171,14 +174,14 @@ class QueueController extends Controller
             $model->updated_at = time();
             $model->save();
             
-            Yii::$app->session->setFlash('success', 'Job processed successfully.');
+            Yii::$app->session->setFlash('success', Yii::t('app', 'Job processed successfully.'));
         } catch (\Exception $e) {
             $model->status = QueuedJob::STATUS_FAILED;
             $model->error_message = $e->getMessage();
             $model->updated_at = time();
             $model->save();
             
-            Yii::$app->session->setFlash('error', 'Error processing job: ' . $e->getMessage());
+            Yii::$app->session->setFlash('error', Yii::t('app', 'Error processing job: {error}', ['error' => $e->getMessage()]));
         }
         
         return $this->redirect(['view', 'id' => $id]);
@@ -191,7 +194,7 @@ class QueueController extends Controller
     public function actionClearCompleted()
     {
         $count = QueuedJob::deleteAll(['status' => QueuedJob::STATUS_COMPLETED]);
-        Yii::$app->session->setFlash('success', $count . ' completed jobs cleared successfully.');
+        Yii::$app->session->setFlash('success', Yii::t('app', '{count} completed jobs cleared successfully.', ['count' => $count]));
         
         return $this->redirect(['index']);
     }
@@ -203,106 +206,28 @@ class QueueController extends Controller
     public function actionClearFailed()
     {
         $count = QueuedJob::deleteAll(['status' => QueuedJob::STATUS_FAILED]);
-        Yii::$app->session->setFlash('success', $count . ' failed jobs cleared successfully.');
+        Yii::$app->session->setFlash('success', Yii::t('app', '{count} failed jobs cleared successfully.', ['count' => $count]));
         
         return $this->redirect(['index']);
     }
 
-    public function actionCreate()
-{
-    $model = new QueuedJob();
-    $model->status = QueuedJob::STATUS_PENDING;
-    
-    if ($model->load(Yii::$app->request->post())) {
-        $model->created_at = time();
-        $model->updated_at = time();
+    /**
+     * Clear all processing jobs.
+     * @return mixed
+     */
+    public function actionClearProcessing()
+    {
+        $count = QueuedJob::deleteAll(['status' => QueuedJob::STATUS_PROCESSING]);
+        Yii::$app->session->setFlash('success', Yii::t('app', '{count} przetwarzanych zadań zostało usuniętych.', ['count' => $count]));
         
-        // Sprawdź czy parametry są w formacie JSON
-        if (!empty($model->params)) {
-            if (!json_decode($model->params)) {
-                $model->addError('params', 'Parametry muszą być w formacie JSON.');
-                
-                // Job type options
-                $jobTypes = [
-                    's3_sync' => 'Synchronizacja S3',
-                    'regenerate_thumbnails' => 'Regeneracja Miniatur',
-                    'analyze_photo' => 'Analiza Zdjęcia',
-                    'analyze_batch' => 'Analiza Wsadowa',
-                    'import_photos' => 'Import Zdjęć',
-                ];
-                
-                return $this->render('create', [
-                    'model' => $model,
-                    'jobTypes' => $jobTypes,
-                ]);
-            }
-        }
-        
-        if ($model->save()) {
-            // Sprawdź czy należy uruchomić zadanie natychmiast
-            $runNow = Yii::$app->request->post('run_now', false);
-            
-            if ($runNow) {
-                try {
-                    // Oznacz zadanie jako przetwarzane
-                    $model->status = QueuedJob::STATUS_PROCESSING;
-                    $model->started_at = time();
-                    $model->updated_at = time();
-                    $model->save();
-                    
-                    // Przetwórz zadanie
-                    $jobProcessor = new \common\components\JobProcessor();
-                    $result = $jobProcessor->processJob($model);
-                    
-                    if ($result) {
-                        $model->status = QueuedJob::STATUS_COMPLETED;
-                        $model->completed_at = time();
-                        $model->error_message = null;
-                        $model->save();
-                        
-                        Yii::$app->session->setFlash('success', 'Zadanie zostało pomyślnie utworzone i wykonane.');
-                    } else {
-                        $model->status = QueuedJob::STATUS_FAILED;
-                        $model->error_message = 'Zadanie nie zostało wykonane pomyślnie.';
-                        $model->save();
-                        
-                        Yii::$app->session->setFlash('error', 'Zadanie zostało utworzone, ale jego wykonanie nie powiodło się.');
-                    }
-                } catch (\Exception $e) {
-                    $model->status = QueuedJob::STATUS_FAILED;
-                    $model->error_message = $e->getMessage();
-                    $model->save();
-                    
-                    Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas wykonywania zadania: ' . $e->getMessage());
-                }
-            } else {
-                Yii::$app->session->setFlash('success', 'Zadanie zostało pomyślnie dodane do kolejki.');
-            }
-            
-            return $this->redirect(['view', 'id' => $model->id]);
-        }
+        return $this->redirect(['index']);
     }
-    
-    // Job type options
-    $jobTypes = [
-        's3_sync' => 'Synchronizacja S3',
-        'regenerate_thumbnails' => 'Regeneracja Miniatur',
-        'analyze_photo' => 'Analiza Zdjęcia',
-        'analyze_batch' => 'Analiza Wsadowa',
-        'import_photos' => 'Import Zdjęć',
-    ];
-    
-    return $this->render('create', [
-        'model' => $model,
-        'jobTypes' => $jobTypes,
-    ]);
-}
 
     /**
      * Run the queue processor to execute pending jobs.
      * @return mixed
      */
-    public function actionRun()
+    public function actionRunProcessor()
     {
         $limit = (int)Yii::$app->request->get('limit', 5);
         
@@ -352,9 +277,107 @@ class QueueController extends Controller
             $job->save();
         }
         
-        Yii::$app->session->setFlash('success', "Queue processor ran successfully. Processed $processed jobs: $successful succeeded, $failed failed.");
+        Yii::$app->session->setFlash('success', Yii::t('app', 'Queue processor ran successfully. Processed {processed} jobs: {successful} succeeded, {failed} failed.', [
+            'processed' => $processed,
+            'successful' => $successful,
+            'failed' => $failed
+        ]));
         
         return $this->redirect(['index']);
+    }
+
+    /**
+     * Creates a new QueuedJob model.
+     * @return mixed
+     */
+    public function actionCreate()
+    {
+        $model = new QueuedJob();
+        $model->status = QueuedJob::STATUS_PENDING;
+        
+        if ($model->load(Yii::$app->request->post())) {
+            $model->created_at = time();
+            $model->updated_at = time();
+            
+            // Sprawdź czy parametry są w formacie JSON
+            if (!empty($model->params)) {
+                if (!json_decode($model->params)) {
+                    $model->addError('params', 'Parametry muszą być w formacie JSON.');
+                    
+                    // Job type options
+                    $jobTypes = [
+                        's3_sync' => 'Synchronizacja S3',
+                        'regenerate_thumbnails' => 'Regeneracja Miniatur',
+                        'analyze_photo' => 'Analiza Zdjęcia',
+                        'analyze_batch' => 'Analiza Wsadowa',
+                        'import_photos' => 'Import Zdjęć',
+                    ];
+                    
+                    return $this->render('create', [
+                        'model' => $model,
+                        'jobTypes' => $jobTypes,
+                    ]);
+                }
+            }
+            
+            if ($model->save()) {
+                // Sprawdź czy należy uruchomić zadanie natychmiast
+                $runNow = Yii::$app->request->post('run_now', false);
+                
+                if ($runNow) {
+                    try {
+                        // Oznacz zadanie jako przetwarzane
+                        $model->status = QueuedJob::STATUS_PROCESSING;
+                        $model->started_at = time();
+                        $model->updated_at = time();
+                        $model->save();
+                        
+                        // Przetwórz zadanie
+                        $jobProcessor = new \common\components\JobProcessor();
+                        $result = $jobProcessor->processJob($model);
+                        
+                        if ($result) {
+                            $model->status = QueuedJob::STATUS_COMPLETED;
+                            $model->completed_at = time();
+                            $model->error_message = null;
+                            $model->save();
+                            
+                            Yii::$app->session->setFlash('success', 'Zadanie zostało pomyślnie utworzone i wykonane.');
+                        } else {
+                            $model->status = QueuedJob::STATUS_FAILED;
+                            $model->error_message = 'Zadanie nie zostało wykonane pomyślnie.';
+                            $model->save();
+                            
+                            Yii::$app->session->setFlash('error', 'Zadanie zostało utworzone, ale jego wykonanie nie powiodło się.');
+                        }
+                    } catch (\Exception $e) {
+                        $model->status = QueuedJob::STATUS_FAILED;
+                        $model->error_message = $e->getMessage();
+                        $model->save();
+                        
+                        Yii::$app->session->setFlash('error', 'Wystąpił błąd podczas wykonywania zadania: ' . $e->getMessage());
+                    }
+                } else {
+                    Yii::$app->session->setFlash('success', 'Zadanie zostało pomyślnie dodane do kolejki.');
+                }
+                
+                return $this->redirect(['view', 'id' => $model->id]);
+            }
+        }
+        
+        // Job type options
+        $jobTypes = [
+            's3_sync' => 'Synchronizacja S3',
+            'regenerate_thumbnails' => 'Regeneracja Miniatur',
+            'analyze_photo' => 'Analiza Zdjęcia',
+            'analyze_batch' => 'Analiza Wsadowa',
+            'import_photos' => 'Import Zdjęć',
+        ];
+        
+        return $this->render('create', [
+            'model' => $model,
+            'jobTypes' => $jobTypes,
+        ]);
     }
 
     /**

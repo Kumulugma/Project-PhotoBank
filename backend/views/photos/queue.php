@@ -190,7 +190,7 @@ $categories = ArrayHelper::map(Category::find()->orderBy(['name' => SORT_ASC])->
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Zatwierdź zaznaczone zdjęcia</h5>
+                <h5 class="modal-title" style="color: #fff !important;">Zatwierdź zaznaczone zdjęcia</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <?php

@@ -26,7 +26,7 @@ $s3UsagePercent = $s3MonthlyLimit > 0 ? round(($s3CurrentCount / $s3MonthlyLimit
         <div class="col-md-8 mx-auto">
             <div class="card border-info">
                 <div class="card-header bg-info text-white">
-                    <h6 class="card-title mb-0">
+                    <h6 class="card-title mb-0" style="color: rgb(73, 80, 87);">
                         <i class="fas fa-cloud me-2"></i>Wykorzystanie S3 w tym miesiącu
                     </h6>
                 </div>

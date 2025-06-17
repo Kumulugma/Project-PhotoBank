@@ -31,9 +31,11 @@ $popularTags = Tag::find()->orderBy(['frequency' => SORT_DESC])->limit(10)->all(
                     </p>
                 </div>
                 <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                    <?= Html::a('<i class="fas fa-plus me-2"></i>Dodaj tag', ['create'], [
+                    <?=
+                    Html::a('<i class="fas fa-plus me-2"></i>Dodaj tag', ['create'], [
                         'class' => 'btn btn-light'
-                    ]) ?>
+                    ])
+                    ?>
                 </div>
             </div>
         </div>
@@ -78,7 +80,8 @@ $popularTags = Tag::find()->orderBy(['frequency' => SORT_DESC])->limit(10)->all(
                     <div class="card-body p-0">
                         <?php Pjax::begin(); ?>
 
-                        <?= GridView::widget([
+                        <?=
+                        GridView::widget([
                             'dataProvider' => $dataProvider,
                             'filterModel' => $searchModel,
                             'summary' => 'Wyświetlono <b>{begin}-{end}</b> z <b>{totalCount}</b> wpisów',
@@ -144,10 +147,8 @@ $popularTags = Tag::find()->orderBy(['frequency' => SORT_DESC])->limit(10)->all(
                                             ]);
                                         },
                                         'delete' => function ($url, $model, $key) {
-                                            $confirmMessage = $model->frequency > 0 
-                                                ? "Ten tag jest używany w {$model->frequency} zdjęciach. Czy na pewno chcesz go usunąć?"
-                                                : 'Czy na pewno chcesz usunąć ten tag?';
-                                                
+                                            $confirmMessage = $model->frequency > 0 ? "Ten tag jest używany w {$model->frequency} zdjęciach. Czy na pewno chcesz go usunąć?" : 'Czy na pewno chcesz usunąć ten tag?';
+
                                             return Html::a('<i class="fas fa-trash"></i>', $url, [
                                                 'class' => 'btn btn-outline-danger',
                                                 'title' => 'Usuń',
@@ -158,9 +159,10 @@ $popularTags = Tag::find()->orderBy(['frequency' => SORT_DESC])->limit(10)->all(
                                     ],
                                 ],
                             ],
-                        ]); ?>
+                        ]);
+                        ?>
 
-                        <?php Pjax::end(); ?>
+<?php Pjax::end(); ?>
                     </div>
                 </div>
             </div>
@@ -168,31 +170,37 @@ $popularTags = Tag::find()->orderBy(['frequency' => SORT_DESC])->limit(10)->all(
             <!-- Sidebar -->
             <div class="col-lg-4">
                 <!-- Popularne tagi -->
-                <?php if (!empty($popularTags)): ?>
-                <div class="tags-cloud">
-                    <h3>
-                        <i class="fas fa-fire me-2"></i>
-                        Popularne tagi
-                    </h3>
-                    <div>
-                        <?php foreach ($popularTags as $tag): 
-                            $sizeClass = 'size-md';
-                            if ($tag->frequency >= 50) $sizeClass = 'size-xl';
-                            elseif ($tag->frequency >= 20) $sizeClass = 'size-lg';
-                            elseif ($tag->frequency >= 10) $sizeClass = 'size-md';
-                            elseif ($tag->frequency >= 5) $sizeClass = 'size-sm';
-                            else $sizeClass = 'size-xs';
-                        ?>
-                            <a href="<?= yii\helpers\Url::to(['view', 'id' => $tag->id]) ?>" 
-                               class="tag-item <?= $sizeClass ?>"
-                               title="<?= Html::encode($tag->name) ?> (<?= $tag->frequency ?> użyć)">
-                                #<?= Html::encode($tag->name) ?>
-                                <span class="badge bg-white text-dark ms-1"><?= $tag->frequency ?></span>
-                            </a>
-                        <?php endforeach; ?>
+<?php if (!empty($popularTags)): ?>
+                    <div class="tags-cloud">
+                        <h3>
+                            <i class="fas fa-fire me-2"></i>
+                            Popularne tagi
+                        </h3>
+                        <div>
+                            <?php
+                            foreach ($popularTags as $tag):
+                                $sizeClass = 'size-md';
+                                if ($tag->frequency >= 50)
+                                    $sizeClass = 'size-xl';
+                                elseif ($tag->frequency >= 20)
+                                    $sizeClass = 'size-lg';
+                                elseif ($tag->frequency >= 10)
+                                    $sizeClass = 'size-md';
+                                elseif ($tag->frequency >= 5)
+                                    $sizeClass = 'size-sm';
+                                else
+                                    $sizeClass = 'size-xs';
+                                ?>
+                                <a href="<?= yii\helpers\Url::to(['view', 'id' => $tag->id]) ?>" 
+                                   class="tag-item <?= $sizeClass ?>"
+                                   title="<?= Html::encode($tag->name) ?> (<?= $tag->frequency ?> użyć)">
+                                    #<?= Html::encode($tag->name) ?>
+                                    <span class="badge bg-white text-dark ms-1"><?= $tag->frequency ?></span>
+                                </a>
+    <?php endforeach; ?>
+                        </div>
                     </div>
-                </div>
-                <?php endif; ?>
+                        <?php endif; ?>
 
                 <!-- Szybkie akcje -->
                 <div class="sidebar-card">
@@ -201,16 +209,20 @@ $popularTags = Tag::find()->orderBy(['frequency' => SORT_DESC])->limit(10)->all(
                         Szybkie akcje
                     </h5>
                     <div class="d-grid gap-2">
-                        <?= Html::a('<i class="fas fa-plus me-2"></i>Dodaj tag', ['create'], [
+                        <?=
+                        Html::a('<i class="fas fa-plus me-2"></i>Dodaj tag', ['create'], [
                             'class' => 'btn btn-success'
-                        ]) ?>
-                        
-                        <?php if ($totalTags - $activeTags > 0): ?>
-                        <?= Html::a('<i class="fas fa-broom me-2"></i>Usuń nieużywane (' . ($totalTags - $activeTags) . ')', '#', [
-                            'class' => 'btn btn-warning',
-                            'onclick' => 'cleanupUnusedTags(); return false;'
-                        ]) ?>
-                        <?php endif; ?>
+                        ])
+                        ?>
+
+<?php if ($totalTags - $activeTags > 0): ?>
+    <?=
+    Html::a('<i class="fas fa-broom me-2"></i>Usuń nieużywane (' . ($totalTags - $activeTags) . ')', '#', [
+        'class' => 'btn btn-warning',
+        'onclick' => 'cleanupUnusedTags(); return false;'
+    ])
+    ?>
+<?php endif; ?>
                     </div>
                 </div>
 
@@ -228,7 +240,7 @@ $popularTags = Tag::find()->orderBy(['frequency' => SORT_DESC])->limit(10)->all(
                             <li>Sprawdź duplikaty</li>
                         </ul>
                     </div>
-                    
+
                     <div class="alert alert-success">
                         <h6>Oznaczenia popularności</h6>
                         <div class="small">
@@ -244,26 +256,35 @@ $popularTags = Tag::find()->orderBy(['frequency' => SORT_DESC])->limit(10)->all(
     </div>
 </div>
 
+<style>
+    .summary {
+        padding: 10px 16px;
+        margin: 12px 0;
+        font-size: 13px;
+        font-weight: 500;
+    }
+</style>
+
 <script>
 // Proste funkcje bez jQuery
-function cleanupUnusedTags() {
-    if (confirm('Czy na pewno chcesz usunąć wszystkie nieużywane tagi?')) {
-        // Tutaj możesz dodać AJAX call do usuwania
-        showSimpleToast('Funkcja w przygotowaniu', 'warning');
+    function cleanupUnusedTags() {
+        if (confirm('Czy na pewno chcesz usunąć wszystkie nieużywane tagi?')) {
+            // Tutaj możesz dodać AJAX call do usuwania
+            showSimpleToast('Funkcja w przygotowaniu', 'warning');
+        }
     }
-}
 
 // Animacja pasków popularności
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
-        const bars = document.querySelectorAll('.popularity-fill');
-        bars.forEach(function(bar) {
-            const width = bar.style.width;
-            bar.style.width = '0%';
-            setTimeout(function() {
-                bar.style.width = width;
-            }, 100);
-        });
-    }, 500);
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+            const bars = document.querySelectorAll('.popularity-fill');
+            bars.forEach(function (bar) {
+                const width = bar.style.width;
+                bar.style.width = '0%';
+                setTimeout(function () {
+                    bar.style.width = width;
+                }, 100);
+            });
+        }, 500);
+    });
 </script>

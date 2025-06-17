@@ -3,18 +3,27 @@
 use yii\helpers\Html;
 use yii\helpers\Url;
 \backend\assets\AppAsset::registerComponentCss($this, 'alerts');
+
 /* @var $this yii\web\View */
 /* @var $totalPhotos int */
 /* @var $queuedPhotos int */
+/* @var $publicPhotos int */
+/* @var $privatePhotos int */
+/* @var $aiPhotos int */
+/* @var $aiPercentage float */
 /* @var $totalCategories int */
 /* @var $totalTags int */
 /* @var $thumbnailsSize int */
 /* @var $thumbnailsSizeFormatted string */
 /* @var $importFilesCount int */
+/* @var $dailyUploads array */
+/* @var $auditStats array */
+/* @var $awsCosts array|null */
 
 $this->title = 'Dashboard';
 $this->params['breadcrumbs'][] = $this->title;
 ?>
+
 <style>
 /* Ultra kompaktowy dashboard */
 .stats-card {
@@ -181,7 +190,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         <i class="fas fa-images"></i>
                     </div>
                     <div class="flex-grow-1">
-                        <div class="stat-number text-dark"><?= $totalPhotos ?></div>
+                        <div class="stat-number text-dark"><?= number_format($totalPhotos) ?></div>
                         <p class="stat-label">Aktywne zdjęcia</p>
                         <div class="stat-action">
                             <a href="<?= Url::to(['photos/index']) ?>" class="btn btn-sm btn-outline-primary">
@@ -202,7 +211,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         <i class="fas fa-clock"></i>
                     </div>
                     <div class="flex-grow-1">
-                        <div class="stat-number text-dark"><?= $queuedPhotos ?></div>
+                        <div class="stat-number text-dark"><?= number_format($queuedPhotos) ?></div>
                         <p class="stat-label">W kolejce</p>
                         <div class="stat-action">
                             <a href="<?= Url::to(['photos/queue']) ?>" class="btn btn-sm btn-outline-warning">
@@ -220,16 +229,58 @@ $this->params['breadcrumbs'][] = $this->title;
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="stat-icon icon-success me-2">
-                        <i class="fas fa-folder"></i>
+                        <i class="fas fa-eye"></i>
                     </div>
                     <div class="flex-grow-1">
-                        <div class="stat-number text-dark"><?= $totalCategories ?></div>
-                        <p class="stat-label">Kategorie</p>
+                        <div class="stat-number text-dark"><?= number_format($publicPhotos) ?></div>
+                        <p class="stat-label">Publiczne</p>
                         <div class="stat-action">
-                            <a href="<?= Url::to(['categories/index']) ?>" class="btn btn-sm btn-outline-success">
+                            <a href="<?= Url::to(['photos/index', 'PhotoSearch[is_public]' => 1]) ?>" class="btn btn-sm btn-outline-success">
                                 Zobacz <i class="fas fa-arrow-right ms-1"></i>
                             </a>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+        <div class="card stats-card border-start border-secondary border-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon icon-secondary me-2">
+                        <i class="fas fa-eye-slash"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="stat-number text-dark"><?= number_format($privatePhotos) ?></div>
+                        <p class="stat-label">Prywatne</p>
+                        <div class="stat-action">
+                            <a href="<?= Url::to(['photos/index', 'PhotoSearch[is_public]' => 0]) ?>" class="btn btn-sm btn-outline-secondary">
+                                Zobacz <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+        <div class="card stats-card border-start border-warning border-3">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon icon-warning me-2">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="stat-number text-dark"><?= number_format($aiPhotos) ?></div>
+                        <p class="stat-label">Zdjęcia AI</p>
+                        <?php if ($aiPercentage > 0): ?>
+                            <div class="stat-action">
+                                <small class="text-muted"><?= number_format($aiPercentage, 1) ?>% wszystkich</small>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -241,58 +292,14 @@ $this->params['breadcrumbs'][] = $this->title;
             <div class="card-body">
                 <div class="d-flex align-items-center">
                     <div class="stat-icon icon-info me-2">
-                        <i class="fas fa-tags"></i>
+                        <i class="fas fa-hdd"></i>
                     </div>
                     <div class="flex-grow-1">
-                        <div class="stat-number text-dark"><?= $totalTags ?></div>
-                        <p class="stat-label">Tagi</p>
-                        <div class="stat-action">
-                            <a href="<?= Url::to(['tags/index']) ?>" class="btn btn-sm btn-outline-info">
-                                Zobacz <i class="fas fa-arrow-right ms-1"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Thumbnails Size -->
-    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-        <div class="card stats-card border-start border-secondary border-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="stat-icon icon-secondary me-2">
-                        <i class="fas fa-images"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="stat-number text-dark" style="font-size: 1.25rem;"><?= $thumbnailsSizeFormatted ?></div>
+                        <div class="stat-number text-dark"><?= $thumbnailsSizeFormatted ?></div>
                         <p class="stat-label">Miniaturki</p>
                         <div class="stat-action">
-                            <a href="<?= Url::to(['thumbnails/index']) ?>" class="btn btn-sm btn-outline-secondary">
-                                Zarządzaj <i class="fas fa-arrow-right ms-1"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Import Files Count -->
-    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-        <div class="card stats-card border-start border-danger border-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="stat-icon icon-danger me-2">
-                        <i class="fas fa-file-import"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="stat-number text-dark"><?= $importFilesCount ?></div>
-                        <p class="stat-label">Pliki import</p>
-                        <div class="stat-action">
-                            <a href="<?= Url::to(['photos/import']) ?>" class="btn btn-sm btn-outline-danger">
-                                Importuj <i class="fas fa-arrow-right ms-1"></i>
+                            <a href="<?= Url::to(['thumbnails/index']) ?>" class="btn btn-sm btn-outline-info">
+                                Zobacz <i class="fas fa-arrow-right ms-1"></i>
                             </a>
                         </div>
                     </div>
@@ -314,7 +321,7 @@ $this->params['breadcrumbs'][] = $this->title;
 
 <div class="row g-2 mb-3">
     <!-- Current Month Costs -->
-    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+    <div class="col-xl-4 col-lg-4 col-md-6">
         <div class="card aws-card border-start border-primary border-3">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -348,7 +355,7 @@ $this->params['breadcrumbs'][] = $this->title;
     </div>
 
     <!-- Forecasted Costs -->
-    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+    <div class="col-xl-4 col-lg-4 col-md-6">
         <div class="card aws-card border-start border-warning border-3">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -381,37 +388,9 @@ $this->params['breadcrumbs'][] = $this->title;
         </div>
     </div>
 
-    <!-- S3 Costs -->
-    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-        <div class="card aws-card border-start border-info border-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="aws-icon icon-info me-2">
-                        <i class="fas fa-cloud"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="aws-value text-dark">$<?= number_format($awsCosts['s3']['total'], 2) ?></div>
-                        <p class="aws-label fw-semibold">Amazon S3</p>
-                        <small class="aws-sublabel">Storage & Transfer</small>
-                        <div class="aws-meta">
-                            <?php 
-                            $s3Percentage = $awsCosts['current']['total'] > 0 ? 
-                                ($awsCosts['s3']['total'] / $awsCosts['current']['total']) * 100 : 0;
-                            ?>
-                            <span class="text-info">
-                                <i class="fas fa-percentage me-1"></i>
-                                <?= round($s3Percentage, 1) ?>% całkowitych
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Last Month - tylko jeśli dostępne -->
     <?php if (isset($awsCosts['lastMonth']) && !isset($awsCosts['lastMonth']['error']) && $awsCosts['lastMonth']['total'] > 0): ?>
-    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+    <div class="col-xl-4 col-lg-4 col-md-6">
         <div class="card aws-card border-start border-secondary border-3">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -456,173 +435,236 @@ $this->params['breadcrumbs'][] = $this->title;
             <div>
                 <strong>Integracja AWS Cost Explorer</strong><br>
                 Skonfiguruj AWS Cost Explorer aby wyświetlać koszty w dashboardzie.
-                <br><a href="<?= Url::to(['settings/index']) ?>" class="alert-link">Przejdź do ustawień</a>
+                <br><small class="text-muted">Przejdź do ustawień aby skonfigurować integrację</small>
             </div>
         </div>
     </div>
 </div>
 <?php endif; ?>
 
-<div class="row g-4">
-    <!-- Quick Actions -->
-    <div class="col-lg-6">
-        <div class="card action-card h-100">
-            <div class="card-header border-0 bg-white">
+<!-- Wykres dziennych wgrań -->
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-bolt me-2 text-primary"></i>Szybkie akcje
+                    <i class="fas fa-chart-line me-2"></i>Zdjęcia wgrane w ostatnim tygodniu
                 </h5>
             </div>
-            <div class="card-body pt-0">
-                <div class="list-group list-group-flush">
-                    <a href="<?= Url::to(['photos/upload']) ?>" class="list-group-item list-group-item-action d-flex align-items-center">
-                        <div class="system-icon icon-primary me-2">
-                            <i class="fas fa-upload"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">Prześlij zdjęcia</div>
-                            <small class="text-muted">Dodaj nowe zdjęcia do systemu</small>
-                        </div>
-                        <i class="fas fa-chevron-right text-muted"></i>
-                    </a>
-                    
-                    <a href="<?= Url::to(['photos/queue']) ?>" class="list-group-item list-group-item-action d-flex align-items-center">
-                        <div class="system-icon icon-warning me-2">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">Poczekalnia zdjęć</div>
-                            <small class="text-muted">Zatwierdź oczekujące zdjęcia</small>
-                        </div>
-                        <?php if ($queuedPhotos > 0): ?>
-                            <span class="badge bg-warning me-2"><?= $queuedPhotos ?></span>
-                        <?php endif; ?>
-                        <i class="fas fa-chevron-right text-muted"></i>
-                    </a>
-                    
-                    <a href="<?= Url::to(['s3/index']) ?>" class="list-group-item list-group-item-action d-flex align-items-center">
-                        <div class="system-icon icon-info me-2">
-                            <i class="fas fa-cloud-upload"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">Synchronizacja S3</div>
-                            <small class="text-muted">Prześlij zdjęcia do chmury</small>
-                        </div>
-                        <i class="fas fa-chevron-right text-muted"></i>
-                    </a>
-                    
-                    <a href="<?= Url::to(['thumbnails/index']) ?>" class="list-group-item list-group-item-action d-flex align-items-center">
-                        <div class="system-icon icon-success me-2">
-                            <i class="fas fa-image"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">Zarządzaj miniaturami</div>
-                            <small class="text-muted">Konfiguruj rozmiary miniatur</small>
-                        </div>
-                        <i class="fas fa-chevron-right text-muted"></i>
-                    </a>
-                    
-                    <a href="<?= Url::to(['categories/create']) ?>" class="list-group-item list-group-item-action d-flex align-items-center">
-                        <div class="system-icon icon-secondary me-2">
-                            <i class="fas fa-plus"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">Dodaj kategorię</div>
-                            <small class="text-muted">Utwórz nową kategorię zdjęć</small>
-                        </div>
-                        <i class="fas fa-chevron-right text-muted"></i>
-                    </a>
-                </div>
+            <div class="card-body">
+                <canvas id="dailyUploadsChart" height="300"></canvas>
             </div>
         </div>
     </div>
-    
+
     <!-- System Status -->
-    <div class="col-lg-6">
-        <div class="card action-card h-100">
-            <div class="card-header border-0 mb-1 bg-white">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-server me-2 text-primary"></i>Status systemu
+                    <i class="fas fa-server me-2"></i>Status systemu
                 </h5>
             </div>
-            <div class="card-body pt-0">
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="d-flex align-items-center">
-                            <div class="system-icon icon-primary me-2">
-                                <i class="fab fa-php"></i>
-                            </div>
-                            <div class="flex-grow-1">
-                                <div class="fw-semibold">PHP</div>
-                                <small class="text-muted"><?= PHP_VERSION ?></small>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-6">
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <div class="d-flex align-items-center">
                             <div class="system-icon icon-success me-2">
-                                <i class="fas fa-code"></i>
+                                <i class="fas fa-database"></i>
                             </div>
-                            <div class="flex-grow-1">
-                                <div class="fw-semibold">Yii Framework</div>
-                                <small class="text-muted"><?= Yii::getVersion() ?></small>
+                            <div>
+                                <h6 class="mb-0">Baza danych</h6>
+                                <small class="text-muted">MySQL aktywna</small>
                             </div>
                         </div>
+                        <span class="badge bg-success">Online</span>
                     </div>
-                    
-                    <div class="col-6">
+
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <div class="d-flex align-items-center">
-                            <div class="system-icon icon-warning me-2">
-                                <i class="fas fa-memory"></i>
+                            <div class="system-icon icon-primary me-2">
+                                <i class="fas fa-folder"></i>
                             </div>
-                            <div class="flex-grow-1">
-                                <div class="fw-semibold">Limit pamięci</div>
-                                <small class="text-muted"><?= ini_get('memory_limit') ?></small>
+                            <div>
+                                <h6 class="mb-0">Kategorie</h6>
+                                <small class="text-muted"><?= number_format($totalCategories) ?> kategorii</small>
                             </div>
                         </div>
+                        <a href="<?= Url::to(['categories/index']) ?>" class="btn btn-sm btn-outline-primary">Zobacz</a>
                     </div>
-                    
-                    <div class="col-6">
+
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <div class="d-flex align-items-center">
                             <div class="system-icon icon-info me-2">
-                                <i class="fas fa-upload"></i>
+                                <i class="fas fa-tags"></i>
                             </div>
-                            <div class="flex-grow-1">
-                                <div class="fw-semibold">Max upload</div>
-                                <small class="text-muted"><?= ini_get('upload_max_filesize') ?></small>
+                            <div>
+                                <h6 class="mb-0">Tagi</h6>
+                                <small class="text-muted"><?= number_format($totalTags) ?> tagów</small>
                             </div>
                         </div>
+                        <a href="<?= Url::to(['tags/index']) ?>" class="btn btn-sm btn-outline-info">Zobacz</a>
                     </div>
-                </div>
-                
-                <hr class="my-3">
-                
-                <div class="text-center">
-                    <small class="text-muted">
-                        <i class="fas fa-shield-alt me-1 mt-1 text-success"></i>
-                        System działa poprawnie
-                    </small>
+
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <div class="d-flex align-items-center">
+                            <div class="system-icon icon-danger me-2">
+                                <i class="fas fa-file-import"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Pliki import</h6>
+                                <small class="text-muted"><?= number_format($importFilesCount) ?> plików</small>
+                            </div>
+                        </div>
+                        <a href="<?= Url::to(['photos/import']) ?>" class="btn btn-sm btn-outline-danger">Importuj</a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<?php if ($queuedPhotos > 0 || $totalPhotos === 0): ?>
-<div class="row mt-4">
+<!-- Szybkie akcje -->
+<div class="row mb-4">
     <div class="col-12">
-        <div class="alert alert-info d-flex align-items-center" role="alert">
-            <i class="fas fa-info-circle me-3"></i>
-            <div>
-                <?php if ($queuedPhotos > 0): ?>
-                    <strong>Uwaga!</strong> Masz <?= $queuedPhotos ?> zdjęć oczekujących na zatwierdzenie.
-                    <a href="<?= Url::to(['photos/queue']) ?>" class="alert-link">Przejdź do poczekalni</a>
-                <?php elseif ($totalPhotos === 0): ?>
-                    <strong>Witaj!</strong> Wygląda na to, że nie masz jeszcze żadnych zdjęć.
-                    <a href="<?= Url::to(['photos/upload']) ?>" class="alert-link">Prześlij swoje pierwsze zdjęcia</a>
-                <?php endif; ?>
+        <div class="card action-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bolt me-2"></i>Szybkie akcje
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-3 col-6">
+                        <a href="<?= Url::to(['photos/upload']) ?>" class="btn btn-primary w-100">
+                            <i class="fas fa-upload me-2"></i>Prześlij zdjęcia
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <a href="<?= Url::to(['photos/import']) ?>" class="btn btn-success w-100">
+                            <i class="fas fa-file-import me-2"></i>Import z FTP
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <a href="<?= Url::to(['queue/index']) ?>" class="btn btn-info w-100">
+                            <i class="fas fa-tasks me-2"></i>Kolejka zadań
+                        </a>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <a href="<?= Url::to(['settings/index']) ?>" class="btn btn-secondary w-100">
+                            <i class="fas fa-cogs me-2"></i>Ustawienia
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dziennik zdarzeń -->
+<?php if (!empty($auditStats)): ?>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clipboard-list me-2"></i>Dziennik zdarzeń - ostatnie 7 dni
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-primary"><?= number_format($auditStats['total_events']) ?></h3>
+                            <small class="text-muted">Wszystkie zdarzenia</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-success"><?= number_format($auditStats['today_events']) ?></h3>
+                            <small class="text-muted">Dzisiaj</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-warning"><?= number_format($auditStats['warning_events']) ?></h3>
+                            <small class="text-muted">Ostrzeżenia</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-danger"><?= number_format($auditStats['error_events']) ?></h3>
+                            <small class="text-muted">Błędy</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 <?php endif; ?>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Wykres dziennych wgrań
+    const ctx = document.getElementById('dailyUploadsChart').getContext('2d');
+    
+    const dailyData = <?= json_encode($dailyUploads) ?>;
+    const labels = dailyData.map(item => {
+        const date = new Date(item.date);
+        return date.toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric', month: 'short' });
+    });
+    const data = dailyData.map(item => item.count);
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Liczba zdjęć',
+                data: data,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1,
+                fill: true,
+                pointBackgroundColor: 'rgb(75, 192, 192)',
+                pointBorderColor: 'rgb(75, 192, 192)',
+                pointHoverBackgroundColor: 'rgb(54, 162, 235)',
+                pointHoverBorderColor: 'rgb(54, 162, 235)',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return 'Dzień: ' + context[0].label;
+                        },
+                        label: function(context) {
+                            return 'Wgrano: ' + context.parsed.y + ' zdjęć';
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
+});
+</script>
